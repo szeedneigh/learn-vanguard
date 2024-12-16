@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 
-const Landing = () => {
+const LandingPage = () => {
   return (
     // Background
     <div className="min-h-screen relative">
@@ -57,4 +57,4 @@ const Landing = () => {
   );
 };
 
-export default Landing;
+export default LandingPage;
