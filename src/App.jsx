@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './Globals.css'
+import Landing from './app/landing/Landing'
+import SignUp from './app/auth/SignUp'
+import SignUpStep2 from './app/auth/SignUpStep2'
+import LogIn from './app/auth/LogIn'
+
 
 function App() {
   const [count, setCount] = useState(0)
@@ -28,6 +31,8 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
+
+
     </>
   )
 }
