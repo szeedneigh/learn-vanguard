@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const LandingPage = () => {
   return (
@@ -23,12 +24,14 @@ const LandingPage = () => {
               className="w-25 h-20"
             />
           </a>
-          <Button
-            variant="secondary"
-            className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-semibold"
-          >
-            Log In
-          </Button>
+          <Link to="/login">
+            <Button
+              variant="secondary"
+              className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-semibold"
+            >
+              Log In
+            </Button>
+          </Link>
         </header>
 
         {/* Hero */}
@@ -44,12 +47,15 @@ const LandingPage = () => {
               Discover a unified platform for academic resources and progress
               tracking all tailored to help you achieve your educational goals.
             </p>
+            <Link to="/signup">
             <Button
               size="lg"
               className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-semibold text-lg px-8"
             >
               Get Started
             </Button>
+            </Link>
+            
           </div>
         </main>
       </div>
