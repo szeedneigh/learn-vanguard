@@ -57,7 +57,7 @@ const Sidebar = () => {
             isCollapsed ? "w-0 opacity-0" : "w-32 opacity-100"
           )}>
             <span className="font-semibold text-white text-lg whitespace-nowrap">
-              Student Hub
+              Student <br/> Resource Hub
             </span>
           </div>
         </div>
