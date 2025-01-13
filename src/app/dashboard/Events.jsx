@@ -7,7 +7,13 @@ dayjs.extend(isoWeek);
 const Events = () => {
   const [view, setView] = useState("month"); // "day", "week", "month"
   const [currentDate, setCurrentDate] = useState(dayjs());
-  const [events, setEvents] = useState([]); // Stores all events
+  const [events, setEvents] = useState([
+    { date: "2025-01-13", title: "Project Deadline" },
+    { date: "2025-01-13", title: "Team Meeting" },
+    { date: "2025-01-16", title: "CT Project Deadline" },
+    { date: "2025-01-20", title: "Clearance" },
+    { date: "2025-01-25", title: "Appdev Project Submission" },
+  ]); // Static events data
   const [showAddEvent, setShowAddEvent] = useState(false); // Modal visibility
   const [newEvent, setNewEvent] = useState({ date: "", title: "" }); // New event data
   const [showMoreEvents, setShowMoreEvents] = useState(false); // Modal for "View More"
@@ -348,4 +354,5 @@ const Events = () => {
   );
 };
 
-export default Events
+export default Events;
+ 
