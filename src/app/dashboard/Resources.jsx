@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 
 const subjects = [
   "Philippine Literature",
@@ -19,7 +20,7 @@ function Resources() {
 
   const openModal = () => {
     setIsModalOpen(true);
-    setErrorMessage(""); // Clear any existing error message when the modal opens
+    setErrorMessage("");
   };
 
   const closeModal = () => {
@@ -30,7 +31,7 @@ function Resources() {
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
-    setErrorMessage(""); // Clear error message on new file selection
+    setErrorMessage("");
   };
 
   const handleUpload = () => {
@@ -46,7 +47,7 @@ function Resources() {
     <div className="min-h-screen bg-gray-100 p-6">
       {/* Breadcrumb Navigation */}
       <div className="mb-6 text-sm text-gray-600">
-        <span>Home &gt; </span>
+        <Link to="/dashboard"><span className="text-primary">Home &gt; </span></Link>
         <span className="font-medium">Associate in Computer Technology</span>
         <span> / First Year / Subjects</span>
       </div>
