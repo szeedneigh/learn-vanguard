@@ -3,7 +3,7 @@ import Events from "@/app/dashboard/Events";
 import Home from "@/app/dashboard/Home";
 import Resources from "@/app/dashboard/Resources";
 import Tasks from "@/app/dashboard/Tasks";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 
 const Dashboard = () => {
