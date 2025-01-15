@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Events from "@/app/dashboard/Events";
 import Home from "@/app/dashboard/Home";
 import Resources from "@/app/dashboard/Resources";
@@ -16,12 +16,11 @@ const Dashboard = () => {
         <Topbar />
         <main className="flex-1 overflow-y-auto">
           <Routes>
+            <Route path="/" element={<Navigate replace to="home" />} />
             <Route path="home" element={<Home />} />
             <Route path="tasks" element={<Tasks />} />
             <Route path="resources" element={<Resources />} />
             <Route path="events" element={<Events />} />
-            
-            <Route index element={<Home />} />
           </Routes>
         </main>
       </div>
@@ -30,3 +29,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

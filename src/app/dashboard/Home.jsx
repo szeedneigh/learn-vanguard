@@ -52,7 +52,7 @@ const Home = () => {
         <div className="space-y-6">
           <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 bg-white/50 backdrop-blur-sm">
             <CardContent className="p-4">
-              <div className="rounded-xl shadow-lg bg-white p-2 ">
+              <div className="rounded-xl shadow-lg bg-white p-2 flex justify-center">
                 <Calendar 
                   mode="single"
                   selected={date}
