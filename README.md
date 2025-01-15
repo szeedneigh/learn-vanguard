@@ -1,4 +1,4 @@
-<div align="center">![logo](public\images\logo.jpg)</div>
+<div align="center"><img src="public\images\logo.jpg"></div>
 
 # Student Resource Hub
 
