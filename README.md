@@ -1,21 +1,53 @@
 <div align="center">
 
-# Student Resource Hub
+# LEARN VANGUARD
+## Student Resource Hub
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/szeedneigh/learn-vanguard/issues)
+[![Status](https://img.shields.io/badge/Status-In%20Development-blue.svg)](https://your-project-link)
+[![Made with React](https://img.shields.io/badge/Made%20with-React-61dafb.svg)](https://reactjs.org/)
+[![Built with Vite](https://img.shields.io/badge/Built%20with-Vite-646cff.svg)](https://vitejs.dev/)
 
-*Empowering academic excellence through centralized learning resources*
-
-[Report Bug](https://github.com/szeedneigh/learn-vanguard/issues) | [Request Feature](https://github.com/szeedneigh/learn-vanguard/issues)
+*Empowering Students, Enabling Excellence.*
 
 ![Project Logo](public/images/logo.jpg)
 
 </div>
 
-## 📋 Overview
+## 📋 Table of Contents
+- [Mission & Vision](#-mission--vision)
+- [Why Learn Vanguard?](#-why-learn-vanguard)
+- [Features](#-features)
+- [Technology Stack](#️-technology-stack)
+- [Our Team](#-our-team)
+- [Development](#-development)
+- [Project Status](#-project-status)
+- [Contact](#-contact)
+- [License](#-license)
 
-The Student Resource Hub is a comprehensive platform designed to revolutionize the way students access and interact with academic resources. By providing a centralized space for educational materials, progress tracking, and institutional communications, we aim to foster academic excellence while maintaining the highest standards of educational integrity.
+## 🎯 Mission & Vision
+
+### Mission
+"To empower students by providing a centralized, accessible platform that enhances learning, fosters collaboration, and streamlines access to essential academic resources."
+
+### Vision
+"To create a thriving educational ecosystem where students and institution are seamlessly connected, enabling every student to access the tools and support needed for academic and personal growth."
+
+## 💡 Why Learn Vanguard?
+
+### The Power of "Learn"
+At our core, we are dedicated to education and knowledge acquisition. "Learn" represents our commitment to:
+- Facilitating meaningful educational experiences
+- Providing comprehensive learning resources
+- Supporting personal and academic development
+- Creating an environment conducive to growth
+
+### The Spirit of "Vanguard"
+As pioneers in educational technology, "Vanguard" embodies our dedication to:
+- Leading innovation in educational solutions
+- Setting new standards in academic resource management
+- Embracing cutting-edge technologies
+- Revolutionizing the learning experience
 
 ## ✨ Key Features
 
@@ -34,54 +66,106 @@ The Student Resource Hub is a comprehensive platform designed to revolutionize t
 - Clean, responsive design
 - Dark/light mode support
 - Mobile-first approach
-- Accessible interface (WCAG 2.1 compliant)
+- Accessible interface
 
-
-## 🛠️ Tech Stack
+## 🛠️ Technology Stack
 
 <div align="center">
 
-### Core Technologies
-
+### Frontend Core
 [<img src="https://skillicons.dev/icons?i=vite" width="48" height="48" alt="Vite" />](https://vitejs.dev/)
-<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/react/react-original.svg" width="48" height="48" alt="React" />
-<img src="https://skillicons.dev/icons?i=tailwind" width="48" height="48" alt="Tailwind" />
-<img src="https://www.vectorlogo.zone/logos/framer/framer-icon.svg" width="48" height="48" alt="Framer Motion" />
+[<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/react/react-original.svg" width="48" height="48" alt="React" />](https://reactjs.org/)
+[<img src="https://skillicons.dev/icons?i=tailwind" width="48" height="48" alt="Tailwind" />](https://tailwindcss.com/)
 
-### UI Components & Design
-<img src="https://skillicons.dev/icons?i=figma" width="48" height="48" alt="Figma" />
-<img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/logo/icon.svg" width="48" height="48" alt="Lucide Icons" />
-<img src="https://ui.shadcn.com/favicon.ico" width="48" height="48" alt="shadcn/ui" />
+### Design & UI
+[<img src="https://skillicons.dev/icons?i=figma" width="48" height="48" alt="Figma" />](https://www.figma.com/)
+[<img src="https://ui.shadcn.com/favicon.ico" width="48" height="48" alt="shadcn/ui" />](https://ui.shadcn.com/)
+[<img src="https://www.vectorlogo.zone/logos/framer/framer-icon.svg" width="48" height="48" alt="Framer Motion" />](https://www.framer.com/motion/)
 
 ### Development Tools
-<img src="https://skillicons.dev/icons?i=git" width="48" height="48" alt="Git" />
-<img src="https://skillicons.dev/icons?i=github" width="48" height="48" alt="GitHub" />
-<img src="https://skillicons.dev/icons?i=vscode" width="48" height="48" alt="VS Code" />
-<img src="https://skillicons.dev/icons?i=vercel" width="48" height="48" alt="Vercel" />
+[<img src="https://skillicons.dev/icons?i=vscode" width="48" height="48" alt="VS Code" />](https://code.visualstudio.com/)
+[<img src="https://skillicons.dev/icons?i=git" width="48" height="48" alt="Git" />](https://git-scm.com/)
+[<img src="https://skillicons.dev/icons?i=vercel" width="48" height="48" alt="Vercel" />](https://vercel.com/)
 
 </div>
 
-### Detailed Stack Information
+## 👥 Our Team
 
-- **Frontend Foundation**
-  - [<img src="https://skillicons.dev/icons?i=vite" width="20" height="20" alt="Vite" />] **Vite**: Next Generation Frontend Tooling
-  - [<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/react/react-original.svg" width="20" height="20" alt="React" />] **React**: Component-Based UI Development
-  - [<img src="https://skillicons.dev/icons?i=tailwind" width="20" height="20" alt="Tailwind" />] **Tailwind CSS**: Utility-First Styling
-  - [<img src="https://www.vectorlogo.zone/logos/framer/framer-icon.svg" width="20" height="20" alt="Framer Motion" />] **Framer Motion**: Animation Library
+<div align="center">
 
-- **Development Environment**
-  - [<img src="https://skillicons.dev/icons?i=vscode" width="20" height="20" alt="VS Code" />] **VS Code**: Code Editor
-  - [<img src="https://skillicons.dev/icons?i=git" width="20" height="20" alt="Git" />] **Git**: Version Control
-  - [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />] **GitHub**: Code Repository
-  - [<img src="https://skillicons.dev/icons?i=vercel" width="20" height="20" alt="Vercel" />] **Vercel**: Deployment Platform
+### Development Team
+[<img src="https://skillicons.dev/icons?i=js,react,tailwind" width="100" height="32" alt="Developer Stack" />](https://github.com/)
 
-- **Design & UI Components**
-  - [<img src="https://skillicons.dev/icons?i=figma" width="20" height="20" alt="Figma" />] **Figma**: Design Tool
-  - [<img src="https://ui.shadcn.com/favicon.ico" width="20" height="20" alt="shadcn/ui" />] **shadcn/ui**: Component Library
-  - [<img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/logo/icon.svg" width="20" height="20" alt="Lucide Icons" />] **Lucide**: Icon System
+**Lead Developer**
+- **Sidney John Sarcia** [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />](https://github.com/szeedneigh)
+  - Frontend Architecture
+  - Performance Optimization
+  - Technical Documentation
 
-## 🚀 Getting Started
+**Lead Developer**
+- **Daniel Latina** [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />](https://github.com/Dan-903)
+  - Component Development
+  - Integration Testing
+  - Code Review
 
+### Project Management
+[<img src="https://skillicons.dev/icons?i=github" width="32" height="32" alt="Project Management" />](https://github.com/)
+
+**Project Manager**
+- **Alicia Jane Medina** [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />](https://github.com/aliciajane-bits)
+  - Strategic Planning
+  - Resource Allocation
+  - Stakeholder Engagement
+
+**Project Manager**
+- **Shiela Mae Miclat** [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />](https://github.com/shills16)
+  - Sprint Planning
+  - Risk Management
+  - Team Coordination
+
+### UI/UX Design
+[<img src="https://skillicons.dev/icons?i=figma" width="32" height="32" alt="Design Tools" />](https://www.figma.com/)
+
+**UI/UX Designer**
+- **Elloisa Degula** [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />](https://github.com/EMD-001)
+  - Interface Design
+  - Design System
+
+**UI/UX Designer**
+- **Trisha Catibog** [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />](https://github.com/tshamaec)
+  - Prototyping
+  - Visual Design
+
+### Software Quality Assurance
+[<img src="https://skillicons.dev/icons?i=git" width="32" height="32" alt="QA Tools" />](https://github.com/)
+
+**SQA**
+- **Jasmine Manansala** [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />](https://github.com/jasminemanansala)
+  - Test Strategy
+  - Quality Standards
+
+**SQA**
+- **Allen Murphy Bactol** [<img src="https://skillicons.dev/icons?i=github" width="20" height="20" alt="GitHub" />](https://github.com/Al-Mone)
+  - Manual Testing
+  - Bug Tracking
+
+</div>
+
+## 🌟 Team Values
+- **Innovation**: Pushing boundaries in educational technology
+- **Collaboration**: Working together to achieve excellence
+- **Quality**: Maintaining high standards in every aspect
+- **User-Centric**: Focusing on student and institutional needs
+- **Continuous Learning**: Growing together as a team
+
+## 🚀 Development
+
+### Prerequisites
+- Node.js 16.x or higher
+- npm 7.x or higher
+- Git
+
+### Environment Setup
 1. **Clone the repository**
    ```bash
    git clone https://github.com/szeedneigh/learn-vanguard.git
@@ -93,34 +177,61 @@ The Student Resource Hub is a comprehensive platform designed to revolutionize t
    npm install
    ```
 
-3. **Start the development server**
+3. **Start development server**
    ```bash
    npm run dev
    ```
 
-## 🤝 Contributing
+### Development Guidelines
+- Follow the established coding standards
+- Write unit tests for new features
+- Document code changes
+- Perform code reviews
+- Maintain clean commit history
 
-We welcome contributions from the community! Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started.
+## 📈 Project Status
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Current Progress
+- [x] Core platform architecture
+- [x] User interface implementation
+- [x] Basic resource management
+- [ ] Advanced learning analytics
+- [ ] Collaboration tools
+- [ ] Mobile optimization
+- [ ] Backend implementation
+
+### Upcoming Milestones
+1. **Q1 2025**
+   - Advanced analytics dashboard
+   - Enhanced collaboration features
+   - Enhanced user experience
+   - Enhanced user interface
+
+2. **Q2 2025**
+   - Backend Implementation
+   - Complete Production
+
+## 📫 Contact
+
+### Project Inquiries
+- **Email**: learnvanguard@student.resource.hub.com
+- **Location**: La Verdad Christian College - Apalit
+
+- GitHub Issues: [Report a bug](https://github.com/szeedneigh/learn-vanguard/issues)
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Copyright © 2024 Learn Vanguard
 
-## 📫 Contact & Support
-
-- Email: learnvanguard@student.resource.hub.com
-- GitHub Issues: [Report a bug](https://github.com/szeedneigh/learn-vanguard/issues)
+This project is proprietary and confidential. Unauthorized copying, modification, distribution, or use of this software is strictly prohibited.
 
 ## 🙏 Acknowledgments
 
-- All our amazing contributors
-- Our dedicated team of developers and designers
+- All our amazing Instructors
+- Information Systems Project Management
+- Application Development and Emerging Technologies 1
+- Our dedicated team of developers, designers, project managers, and SQA
+- Bachelor of Science in Information Systems 3
 - La Verdad Christian College - Apalit
 
 ---
