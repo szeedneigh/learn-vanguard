@@ -65,7 +65,6 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
 ### 🎨 Modern User Experience
 - Clean, responsive design
 - Dark/light mode support
-- Mobile-first approach
 - Accessible interface
 
 ## 🛠️ Technology Stack
@@ -203,7 +202,7 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
 <table align="center">
   <tr>
     <td align="center" width="400">
-      <img src="https://img.shields.io/badge/Role-SQA%20Engineer-red?style=for-the-badge&logo=testcafe&logoColor=white"/>
+      <img src="https://img.shields.io/badge/Role-SQA-red?style=for-the-badge&logo=testcafe&logoColor=white"/>
       <br>
       <img src="/api/placeholder/100/100" width="100" height="100" style="border-radius: 50%"/>
       <br>
