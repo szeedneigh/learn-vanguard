@@ -1,13 +1,56 @@
-import { useState } from 'react';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  ListFilter, RefreshCcw, Calendar, CheckCircle, Circle, Clock,
-  BarChart2, AlertCircle, ArrowRight
-} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Link } from 'react-router-dom';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, BarChart2, CheckCircle2, Clock, AlertCircle, ArrowRight } from 'lucide-react';
+
+
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString();
+};
+
+const getPriorityColor = (priority) => {
+  const colors = {
+    low: "bg-blue-100 text-blue-800",
+    medium: "bg-yellow-100 text-yellow-800",
+    high: "bg-red-100 text-red-800"
+  };
+  return colors[priority] || colors.low;
+};
+
+const getStatusColor = (status) => {
+  const colors = {
+    'not-started': "bg-slate-100 text-slate-800",
+    'in-progress': "bg-amber-100 text-amber-800",
+    'completed': "bg-green-100 text-green-800"
+  };
+  return colors[status] || colors['not-started'];
+};
+
+const TaskPreviewCard = ({ task }) => (
+  <Card className="bg-white/70 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300">
+    <CardContent className="p-4">
+      <div className="flex items-start justify-between mb-2">
+        <h3 className="font-semibold text-base text-slate-900 truncate">{task.name}</h3>
+        <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
+          {task.priority}
+        </Badge>
+      </div>
+      <p className="text-sm text-slate-600 mb-2 line-clamp-2">{task.description}</p>
+      <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1 text-slate-500">
+          <Calendar className="h-3 w-3" />
+          <span>{formatDate(task.dueDate)}</span>
+        </div>
+        <Badge className={`${getStatusColor(task.status)}`}>
+          {task.status.replace('-', ' ')}
+        </Badge>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const TaskStats = ({ tasks }) => {
   const stats = {
@@ -19,151 +62,121 @@ const TaskStats = ({ tasks }) => {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <Card className="p-4 shadow-md">
-        <div className="flex justify-between items-center">
+      <Card className="bg-white/70 backdrop-blur-xl shadow-md">
+        <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-sm text-slate-500">Total Tasks</p>
             <p className="text-2xl font-semibold">{stats.total}</p>
           </div>
           <BarChart2 className="h-8 w-8 text-blue-500" />
-        </div>
+        </CardContent>
       </Card>
-      <Card className="p-4 shadow-md">
-        <div className="flex justify-between items-center">
+      <Card className="bg-white/70 backdrop-blur-xl shadow-md">
+        <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-sm text-slate-500">Completed</p>
             <p className="text-2xl font-semibold">{stats.completed}</p>
           </div>
-          <CheckCircle className="h-8 w-8 text-green-500" />
-        </div>
+          <CheckCircle2 className="h-8 w-8 text-green-500" />
+        </CardContent>
       </Card>
-      <Card className="p-4 shadow-md">
-        <div className="flex justify-between items-center">
+      <Card className="bg-white/70 backdrop-blur-xl shadow-md">
+        <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-sm text-slate-500">In Progress</p>
             <p className="text-2xl font-semibold">{stats.inProgress}</p>
           </div>
           <Clock className="h-8 w-8 text-amber-500" />
-        </div>
+        </CardContent>
       </Card>
-      <Card className="p-4 shadow-md">
-        <div className="flex justify-between items-center">
+      <Card className="bg-white/70 backdrop-blur-xl shadow-md">
+        <CardContent className="p-4 flex items-center justify-between">
           <div>
             <p className="text-sm text-slate-500">Not Started</p>
             <p className="text-2xl font-semibold">{stats.notStarted}</p>
           </div>
-          <AlertCircle className="h-8 w-8 text-slate-500" />
-        </div>
+          <AlertCircle className="h-8 w-8 text-red-500" />
+        </CardContent>
       </Card>
-    </div>
-  );
-};
-
-const TaskPreviewCard = ({ task }) => {
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'in-progress':
-        return <Clock className="h-4 w-4 text-amber-500" />;
-      default:
-        return <Circle className="h-4 w-4 text-slate-400" />;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      'completed': 'bg-green-100 text-green-800',
-      'in-progress': 'bg-amber-100 text-amber-800',
-      'not-started': 'bg-slate-100 text-slate-800'
-    };
-    return colors[status] || colors['not-started'];
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg p-4 transition-all">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            {getStatusIcon(task.status)}
-            <h3 className="font-medium text-slate-900">{task.name}</h3>
-          </div>
-          <p className="text-sm text-slate-600 mb-3 line-clamp-2">{task.description}</p>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 text-sm text-slate-500">
-              <Calendar className="h-4 w-4" />
-              <span>{task.date}</span>
-            </div>
-            <Badge className={`${getStatusColor(task.status)}`}>
-              {task.status.replace('-', ' ')}
-            </Badge>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
 
 const TaskList = () => {
-  const [filter, setFilter] = useState('all');
-  
-  const tasks = [
+  const [tasks] = useState([
     {
       id: 1,
-      name: 'Code',
-      description: 'Activity for appdev',
-      date: 'Jan 5, 2025',
-      status: 'in-progress',
+      name: "Complete project documentation",
+      description: "Write comprehensive documentation for the new feature set",
+      dueDate: "2025-01-20",
+      status: "in-progress",
+      priority: "high",
     },
     {
       id: 2,
-      name: 'Review',
-      description: 'All subjects',
-      date: 'Feb 28, 2025',
-      status: 'not-started',
+      name: "Review pull requests",
+      description: "Review and merge pending pull requests for the main branch",
+      dueDate: "2025-01-15",
+      status: "completed",
+      priority: "medium",
     },
     {
       id: 3,
-      name: 'Project',
-      description: 'Student resource hub',
-      date: 'Jan 20, 2025',
-      status: 'completed',
+      name: "Enhance UI/UX",
+      description: "Revision of design of the dashboard",
+      dueDate: "2025-01-20",
+      status: "in-progress",
+      priority: "high",
     },
-  ];
+    {
+      id: 4,
+      name: "Review",
+      description: "Final exam review",
+      dueDate: "2025-01-20",
+      status: "not-started",
+      priority: "high",
+    },
+    {
+      id: 5,
+      name: "System Testing",
+      description: "Test system functionalities",
+      dueDate: "2025-01-17",
+      status: "in-progress",
+      priority: "high",
+    },
+    {
+      id: 6,
+      name: "Implementation",
+      description: "System implementation",
+      dueDate: "2025-01-16",
+      status: "completed",
+      priority: "high",
+    },
+  ]);
 
-  const filteredTasks = filter === 'all' 
-    ? tasks.slice(0, 3) // Show only first 3 tasks
-    : tasks.filter(task => task.status === filter).slice(0, 3);
+  const [filter, setFilter] = useState('all');
+
+  const filteredTasks = tasks
+    .filter(task => filter === 'all' || task.status === filter)
+    .slice(0, 3);
 
   return (
     <div className="bg-white/50 backdrop-blur-sm rounded-xl shadow-lg p-6">
       <TaskStats tasks={tasks} />
-      
+
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-[180px] shadow-sm hover:shadow-md transition-all">
-                <ListFilter className="w-4 h-4 mr-2 text-slate-500" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Tasks</SelectItem>
-                <SelectItem value="not-started">Not Started</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button 
-              variant="outline" 
-              size="icon"
-              className="shadow-sm hover:shadow-md transition-all"
-              onClick={() => setFilter('all')}
-            >
-              <RefreshCcw className="h-4 w-4 text-slate-500" />
-            </Button>
-          </div>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-[180px] shadow-sm">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tasks</SelectItem>
+              <SelectItem value="not-started">Not Started</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -171,21 +184,14 @@ const TaskList = () => {
         {filteredTasks.length > 0 ? (
           <>
             {filteredTasks.map((task) => (
-              <div 
-                key={task.id} 
-                className="transform hover:-translate-y-1 transition-all duration-200"
-              >
-                <TaskPreviewCard task={task} />
-              </div>
+              <TaskPreviewCard key={task.id} task={task} />
             ))}
             <div className="flex justify-end pt-4">
-              <Button 
-                variant="outline"
-                className="shadow-sm hover:shadow-md transition-all">
-                <Link to="/dashboard/events" className="flex items-center gap-2">
-                  View All Tasks
+              <Button variant="outline" className="shadow-sm hover:shadow-md transition-all">
+                <Link to="/dashboard/tasks" className="flex items-center gap-2">
+                      View all Tasks
+                      <ArrowRight className="h-4 w-4" />
                 </Link>
-                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </>
