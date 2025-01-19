@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   EyeIcon,
@@ -14,6 +14,7 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import PropTypes from 'prop-types';
 
 const smoothTransition = {
   type: "spring",
@@ -83,6 +84,17 @@ const FloatingLabelInput = React.memo(
   }
 );
 
+FloatingLabelInput.displayName = 'FloatingLabelInput';
+FloatingLabelInput.propTypes = {
+  id: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  type: PropTypes.string,
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  required: PropTypes.bool,
+  icon: PropTypes.elementType,
+};
+
 const SelectInput = ({ value, onChange, options, label, icon: Icon }) => (
   <div className="relative w-full">
     <div className="relative">
@@ -108,6 +120,19 @@ const SelectInput = ({ value, onChange, options, label, icon: Icon }) => (
     </div>
   </div>
 );
+
+SelectInput.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  options: PropTypes.arrayOf(
+    PropTypes.shape({
+      value: PropTypes.string.isRequired,
+      label: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+  label: PropTypes.string.isRequired,
+  icon: PropTypes.elementType,
+};
 
 const AnimatedButton = React.memo(
   motion(({ className, children, isLoading, ...props }) => (
@@ -250,20 +275,21 @@ const SignUp = () => {
                         required
                         icon={Lock}
                       />
-                      <motion.button
-                        type="button"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1.5
-                                                hover:bg-gray-100 rounded-full transition-colors"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        {showPassword ? (
-                          <EyeOffIcon className="h-4 w-4 text-gray-500" />
-                        ) : (
-                          <EyeIcon className="h-4 w-4 text-gray-500" />
-                        )}
-                      </motion.button>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <motion.button
+                          type="button"
+                          className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {showPassword ? (
+                            <EyeOffIcon className="h-4 w-4 text-gray-500" />
+                          ) : (
+                            <EyeIcon className="h-4 w-4 text-gray-500" />
+                          )}
+                        </motion.button>
+                      </div>
                     </div>
 
                     <motion.button
