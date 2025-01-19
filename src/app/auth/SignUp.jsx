@@ -14,7 +14,6 @@ import {
   X,
   Loader2,
 } from "lucide-react";
-import PropTypes from 'prop-types';
 
 const smoothTransition = {
   type: "spring",
@@ -84,17 +83,6 @@ const FloatingLabelInput = React.memo(
   }
 );
 
-FloatingLabelInput.displayName = 'FloatingLabelInput';
-FloatingLabelInput.propTypes = {
-  id: PropTypes.string.isRequired,
-  label: PropTypes.string.isRequired,
-  type: PropTypes.string,
-  value: PropTypes.string.isRequired,
-  onChange: PropTypes.func.isRequired,
-  required: PropTypes.bool,
-  icon: PropTypes.elementType,
-};
-
 const SelectInput = ({ value, onChange, options, label, icon: Icon }) => (
   <div className="relative w-full">
     <div className="relative">
@@ -120,19 +108,6 @@ const SelectInput = ({ value, onChange, options, label, icon: Icon }) => (
     </div>
   </div>
 );
-
-SelectInput.propTypes = {
-  value: PropTypes.string.isRequired,
-  onChange: PropTypes.func.isRequired,
-  options: PropTypes.arrayOf(
-    PropTypes.shape({
-      value: PropTypes.string.isRequired,
-      label: PropTypes.string.isRequired,
-    })
-  ).isRequired,
-  label: PropTypes.string.isRequired,
-  icon: PropTypes.elementType,
-};
 
 const AnimatedButton = React.memo(
   motion(({ className, children, isLoading, ...props }) => (
