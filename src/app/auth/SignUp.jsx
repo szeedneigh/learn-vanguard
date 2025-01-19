@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   EyeIcon,
@@ -250,20 +250,21 @@ const SignUp = () => {
                         required
                         icon={Lock}
                       />
-                      <motion.button
-                        type="button"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1.5
-                                                hover:bg-gray-100 rounded-full transition-colors"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        {showPassword ? (
-                          <EyeOffIcon className="h-4 w-4 text-gray-500" />
-                        ) : (
-                          <EyeIcon className="h-4 w-4 text-gray-500" />
-                        )}
-                      </motion.button>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <motion.button
+                          type="button"
+                          className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {showPassword ? (
+                            <EyeOffIcon className="h-4 w-4 text-gray-500" />
+                          ) : (
+                            <EyeIcon className="h-4 w-4 text-gray-500" />
+                          )}
+                        </motion.button>
+                      </div>
                     </div>
 
                     <motion.button
