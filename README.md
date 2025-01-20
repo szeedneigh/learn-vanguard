@@ -4,7 +4,7 @@
 ## Student Resource Hub
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![Status](https://img.shields.io/badge/Status-In%20Development-blue.svg)](https://your-project-link)
+[![Status](https://img.shields.io/badge/Status-In%20Development-blue.svg)](https://learn-vanguard.vercel.app/)
 [![Made with React](https://img.shields.io/badge/Made%20with-React-61dafb.svg)](https://reactjs.org/)
 [![Built with Vite](https://img.shields.io/badge/Built%20with-Vite-646cff.svg)](https://vitejs.dev/)
 
@@ -31,7 +31,7 @@
 "To empower students by providing a centralized, accessible platform that enhances learning, fosters collaboration, and streamlines access to essential academic resources."
 
 ### Vision
-"To create a thriving educational ecosystem where students and institution are seamlessly connected, enabling every student to access the tools and support needed for academic and personal growth."
+"To create a thriving educational ecosystem where students and the institution are seamlessly connected, enabling every student to access the tools and support needed for academic and personal growth."
 
 ## 💡 Why Learn Vanguard?
 
@@ -54,7 +54,6 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
 ### 🎯 Integrated Academic Resource Center
 - Centralized access to course materials and study resources
 - Real-time announcements and updates
-- Collaborative learning spaces
 - Downloadable lecture materials and supplementary content
 
 ### 📊 Academic Progress Navigator
