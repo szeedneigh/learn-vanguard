@@ -9,11 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { useNavigate } from 'react-router-dom';   
 
 const ProfileModal = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
+
   const handleLogout = () => {
-    // Implement logout logic
-    console.log('Logging out...');
+    // logout logic here
+    localStorage.clear(); // Clear any stored user data
+    navigate('/'); // Redirect to landing page
+    onClose(); // Close the modal
   };
 
   const handleUpdateProfile = (e) => {
