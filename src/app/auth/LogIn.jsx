@@ -327,7 +327,8 @@ export default function LogIn() {
               backgroundImage: `url('/images/LVauthbg.png')`,
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-900/85 to-blue-800/75" />
+           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-blue-600/30 to-blue-600/30 backdrop-blur-sm" />
+           <img src="/images/headLogo.png" alt="Logo" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1/2 drop-shadow-xl" />
           </div>
         </motion.div>
       </div>
