@@ -24,7 +24,7 @@ const LandingPage = () => {
               className="flex items-center animate-fade-in-left"
             >
               <img
-                src="/images/LVlogo.png"
+                src="/images/headLogo.png"
                 alt="Logo"
                 className="w-25 h-20"
               />
