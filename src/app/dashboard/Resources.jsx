@@ -42,7 +42,7 @@ const courses = {
           "Philippine Literature",
           "Understanding the Self",
           "Physical Education 1",
-          "Cristian Teaching 1"
+          "Christian Teaching 1"
         ],
       },
       {
