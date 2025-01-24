@@ -1,4 +1,4 @@
-import React from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Calendar } from "lucide-react";
 import {
   Dialog,
@@ -10,24 +10,62 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const AddTaskModal = ({ isOpen, onClose, onSubmit }) => {
-  const [formData, setFormData] = React.useState({
+  const initialFormState = useMemo(() => ({
     name: "",
     description: "",
     deadline: "",
-  });
+    priority: "Medium"
+  }), []);
 
-  const handleSubmit = (e) => {
+  const [formData, setFormData] = useState(initialFormState);
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData(initialFormState);
+    }
+  }, [isOpen, initialFormState]);
+
+  const handleSubmit = useCallback((e) => {
     e.preventDefault();
+    
+    if (!formData.name.trim() || !formData.description.trim() || !formData.deadline) {
+      return;
+    }
+    
     onSubmit({
       ...formData,
       status: "not-started",
       dueDate: formData.deadline,
     });
-    setFormData({ name: "", description: "", deadline: "" });
+    
+    setFormData(initialFormState);
     onClose();
-  };
+  }, [formData, onSubmit, onClose, initialFormState]);
+
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  }, []);
+
+  const handlePriorityChange = useCallback((value) => {
+    setFormData(prev => ({
+      ...prev,
+      priority: value
+    }));
+  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -44,9 +82,10 @@ const AddTaskModal = ({ isOpen, onClose, onSubmit }) => {
             </Label>
             <Input
               id="taskName"
+              name="name"
               placeholder="Enter task name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={handleInputChange}
               className="w-full px-4 py-2 rounded-lg border-0 ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-500 dark:ring-gray-700 dark:focus:ring-blue-400 dark:bg-gray-800"
             />
           </div>
@@ -57,31 +96,50 @@ const AddTaskModal = ({ isOpen, onClose, onSubmit }) => {
             </Label>
             <Textarea
               id="description"
+              name="description"
               placeholder="Enter task description"
               value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
+              onChange={handleInputChange}
               className="min-h-[120px] w-full px-4 py-2 rounded-lg border-0 ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-500 dark:ring-gray-700 dark:focus:ring-blue-400 dark:bg-gray-800 resize-none"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="deadline" className="text-sm font-medium">
-              Deadline
-            </Label>
-            <div className="relative">
-              <Input
-                id="deadline"
-                type="date"
-                placeholder="Select deadline"
-                value={formData.deadline}
-                onChange={(e) =>
-                  setFormData({ ...formData, deadline: e.target.value })
-                }
-                className="w-full pl-10 pr-4 py-2 rounded-lg border-0 ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-500 dark:ring-gray-700 dark:focus:ring-blue-400 dark:bg-gray-800"
-              />
-              <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="deadline" className="text-sm font-medium">
+                Deadline
+              </Label>
+              <div className="relative">
+                <Input
+                  id="deadline"
+                  name="deadline"
+                  type="date"
+                  placeholder="Select deadline"
+                  value={formData.deadline}
+                  onChange={handleInputChange}
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border-0 ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-500 dark:ring-gray-700 dark:focus:ring-blue-400 dark:bg-gray-800"
+                />
+                <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="priority" className="text-sm font-medium">
+                Priority
+              </Label>
+              <Select
+                value={formData.priority}
+                onValueChange={handlePriorityChange}
+              >
+                <SelectTrigger id="priority" className="w-full px-4 py-2 rounded-lg border-0 ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-500 dark:ring-gray-700 dark:focus:ring-blue-400 dark:bg-gray-800">
+                  <SelectValue placeholder="Select Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Low">Low Priority</SelectItem>
+                  <SelectItem value="Medium">Medium Priority</SelectItem>
+                  <SelectItem value="High">High Priority</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
