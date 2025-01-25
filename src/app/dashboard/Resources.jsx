@@ -77,7 +77,7 @@ const courses = {
           "Philippine Literature",
           "Understanding the Self",
           "Physical Education 1",
-          "Cristian Teaching 1"
+          "Christian Teaching 1"
         ],
       },
       {
@@ -135,8 +135,15 @@ const BreadcrumbNavigation = ({
   setShowAnalytics,
   currentCourse,
   currentYear,
+  currentSubject,
   handleCourseChange,
+  setCurrentYear,
+  setCurrentSubject,
 }) => {
+  const courseYears = courses[currentCourse]?.years || [];
+  const currentYearData = courseYears.find((year) => year.name === currentYear);
+  const currentSubjects = currentYearData?.subjects || [];
+
   return (
     <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl shadow-sm mb-6">
       <Breadcrumb>
@@ -156,7 +163,9 @@ const BreadcrumbNavigation = ({
                     </div>
                     <div>
                       <p className="font-medium">Analytics</p>
-                      <p className="text-sm text-gray-500">View resource statistics</p>
+                      <p className="text-sm text-gray-500">
+                        View resource statistics
+                      </p>
                     </div>
                   </div>
                 </DropdownMenuItem>
@@ -174,7 +183,9 @@ const BreadcrumbNavigation = ({
                       </div>
                       <div>
                         <p className="font-medium">{course}</p>
-                        <p className="text-sm text-gray-500">{courses[course].duration}</p>
+                        <p className="text-sm text-gray-500">
+                          {courses[course].duration}
+                        </p>
                       </div>
                     </div>
                   </DropdownMenuItem>
@@ -182,7 +193,54 @@ const BreadcrumbNavigation = ({
               </DropdownMenuContent>
             </DropdownMenu>
           </BreadcrumbItem>
-          {!showAnalytics && (
+          <BreadcrumbSeparator>
+            <ChevronRight className="w-4 h-4" />
+          </BreadcrumbSeparator>
+          <BreadcrumbItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="hover:bg-blue-50 font-medium">
+                  {currentCourse}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {Object.keys(courses).map((course) => (
+                  <DropdownMenuItem
+                    key={course}
+                    onClick={() => handleCourseChange(course)}
+                  >
+                    {course}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <ChevronRight className="w-4 h-4" />
+          </BreadcrumbSeparator>
+          <BreadcrumbItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="hover:bg-blue-50 font-medium">
+                  {currentYear}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {courseYears.map((year) => (
+                  <DropdownMenuItem
+                    key={year.name}
+                    onClick={() => {
+                      setCurrentYear(year.name);
+                      setCurrentSubject(null);
+                    }}
+                  >
+                    {year.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </BreadcrumbItem>
+          {currentSubject ? (
             <>
               <BreadcrumbSeparator>
                 <ChevronRight className="w-4 h-4" />
@@ -191,34 +249,29 @@ const BreadcrumbNavigation = ({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="hover:bg-blue-50 font-medium">
-                      {currentCourse}
+                      {currentSubject || " "}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    {Object.keys(courses).map((course) => (
+                    {currentSubjects.map((subject, index) => (
                       <DropdownMenuItem
-                        key={course}
-                        onClick={() => handleCourseChange(course)}
+                        key={index}
+                        onClick={() => setCurrentSubject(subject)}
                       >
-                        {course}
+                        {subject}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </BreadcrumbItem>
-              <BreadcrumbSeparator>
-                <ChevronRight className="w-4 h-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <BreadcrumbPage className="font-medium">{currentYear}</BreadcrumbPage>
-              </BreadcrumbItem>
             </>
-          )}
+          ) : null}
         </BreadcrumbList>
       </Breadcrumb>
     </div>
   );
 };
+
 
 const AnalyticsView = ({ staticFiles }) => {
   return (
@@ -298,6 +351,7 @@ const CourseView = ({
   filteredSubjects,
   setSelectedSubject,
   setIsModalOpen,
+  setCurrentSubject,
 }) => {
   return (
     <div className="space-y-6">
@@ -306,10 +360,6 @@ const CourseView = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>{currentCourse}</CardTitle>
-              <CardDescription>{courses[currentCourse].description}</CardDescription>
-              <Badge variant="secondary" className="mt-2">
-                Duration: {courses[currentCourse].duration}
-              </Badge>
             </div>
           </div>
         </CardHeader>
@@ -351,10 +401,19 @@ const CourseView = ({
         </Button>
       </div>
 
-      <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-4"}>
+      <div
+        className={
+          viewMode === "grid"
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            : "space-y-4"
+        }
+      >
         {filteredSubjects.map((subject, index) => (
-          <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <CardHeader className={viewMode === "grid" ? "" : "py-3"}>
+          <Card
+            key={index}
+            className="overflow-hidden hover:shadow-lg transition-shadow"
+          >
+            <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-blue-50 rounded-lg">
@@ -366,17 +425,94 @@ const CourseView = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setSelectedSubject(subject);
-                    setIsModalOpen(true);
+                    setCurrentSubject(subject); // Update subject state
                   }}
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload
+                  View
                 </Button>
               </div>
             </CardHeader>
           </Card>
         ))}
+      </div>
+    </div>
+  );
+};
+
+
+const ViewSubject = ({
+  currentSubject,
+  topics,
+  searchTerm,
+  setSearchTerm,
+  viewMode,
+  setViewMode,
+}) => {
+  const filteredTopics = useMemo(() => {
+    return topics.filter((topic) =>
+      topic.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [topics, searchTerm]);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{currentSubject}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex space-x-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search topics..."
+                className="w-full pl-10 pr-4 py-2 bg-white rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setViewMode((prev) => (prev === "grid" ? "list" : "grid"))
+              }
+              className="px-4"
+            >
+              {viewMode === "grid" ? (
+                <List className="w-5 h-5" />
+              ) : (
+                <Filter className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div
+        className={
+          viewMode === "grid"
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            : "space-y-4"
+        }
+      >
+        {/* {filteredTopics.map((topic, index) => (
+          <Card
+            key={index}
+            className="overflow-hidden hover:shadow-lg transition-shadow"
+          >
+            <CardHeader>
+              <CardTitle className="text-lg">{topic}</CardTitle>
+            </CardHeader>
+          </Card>
+        ))} */}
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow"
+          >
+            <CardHeader>
+              <CardTitle className="text-lg">Still in development</CardTitle>
+            </CardHeader>
+          </Card>
       </div>
     </div>
   );
@@ -397,13 +533,18 @@ const FloatingUploadButton = ({ setIsModalOpen }) => {
   );
 };
 
+
 export default function Resources() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [viewMode, setViewMode] = useState("grid");
-  const [currentCourse, setCurrentCourse] = useState("Associate in Computer Technology");
+  const [currentCourse, setCurrentCourse] = useState(
+    "Associate in Computer Technology"
+  );
   const [currentYear, setCurrentYear] = useState("Year 1");
+  const [currentSubject, setCurrentSubject] = useState(null);
+  const [breadcrumb, setBreadcrumb] = useState([currentCourse, currentYear]);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
   const handleUpload = useCallback((file, subject) => {
@@ -414,7 +555,9 @@ export default function Resources() {
   const handleCourseChange = useCallback((course) => {
     setCurrentCourse(course);
     setCurrentYear(courses[course].years[0].name);
+    setCurrentSubject(null);
     setShowAnalytics(false);
+    setBreadcrumb([course]);
   }, []);
 
   const filteredSubjects = useMemo(() => {
@@ -430,21 +573,36 @@ export default function Resources() {
 
   React.useEffect(() => {
     setSearchTerm("");
-  }, [currentCourse, currentYear]);
+  }, [currentCourse, currentYear, currentSubject]);
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <BreadcrumbNavigation
+      <BreadcrumbNavigation
           showAnalytics={showAnalytics}
           setShowAnalytics={setShowAnalytics}
           currentCourse={currentCourse}
           currentYear={currentYear}
+          currentSubject={currentSubject}
           handleCourseChange={handleCourseChange}
+          setCurrentYear={setCurrentYear}
+          setCurrentSubject={setCurrentSubject}
         />
 
         {showAnalytics ? (
           <AnalyticsView staticFiles={staticFiles} />
+        ) : currentSubject ? (
+          <ViewSubject
+            currentCourse={currentCourse}
+            currentYear={currentYear}
+            currentSubject={currentSubject}
+            setBreadcrumb={setBreadcrumb}
+            topics={filteredSubjects}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+          />
         ) : (
           <CourseView
             currentCourse={currentCourse}
@@ -457,8 +615,11 @@ export default function Resources() {
             filteredSubjects={filteredSubjects}
             setSelectedSubject={setSelectedSubject}
             setIsModalOpen={setIsModalOpen}
+            setCurrentSubject={setCurrentSubject} // Pass here
+            setBreadcrumb={setBreadcrumb} // Pass here
           />
         )}
+
 
         <UploadModal
           isOpen={isModalOpen}
@@ -471,8 +632,12 @@ export default function Resources() {
           setSelectedSubject={setSelectedSubject}
         />
 
-        <FloatingUploadButton setIsModalOpen={setIsModalOpen} />
+      {currentSubject && (
+        <FloatingUploadButton setIsModalOpen={setIsModalOpen}/>
+        )}
       </div>
     </div>
+
+    
   );
 }

@@ -4,11 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 
 const ALLOWED_FILE_TYPES = {
-  'application/pdf': { name: 'PDF', icon: '📄' },
-  'application/msword': { name: 'Word', icon: '📝' },
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { name: 'Word', icon: '📝' },
-  'application/vnd.ms-powerpoint': { name: 'PowerPoint', icon: '📊' },
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { name: 'PowerPoint', icon: '📊' }
+  'application/pdf': {},
+  'application/msword': {},
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {},
+  'application/vnd.ms-powerpoint': {},
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': {},
+  'image/jpeg': {},
+  'image/png': {},
+  'image/jpg': {}
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -75,13 +78,13 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
       setErrorMessage("Please select a file to upload.");
       return;
     }
-    if (!selectedSubject) {
-      setErrorMessage("Please select a subject for this file.");
-      return;
-    }
+    // if (!selectedSubject) {
+    //   setErrorMessage("Please select a subject for this file.");
+    //   return;
+    // }
     
     await simulateUpload();
-    onUpload(selectedFile, selectedSubject);
+    onUpload(selectedFile);
     onClose();
   };
 
@@ -99,10 +102,11 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
     <AnimatePresence>
       {isOpen && (
         <motion.div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 "
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          style={{ margin: 0, padding: 0 }}
         >
           <motion.div 
             className="bg-white w-full max-w-md rounded-2xl shadow-2xl"
@@ -129,7 +133,7 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
 
               <div className="space-y-6">
                 {/* Subject Selection */}
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Subject
                   </label>
@@ -145,7 +149,7 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
                       </option>
                     ))}
                   </select>
-                </div>
+                </div> */}
 
                 {/* File Drop Zone */}
                 <motion.div
