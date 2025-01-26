@@ -87,16 +87,23 @@ const Events = () => {
     const days = [];
     let dateIterator =
       view === "month" ? startOfMonth.startOf("isoWeek") : startOfWeek;
-
-    while (
+  
+    // Ensure we dynamically calculate the condition inside the loop
+    const isWithinRange = (date) =>
       view === "month"
-        ? dateIterator.isBefore(endOfMonth.endOf("isoWeek"))
-        : dateIterator.isBefore(endOfWeek.add(1, "day"))
-    ) {
+        ? date.isBefore(endOfMonth.endOf("isoWeek").add(1, "day"))
+        : date.isBefore(endOfWeek.add(1, "day"));
+  
+    while (isWithinRange(dateIterator)) {
       days.push(dateIterator);
       dateIterator = dateIterator.add(1, "day");
     }
-
+  
+    // Trim the array to exactly 7 days for the week view
+    if (view === "week") {
+      days.splice(7);
+    }
+  
     return days.map((date, idx) => (
       <div
         key={idx}
@@ -115,7 +122,7 @@ const Events = () => {
         <div className="flex-1 overflow-hidden">
           {events
             .filter((event) => dayjs(event.date).isSame(date, "day"))
-            .slice(0, 2) // Show only first 2 events
+            .slice(0, 2) // Show only the first 2 events
             .map((event, eventIdx) => (
               <div
                 key={eventIdx}
@@ -140,6 +147,7 @@ const Events = () => {
       </div>
     ));
   };
+  
 
   const renderDayView = () => {
     const dayEvents = events.filter((event) =>
@@ -277,13 +285,13 @@ const Events = () => {
       {/* Header */}
       <header className="flex justify-between items-center mb-4">
         <div>
-          <h2 className="text-xl font-semibold">
+          <h2 className="text-3xl font-semibold">
             {currentDate.format("MMMM YYYY")}
           </h2>
           <nav className="flex space-x-2">
             <button
               onClick={() => setView("day")}
-              className={`px-3 py-1 text-sm rounded ${
+              className={`px-3 py-1 text-m rounded ${
                 view === "day" ? "bg-blue-500 text-white" : "bg-gray-200"
               }`}
             >
