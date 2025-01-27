@@ -233,7 +233,7 @@ export default function LogIn() {
 
                   <div className="flex justify-end">
                     <motion.a
-                      href="#"
+                      href="*"
                       className="text-sm text-blue-600 hover:underline"
                       whileHover={{ scale: 1.05 }}
                       transition={smoothTransition}
