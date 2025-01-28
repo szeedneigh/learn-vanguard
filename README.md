@@ -112,7 +112,7 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
     <td align="center" width="400">
       <img src="https://img.shields.io/badge/Role-Lead%20Developer-black?style=for-the-badge&logo=javascript&logoColor=white"/>
       <br>
-      <img src="/api/placeholder/100/100" width="100" height="100" style="border-radius: 50%"/>
+      <img src="public\assets\Daniel.jpg" width="100" height="100" style="border-radius: 50%"/>
       <br>
       <b>Daniel Latina</b>
       <br>
@@ -168,7 +168,7 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
     <td align="center" width="400">
       <img src="https://img.shields.io/badge/Role-UI%2FUX%20Designer-purple?style=for-the-badge&logo=figma&logoColor=white"/>
       <br>
-      <img src="/api/placeholder/100/100" width="100" height="100" style="border-radius: 50%"/>
+      <img src="public\assets\Elloisa.jpg" width="100" height="100" style="border-radius: 50%"/>
       <br>
       <b>Elloisa Degula</b>
       <br>
@@ -203,9 +203,9 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
     <td align="center" width="400">
       <img src="https://img.shields.io/badge/Role-SQA-red?style=for-the-badge&logo=testcafe&logoColor=white"/>
       <br>
-      <img src="/api/placeholder/100/100" width="100" height="100" style="border-radius: 50%"/>
+      <img src="public\assets\Jasmine.jpg" width="100" height="100" style="border-radius: 50%"/>
       <br>
-      <b>Jasmine Manansala</b>
+      <b>Jasmine Manansala</b>x
       <br>
       <sub><code>Test Strategy | Quality Standards</code></sub>
       <br>
