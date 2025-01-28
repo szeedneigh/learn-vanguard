@@ -30,7 +30,7 @@ const AddTaskModal = ({ isOpen, onClose, onSubmit }) => {
 
   // Reset form when modal opens/closes
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
       setFormData(initialFormState);
     }
   }, [isOpen, initialFormState]);
@@ -48,9 +48,8 @@ const AddTaskModal = ({ isOpen, onClose, onSubmit }) => {
       dueDate: formData.deadline,
     });
     
-    setFormData(initialFormState);
     onClose();
-  }, [formData, onSubmit, onClose, initialFormState]);
+  }, [formData, onSubmit, onClose]);
 
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;

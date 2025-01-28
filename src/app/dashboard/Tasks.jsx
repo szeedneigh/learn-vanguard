@@ -1,10 +1,20 @@
-import React, { useState, useEffect, useCallback } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { PlusCircle, Trash2, Calendar, Edit2, Search, CheckCircle2, AlertCircle, ArrowUp, BarChart } from "lucide-react"
+import React, { useState, useEffect, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  PlusCircle,
+  Trash2,
+  Calendar,
+  Edit2,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  ArrowUp,
+  BarChart,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,30 +22,36 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
-const MAX_TASK_NAME_LENGTH = 100
-const MAX_DESCRIPTION_LENGTH = 500
+const MAX_TASK_NAME_LENGTH = 100;
+const MAX_DESCRIPTION_LENGTH = 500;
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-  })
-}
+  });
+};
 
 const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     deadline: "",
-    priority: "medium",
-  })
+    priority: "Medium",
+  });
 
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState({});
 
   // Reset form when modal opens/closes or editTask changes
   useEffect(() => {
@@ -44,50 +60,50 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
         name: editTask.name || "",
         description: editTask.description || "",
         deadline: editTask.dueDate || "",
-        priority: editTask.priority || "medium",
-      })
+        priority: editTask.priority || "Medium",
+      });
     } else {
       setFormData({
         name: "",
         description: "",
         deadline: "",
-        priority: "medium",
-      })
+        priority: "Medium",
+      });
     }
-    setErrors({})
-  }, [editTask, isOpen])
+    setErrors({});
+  }, [editTask, isOpen]);
 
   const validateForm = () => {
-    const newErrors = {}
+    const newErrors = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Task name is required"
+      newErrors.name = "Task name is required";
     } else if (formData.name.length > MAX_TASK_NAME_LENGTH) {
-      newErrors.name = `Task name cannot exceed ${MAX_TASK_NAME_LENGTH} characters`
+      newErrors.name = `Task name cannot exceed ${MAX_TASK_NAME_LENGTH} characters`;
     }
 
     if (!formData.description.trim()) {
-      newErrors.description = "Description is required"
+      newErrors.description = "Description is required";
     } else if (formData.description.length > MAX_DESCRIPTION_LENGTH) {
-      newErrors.description = `Description cannot exceed ${MAX_DESCRIPTION_LENGTH} characters`
+      newErrors.description = `Description cannot exceed ${MAX_DESCRIPTION_LENGTH} characters`;
     }
 
     if (!formData.deadline) {
-      newErrors.deadline = "Deadline is required"
+      newErrors.deadline = "Deadline is required";
     } else if (new Date(formData.deadline) < new Date().setHours(0, 0, 0, 0)) {
-      newErrors.deadline = "Deadline cannot be in the past"
+      newErrors.deadline = "Deadline cannot be in the past";
     }
 
-    return newErrors
-  }
+    return newErrors;
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    const validationErrors = validateForm()
+    e.preventDefault();
+    const validationErrors = validateForm();
 
     if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
-      return
+      setErrors(validationErrors);
+      return;
     }
 
     onSubmit({
@@ -95,18 +111,22 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
       id: editTask?.id,
       status: editTask?.status || "not-started",
       dueDate: formData.deadline,
-    })
+    });
 
-    onClose()
-  }
+    onClose();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{editTask ? "Edit Task" : "Create New Task"}</DialogTitle>
+          <DialogTitle>
+            {editTask ? "Edit Task" : "Create New Task"}
+          </DialogTitle>
           <DialogDescription>
-            {editTask ? "Update the details of your existing task" : "Fill in the details to create a new task"}
+            {editTask
+              ? "Update the details of your existing task"
+              : "Fill in the details to create a new task"}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -116,10 +136,16 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
               id="taskName"
               placeholder="Enter task name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`shadow-sm ${errors.name ? "ring-2 ring-red-500" : ""}`}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className={`shadow-sm ${
+                errors.name ? "ring-2 ring-red-500" : ""
+              }`}
             />
-            {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
+            {errors.name && (
+              <p className="text-red-500 text-sm">{errors.name}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -128,10 +154,16 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
               id="description"
               placeholder="Enter task description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className={`min-h-[100px] shadow-sm ${errors.description ? "ring-2 ring-red-500" : ""}`}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              className={`min-h-[100px] shadow-sm ${
+                errors.description ? "ring-2 ring-red-500" : ""
+              }`}
             />
-            {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
+            {errors.description && (
+              <p className="text-red-500 text-sm">{errors.description}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -141,18 +173,26 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
                 id="deadline"
                 type="date"
                 value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                className={`shadow-sm ${errors.deadline ? "ring-2 ring-red-500" : ""}`}
+                onChange={(e) =>
+                  setFormData({ ...formData, deadline: e.target.value })
+                }
+                className={`shadow-sm ${
+                  errors.deadline ? "ring-2 ring-red-500" : ""
+                }`}
                 min={new Date().toISOString().split("T")[0]}
               />
-              {errors.deadline && <p className="text-red-500 text-sm">{errors.deadline}</p>}
+              {errors.deadline && (
+                <p className="text-red-500 text-sm">{errors.deadline}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
               <Select
                 value={formData.priority}
-                onValueChange={(value) => setFormData({ ...formData, priority: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, priority: value })
+                }
               >
                 <SelectTrigger id="priority" className="shadow-sm">
                   <SelectValue placeholder="Select Priority" />
@@ -167,18 +207,26 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" type="button" onClick={onClose} className="shadow-sm">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={onClose}
+              className="shadow-sm"
+            >
               Cancel
             </Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 shadow-sm">
+            <Button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+            >
               {editTask ? "Update Task" : "Create Task"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
-}
+  );
+};
 
 const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
   const getPriorityColor = (priority) => {
@@ -186,26 +234,32 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
       High: "bg-red-100 text-red-800 shadow-sm",
       Medium: "bg-blue-100 text-blue-800 shadow-sm",
       Low: "bg-green-100 text-green-800 shadow-sm",
-    }
-    return colors[priority] || ""
-  }
+    };
+    return colors[priority] || "";
+  };
 
   const getStatusColor = (status) => {
     const colors = {
       "not-started": "bg-red-100/80 text-red-700",
       "in-progress": "bg-amber-100/80 text-amber-700",
       completed: "bg-emerald-100/80 text-emerald-700",
-    }
-    return colors[status] || ""
-  }
+    };
+    return colors[status] || "";
+  };
 
   return (
     <Card className="bg-white/70 backdrop-blur-xl shadow-lg hover:shadow-xl transition-all duration-300">
       <CardContent className="p-4 md:p-6">
         <div className="flex flex-wrap items-start justify-between mb-3 md:mb-4">
           <div className="flex-1 pr-4 min-w-0">
-            <h3 className="font-semibold text-base md:text-lg text-slate-900 mb-2 break-words">{task.name}</h3>
-            <Badge className={`${getPriorityColor(task.priority)} text-xs md:text-sm shadow-sm`}>
+            <h3 className="font-semibold text-base md:text-lg text-slate-900 mb-2 break-words">
+              {task.name}
+            </h3>
+            <Badge
+              className={`${getPriorityColor(
+                task.priority
+              )} text-xs md:text-sm shadow-sm`}
+            >
               {task.priority} Priority
             </Badge>
           </div>
@@ -229,15 +283,24 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
           </div>
         </div>
 
-        <p className="text-sm md:text-base text-slate-600 mb-3 md:mb-4 break-words">{task.description}</p>
+        <p className="text-sm md:text-base text-slate-600 mb-3 md:mb-4 break-words">
+          {task.description}
+        </p>
 
         <div className="flex items-center gap-2 text-xs md:text-sm text-slate-500 mb-3 md:mb-4">
           <Calendar className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
           <span className="break-words">Due: {formatDate(task.dueDate)}</span>
         </div>
 
-        <Select value={task.status} onValueChange={(value) => onStatusChange(task.id, value)}>
-          <SelectTrigger className={`w-full shadow-sm text-xs md:text-sm h-8 md:h-10 ${getStatusColor(task.status)}`}>
+        <Select
+          value={task.status}
+          onValueChange={(value) => onStatusChange(task.id, value)}
+        >
+          <SelectTrigger
+            className={`w-full shadow-sm text-xs md:text-sm h-8 md:h-10 ${getStatusColor(
+              task.status
+            )}`}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -248,22 +311,22 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
         </Select>
       </CardContent>
     </Card>
-  )
-}
+  );
+};
 
 const Tasks = () => {
   const [tasks, setTasks] = useState([
     {
       id: 1,
-      name: "Complete project documentation",
-      description: "Write comprehensive documentation for the new feature set",
+      name: "Project documentation",
+      description: "Documentation for the new feature set",
       dueDate: "2025-01-20",
       status: "in-progress",
       priority: "High",
     },
     {
       id: 2,
-      name: "Review pull requests",
+      name: "Review new pull requests",
       description: "Review and merge pending pull requests for the main branch",
       dueDate: "2025-01-15",
       status: "completed",
@@ -271,7 +334,7 @@ const Tasks = () => {
     },
     {
       id: 3,
-      name: "Enhance UI/UX",
+      name: "Enhance UI/UX design",
       description: "Revision of design of the dashboard",
       dueDate: "2025-01-20",
       status: "in-progress",
@@ -301,78 +364,94 @@ const Tasks = () => {
       status: "completed",
       priority: "High",
     },
-  ])
+  ]);
 
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingTask, setEditingTask] = useState(null)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   const stats = React.useMemo(
     () => ({
       total: tasks.length,
       completed: tasks.filter((t) => t.status === "completed").length,
       overdue: tasks.filter((t) => {
-        const dueDate = new Date(t.dueDate)
-        const today = new Date()
-        dueDate.setHours(0, 0, 0, 0)
-        today.setHours(0, 0, 0, 0)
-        return dueDate < today && t.status !== "completed"
+        const dueDate = new Date(t.dueDate);
+        const today = new Date();
+        dueDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+        return dueDate < today && t.status !== "completed";
       }).length,
-      highPriority: tasks.filter((t) => t.priority === "High" && t.status !== "completed").length,
+      highPriority: tasks.filter(
+        (t) => t.priority === "High" && t.status !== "completed"
+      ).length,
     }),
-    [tasks],
-  )
+    [tasks]
+  );
 
   const filteredTasks = React.useMemo(() => {
     return tasks.filter((task) => {
-      const searchLower = searchQuery.toLowerCase()
+      const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
-        task.name.toLowerCase().includes(searchLower) || task.description.toLowerCase().includes(searchLower)
-      const matchesStatus = statusFilter === "all" || task.status === statusFilter
-      return matchesSearch && matchesStatus
-    })
-  }, [tasks, searchQuery, statusFilter])
+        task.name.toLowerCase().includes(searchLower) ||
+        task.description.toLowerCase().includes(searchLower);
+      const matchesStatus =
+        statusFilter === "all" || task.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [tasks, searchQuery, statusFilter]);
 
   const handleStatusChange = React.useCallback((taskId, newStatus) => {
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)))
-  }, [])
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      )
+    );
+  }, []);
 
   const handleTaskSubmit = useCallback(
     (taskData) => {
       if (editingTask) {
-        setTasks((prev) => prev.map((task) => (task.id === taskData.id ? { ...task, ...taskData } : task)))
+        setTasks((prev) =>
+          prev.map((task) =>
+            task.id === taskData.id ? { ...task, ...taskData } : task
+          )
+        );
       } else {
         setTasks((prev) => {
-          const maxId = Math.max(...prev.map((task) => task.id), 0)
-          return [...prev, { ...taskData, id: maxId + 1 }]
-        })
+          
+          const ids = prev.map((task) => task.id);
+          const maxId = ids.length > 0 ? Math.max(...ids) : 0;
+          return [...prev, { ...taskData, id: maxId + 1 }];
+        });
       }
-      setEditingTask(null)
+      setEditingTask(null);
     },
-    [editingTask],
-  )
+    [editingTask]
+  );
 
   const handleDeleteTask = useCallback((taskToDelete) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id))
-  }, [])
+    setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
+  }, []);
 
   const handleEditTask = useCallback((task) => {
-    setEditingTask(task)
-    setIsModalOpen(true)
-  }, [])
+    setEditingTask(task);
+    setIsModalOpen(true);
+  }, []);
 
   const handleModalClose = useCallback(() => {
-    setIsModalOpen(false)
-    setEditingTask(null)
-  }, [])
+    setIsModalOpen(false);
+    setEditingTask(null);
+  }, []);
 
   const StatCard = ({ title, value, icon }) => {
     return (
       <Card className="bg-white/70 backdrop-blur-xl shadow-lg hover:shadow-xl transition-all duration-300">
         <CardContent className="p-4 md:p-6 flex items-center justify-between">
           <div className="space-y-0.5 md:space-y-1">
-            <p className="text-xs md:text-sm font-medium text-slate-500">{title}</p>
+            <p className="text-xs md:text-sm font-medium text-slate-500">
+              {title}
+            </p>
             <p className="text-xl md:text-2xl font-bold">{value}</p>
           </div>
           <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-slate-100 shadow-md flex items-center justify-center">
@@ -380,8 +459,8 @@ const Tasks = () => {
           </div>
         </CardContent>
       </Card>
-    )
-  }
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-8">
@@ -390,7 +469,9 @@ const Tasks = () => {
           <StatCard
             title="Total Tasks"
             value={stats.total}
-            icon={<CheckCircle2 className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />}
+            icon={
+              <CheckCircle2 className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
+            }
           />
           <StatCard
             title="Completed"
@@ -400,7 +481,9 @@ const Tasks = () => {
           <StatCard
             title="Overdue"
             value={stats.overdue}
-            icon={<AlertCircle className="h-5 w-5 md:h-6 md:w-6 text-red-500" />}
+            icon={
+              <AlertCircle className="h-5 w-5 md:h-6 md:w-6 text-red-500" />
+            }
           />
           <StatCard
             title="High Priority"
@@ -437,8 +520,8 @@ const Tasks = () => {
 
             <Button
               onClick={() => {
-                setEditingTask(null)
-                setIsModalOpen(true)
+                setEditingTask(null);
+                setIsModalOpen(true);
               }}
               className="shadow-sm bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
             >
@@ -460,11 +543,15 @@ const Tasks = () => {
           ))}
         </div>
 
-        <TaskModal isOpen={isModalOpen} onClose={handleModalClose} onSubmit={handleTaskSubmit} editTask={editingTask} />
+        <TaskModal
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          onSubmit={handleTaskSubmit}
+          editTask={editingTask}
+        />
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Tasks
-
+export default Tasks;
