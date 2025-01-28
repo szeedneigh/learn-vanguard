@@ -133,7 +133,7 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
     <td align="center" width="400">
       <img src="https://img.shields.io/badge/Role-Project%20Manager-blue?style=for-the-badge&logo=jira&logoColor=white"/>
       <br>
-      <img src="/api/placeholder/100/100" width="100" height="100" style="border-radius: 50%"/>
+      <img src="public\assets\Alicia.png" width="100" height="100" style="border-radius: 50%"/>
       <br>
       <b>Alicia Jane Medina</b>
       <br>
@@ -147,7 +147,7 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
     <td align="center" width="400">
       <img src="https://img.shields.io/badge/Role-Project%20Manager-blue?style=for-the-badge&logo=jira&logoColor=white"/>
       <br>
-      <img src="/api/placeholder/100/100" width="100" height="100" style="border-radius: 50%"/>
+      <img src="public\assets\Shiela.jpg" width="100" height="100" style="border-radius: 50%"/>
       <br>
       <b>Shiela Mae Miclat</b>
       <br>
