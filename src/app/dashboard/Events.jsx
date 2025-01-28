@@ -51,6 +51,15 @@ const Events = () => {
     setCurrentDate(today);
   }, [today]);
 
+  const handleShowAddEvent = () => {
+    setNewEvent((prevEvent) => ({
+      ...prevEvent,
+      date: view === "day" ? currentDate.format("YYYY-MM-DD") : "", // Pre-fill date if in "day" view
+    }));
+    setShowAddEvent(true);
+  };
+  
+
   const handleAddEvent = useCallback(() => {
     if (!newEvent.date || !newEvent.title.trim()) {
       alert("Please provide a valid date and title.");
@@ -181,7 +190,7 @@ const Events = () => {
         </ul>
         <button
           onClick={() => setView("month")}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg"
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-700"
         >
           Back to Month View
         </button>
@@ -283,16 +292,16 @@ const Events = () => {
       )}
 
       {/* Header */}
-      <header className="flex justify-between items-center mb-4">
+      <header className="flex justify-between items-center mb-3">
         <div>
-          <h2 className="text-3xl font-semibold">
+          <h2 className="text-3xl font-semibold mb-3">
             {currentDate.format("MMMM YYYY")}
           </h2>
-          <nav className="flex space-x-2">
+          <nav className="flex space-x-4 mb-6">
             <button
               onClick={() => setView("day")}
               className={`px-3 py-1 text-m rounded ${
-                view === "day" ? "bg-blue-500 text-white" : "bg-gray-200"
+                view === "day" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-blue-500 hover:text-white"
               }`}
             >
               Day
@@ -300,7 +309,7 @@ const Events = () => {
             <button
               onClick={() => setView("week")}
               className={`px-3 py-1 text-sm rounded ${
-                view === "week" ? "bg-blue-500 text-white" : "bg-gray-200"
+                view === "week" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-blue-500 hover:text-white"
               }`}
             >
               Week
@@ -308,7 +317,7 @@ const Events = () => {
             <button
               onClick={() => setView("month")}
               className={`px-3 py-1 text-sm rounded ${
-                view === "month" ? "bg-blue-500 text-white" : "bg-gray-200"
+                view === "month" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-blue-500 hover:text-white"
               }`}
             >
               Month
@@ -316,13 +325,13 @@ const Events = () => {
           </nav>
         </div>
         <div className="space-x-2">
-          <button onClick={handlePrev} className="px-3 py-1 bg-gray-200 rounded">
+          <button onClick={handlePrev} className="px-3 py-1 bg-gray-200 rounded hover:bg-blue-500 hover:text-white">
             {"<"}
           </button>
-          <button onClick={handleToday} className="px-3 py-1 bg-gray-200 rounded">
+          <button onClick={handleToday} className="px-3 py-1 bg-gray-200 rounded hover:bg-blue-500 hover:text-white">
             Today
           </button>
-          <button onClick={handleNext} className="px-3 py-1 bg-gray-200 rounded">
+          <button onClick={handleNext} className="px-3 py-1 bg-gray-200 rounded hover:bg-blue-500 hover:text-white">
             {">"}
           </button>
         </div>
@@ -330,12 +339,12 @@ const Events = () => {
 
       {/* Add Event Button */}
       <div className="mb-4">
-        <button
-          onClick={() => setShowAddEvent(true)}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg"
-        >
-          + Add Event
-        </button>
+      <button
+        onClick={handleShowAddEvent} // Updated logic
+        className="px-4 py-2 bg-blue-500 text-white rounded-lg mb-6 hover:bg-blue-700"
+      >
+        + Add Event
+      </button>
       </div>
 
       {/* Render Views */}
