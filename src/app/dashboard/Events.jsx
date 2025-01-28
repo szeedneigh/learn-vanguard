@@ -51,6 +51,15 @@ const Events = () => {
     setCurrentDate(today);
   }, [today]);
 
+  const handleShowAddEvent = () => {
+    setNewEvent((prevEvent) => ({
+      ...prevEvent,
+      date: view === "day" ? currentDate.format("YYYY-MM-DD") : "", // Pre-fill date if in "day" view
+    }));
+    setShowAddEvent(true);
+  };
+  
+
   const handleAddEvent = useCallback(() => {
     if (!newEvent.date || !newEvent.title.trim()) {
       alert("Please provide a valid date and title.");
@@ -330,12 +339,12 @@ const Events = () => {
 
       {/* Add Event Button */}
       <div className="mb-4">
-        <button
-          onClick={() => setShowAddEvent(true)}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg mb-6 hover:bg-blue-700"
-        >
-          + Add Event
-        </button>
+      <button
+        onClick={handleShowAddEvent} // Updated logic
+        className="px-4 py-2 bg-blue-500 text-white rounded-lg mb-6 hover:bg-blue-700"
+      >
+        + Add Event
+      </button>
       </div>
 
       {/* Render Views */}
