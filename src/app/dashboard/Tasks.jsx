@@ -318,15 +318,15 @@ const Tasks = () => {
   const [tasks, setTasks] = useState([
     {
       id: 1,
-      name: "Complete project documentation",
-      description: "Write comprehensive documentation for the new feature set",
+      name: "Project documentation",
+      description: "Documentation for the new feature set",
       dueDate: "2025-01-20",
       status: "in-progress",
       priority: "High",
     },
     {
       id: 2,
-      name: "Review pull requests",
+      name: "Review new pull requests",
       description: "Review and merge pending pull requests for the main branch",
       dueDate: "2025-01-15",
       status: "completed",
@@ -334,7 +334,7 @@ const Tasks = () => {
     },
     {
       id: 3,
-      name: "Enhance UI/UX",
+      name: "Enhance UI/UX design",
       description: "Revision of design of the dashboard",
       dueDate: "2025-01-20",
       status: "in-progress",
