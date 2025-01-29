@@ -98,7 +98,7 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
     <td align="center" width="400">
       <img src="https://img.shields.io/badge/Role-Lead%20Developer-black?style=for-the-badge&logo=javascript&logoColor=white"/>
       <br>
-      <img src="/api/placeholder/100/100" width="100" height="100" style="border-radius: 50%"/>
+      <img src="public\assets\Sidney.png" width="100" height="100" style="border-radius: 50%"/>
       <br>
       <b>Sidney John Sarcia</b>
       <br>
