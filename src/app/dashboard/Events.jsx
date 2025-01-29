@@ -54,7 +54,7 @@ const Events = () => {
   const handleShowAddEvent = () => {
     setNewEvent((prevEvent) => ({
       ...prevEvent,
-      date: view === "day" ? currentDate.format("YYYY-MM-DD") : "", // Pre-fill date if in "day" view
+      date: view === "day" ? currentDate.format("YYYY-MM-DD") : "",
     }));
     setShowAddEvent(true);
   };
@@ -97,7 +97,6 @@ const Events = () => {
     let dateIterator =
       view === "month" ? startOfMonth.startOf("isoWeek") : startOfWeek;
   
-    // Ensure we dynamically calculate the condition inside the loop
     const isWithinRange = (date) =>
       view === "month"
         ? date.isBefore(endOfMonth.endOf("isoWeek").add(1, "day"))
@@ -108,7 +107,6 @@ const Events = () => {
       dateIterator = dateIterator.add(1, "day");
     }
   
-    // Trim the array to exactly 7 days for the week view
     if (view === "week") {
       days.splice(7);
     }
@@ -116,13 +114,13 @@ const Events = () => {
     return days.map((date, idx) => (
       <div
         key={idx}
-        className={`border p-5 rounded-lg h-32 flex flex-col relative cursor-pointer ${
+        className={`border p-5 h-32 flex flex-col relative cursor-pointer ${
           date.isSame(currentDate, "month") || view === "week"
             ? ""
             : "text-gray-400"
         } ${
           date.isSame(today, "day")
-            ? "border-blue-500 border-2 text-green-800 font-bold"
+            ? "border-blue-500 border-2 text-blue-500 font-bold"
             : ""
         }`}
         onClick={() => handleDayClick(date)}
@@ -131,7 +129,7 @@ const Events = () => {
         <div className="flex-1 overflow-hidden">
           {events
             .filter((event) => dayjs(event.date).isSame(date, "day"))
-            .slice(0, 2) // Show only the first 2 events
+            .slice(0, 2)
             .map((event, eventIdx) => (
               <div
                 key={eventIdx}
@@ -297,7 +295,7 @@ const Events = () => {
           <h2 className="text-3xl font-semibold mb-3">
             {currentDate.format("MMMM YYYY")}
           </h2>
-          <nav className="flex space-x-4 mb-6">
+          <nav className="flex space-x-4 mb-4">
             <button
               onClick={() => setView("day")}
               className={`px-3 py-1 text-m rounded ${
@@ -340,8 +338,8 @@ const Events = () => {
       {/* Add Event Button */}
       <div className="mb-4">
       <button
-        onClick={handleShowAddEvent} // Updated logic
-        className="px-4 py-2 bg-blue-500 text-white rounded-lg mb-6 hover:bg-blue-700"
+        onClick={handleShowAddEvent}
+        className="px-4 py-2 bg-blue-500 text-white rounded-lg mb-3 hover:bg-blue-700"
       >
         + Add Event
       </button>
@@ -360,7 +358,7 @@ const Events = () => {
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-4 mt-2">{renderDays()}</div>
+            <div className="grid grid-cols-7 mt-2">{renderDays()}</div>
           </>
         )
         : null}
