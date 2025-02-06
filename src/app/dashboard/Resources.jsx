@@ -1,30 +1,14 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { ChevronRight, Upload, Search, Book, List, Filter, Download } from 'lucide-react';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { UploadModal } from "@/components/UploadModal";
-import AnalyticsDisplay from "@/components/AnalyticsDisplay";
+import React, { useState, useCallback, useMemo } from "react"
+import { ChevronRight, Upload, Search, Book, List, Filter, Download, ChevronDown } from "lucide-react"
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { UploadModal } from "@/components/modal/UploadModal"
+import AnalyticsDisplay from "@/components/AnalyticsDisplay"
 
 const courses = {
   "Associate in Computer Technology": {
@@ -33,30 +17,52 @@ const courses = {
     years: [
       {
         name: "Year 1",
-        subjects: [
-          "Introduction to Computing",
-          "Computer Programming 1",
-          "Fundamentals of Information Systems",
-          "Professional Skills in ICT",
-          "Mathematics in Modern World",
-          "Philippine Literature",
-          "Understanding the Self",
-          "Physical Education 1",
-          "Christian Teaching 1"
+        semesters: [
+          {
+            name: "Semester 1",
+            subjects: [
+              "Introduction to Computing",
+              "Computer Programming 1",
+              "Fundamentals of Information Systems",
+              "Professional Skills in ICT",
+              "Mathematics in Modern World",
+            ],
+          },
+          {
+            name: "Semester 2",
+            subjects: [
+              "Philippine Literature",
+              "Understanding the Self",
+              "Physical Education 1",
+              "Christian Teaching 1",
+              "Semester 2 Subject 1",
+            ],
+          },
         ],
       },
       {
         name: "Year 2",
-        subjects: [
-          "Web App Development 1",
-          "Responsive Web Design",
-          "Data Structures and Algorithm",
-          "IS Infrastructure and Network Technologies",
-          "Organization and Management",
-          "Contemporary World",
-          "Life and Works of Rizal",
-          "Pagtuturo at Pagtataya",
-          "Christian Teaching 3"
+        semesters: [
+          {
+            name: "Semester 1",
+            subjects: [
+              "Web App Development 1",
+              "Responsive Web Design",
+              "Data Structures and Algorithm",
+              "IS Infrastructure and Network Technologies",
+              "Organization and Management",
+            ],
+          },
+          {
+            name: "Semester 2",
+            subjects: [
+              "Contemporary World",
+              "Life and Works of Rizal",
+              "Pagtuturo at Pagtataya",
+              "Christian Teaching 3",
+              "Semester 2 Subject 2",
+            ],
+          },
         ],
       },
     ],
@@ -68,81 +74,130 @@ const courses = {
     years: [
       {
         name: "Year 1",
-        subjects: [
-          "Introduction to Computing",
-          "Computer Programming 1",
-          "Fundamentals of Information Systems",
-          "Professional Skills in ICT",
-          "Mathematics in Modern World",
-          "Philippine Literature",
-          "Understanding the Self",
-          "Physical Education 1",
-          "Christian Teaching 1"
+        semesters: [
+          {
+            name: "Semester 1",
+            subjects: [
+              "Introduction to Computing",
+              "Computer Programming 1",
+              "Fundamentals of Information Systems",
+              "Professional Skills in ICT",
+              "Mathematics in Modern World",
+            ],
+          },
+          {
+            name: "Semester 2",
+            subjects: [
+              "Philippine Literature",
+              "Understanding the Self",
+              "Physical Education 1",
+              "Christian Teaching 1",
+              "Semester 2 Subject 3",
+            ],
+          },
         ],
       },
       {
         name: "Year 2",
-        subjects: [
-          "Web App Development 1",
-          "Responsive Web Design",
-          "Data Structures and Algorithm",
-          "IS Infrastructure and Network Technologies",
-          "Organization and Management",
-          "Contemporary World",
-          "Business and Technical Writing",
-          "Pagtuturo at Pagtataya",
-          "Christian Teaching 3"
+        semesters: [
+          {
+            name: "Semester 1",
+            subjects: [
+              "Web App Development 1",
+              "Responsive Web Design",
+              "Data Structures and Algorithm",
+              "IS Infrastructure and Network Technologies",
+              "Organization and Management",
+            ],
+          },
+          {
+            name: "Semester 2",
+            subjects: [
+              "Contemporary World",
+              "Business and Technical Writing",
+              "Pagtuturo at Pagtataya",
+              "Christian Teaching 3",
+              "Semester 2 Subject 4",
+            ],
+          },
         ],
       },
       {
         name: "Year 3",
-        subjects: [
-          "Application Development and Emerging Technologies",
-          "Information Systems Project Management 1",
-          "Statistical Analysis in Information Systems",
-          "Business Process Mangement",
-          "Financial Management",
-          "Life and Works of Rizal",
-          "Gender and Society",
-          "Christian Teaching 5"
+        semesters: [
+          {
+            name: "Semester 1",
+            subjects: [
+              "Application Development and Emerging Technologies",
+              "Information Systems Project Management 1",
+              "Statistical Analysis in Information Systems",
+              "Business Process Management",
+              "Financial Management",
+            ],
+          },
+          {
+            name: "Semester 2",
+            subjects: [
+              "Life and Works of Rizal",
+              "Gender and Society",
+              "Christian Teaching 5",
+              "Semester 2 Subject 5",
+              "Semester 2 Subject 6",
+            ],
+          },
         ],
       },
       {
         name: "Year 4",
-        subjects: [
-          "Entreprenuerial Mind",
-          "Capstone Project 1",
-          "Enterprise Architecture",
-          "Customer Relationship Management",
-          "Ethics",
-          "IS Strategy Management and Acquisition",
-          "Christian Teaching 7"
+        semesters: [
+          {
+            name: "Semester 1",
+            subjects: [
+              "Entrepreneurial Mind",
+              "Capstone Project 1",
+              "Enterprise Architecture",
+              "Customer Relationship Management",
+              "Ethics",
+            ],
+          },
+          {
+            name: "Semester 2",
+            subjects: [
+              "IS Strategy Management and Acquisition",
+              "Christian Teaching 7",
+              "Semester 2 Subject 7",
+              "Semester 2 Subject 8",
+              "Semester 2 Subject 9",
+            ],
+          },
         ],
       },
     ],
   },
-};
+}
 
 const staticFiles = [
   { name: "Course Syllabus.pdf", size: "2.5 MB", uploadDate: "2024-12-15", downloads: 145 },
   { name: "Assignment Guidelines.docx", size: "1.8 MB", uploadDate: "2024-12-20", downloads: 89 },
   { name: "Lecture Notes - Week 1.pptx", size: "5.2 MB", uploadDate: "2025-01-08", downloads: 234 },
   { name: "Project Requirements.pdf", size: "3.1 MB", uploadDate: "2025-01-12", downloads: 167 },
-];
+]
 
-const BreadcrumbNavigation = ({
+const BreadcrumbNavigation = ({ 
   showAnalytics,
   setShowAnalytics,
   currentCourse,
   currentYear,
+  currentSemester,
   currentSubject,
   handleCourseChange,
   setCurrentYear,
+  setCurrentSemester,
   setCurrentSubject,
 }) => {
-  const courseYears = courses[currentCourse]?.years || [];
-  const currentYearData = courseYears.find((year) => year.name === currentYear);
-  const currentSubjects = currentYearData?.subjects || [];
+  const courseYears = courses[currentCourse]?.years || []
+  const currentYearData = courseYears.find((year) => year.name === currentYear)
+  const currentSemesterData = currentYearData?.semesters.find((semester) => semester.name === currentSemester)
 
   return (
     <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl shadow-sm mb-6">
@@ -163,9 +218,7 @@ const BreadcrumbNavigation = ({
                     </div>
                     <div>
                       <p className="font-medium">Analytics</p>
-                      <p className="text-sm text-gray-500">
-                        View resource statistics
-                      </p>
+                      <p className="text-sm text-gray-500">View resource statistics</p>
                     </div>
                   </div>
                 </DropdownMenuItem>
@@ -173,8 +226,8 @@ const BreadcrumbNavigation = ({
                   <DropdownMenuItem
                     key={course}
                     onClick={() => {
-                      handleCourseChange(course);
-                      setShowAnalytics(false);
+                      handleCourseChange(course)
+                      setShowAnalytics(false)
                     }}
                   >
                     <div className="flex items-center space-x-2">
@@ -183,9 +236,7 @@ const BreadcrumbNavigation = ({
                       </div>
                       <div>
                         <p className="font-medium">{course}</p>
-                        <p className="text-sm text-gray-500">
-                          {courses[course].duration}
-                        </p>
+                        <p className="text-sm text-gray-500">{courses[course].duration}</p>
                       </div>
                     </div>
                   </DropdownMenuItem>
@@ -205,42 +256,14 @@ const BreadcrumbNavigation = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 {Object.keys(courses).map((course) => (
-                  <DropdownMenuItem
-                    key={course}
-                    onClick={() => handleCourseChange(course)}
-                  >
+                  <DropdownMenuItem key={course} onClick={() => handleCourseChange(course)}>
                     {course}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </BreadcrumbItem>
-          <BreadcrumbSeparator>
-            <ChevronRight className="w-4 h-4" />
-          </BreadcrumbSeparator>
-          <BreadcrumbItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="hover:bg-blue-50 font-medium">
-                  {currentYear}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {courseYears.map((year) => (
-                  <DropdownMenuItem
-                    key={year.name}
-                    onClick={() => {
-                      setCurrentYear(year.name);
-                      setCurrentSubject(null);
-                    }}
-                  >
-                    {year.name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </BreadcrumbItem>
-          {currentSubject ? (
+          {currentYear && (
             <>
               <BreadcrumbSeparator>
                 <ChevronRight className="w-4 h-4" />
@@ -249,14 +272,75 @@ const BreadcrumbNavigation = ({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="hover:bg-blue-50 font-medium">
-                      {currentSubject || " "}
+                      {currentYear}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    {currentSubjects.map((subject, index) => (
+                    {courseYears.map((year) => (
                       <DropdownMenuItem
-                        key={index}
-                        onClick={() => setCurrentSubject(subject)}
+                        key={year.name}
+                        onClick={() => {
+                          setCurrentYear(year.name)
+                          setCurrentSemester(year.semesters[0].name)
+                          setCurrentSubject(null)
+                        }}
+                      >
+                        {year.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </BreadcrumbItem>
+            </>
+          )}
+          {currentSemester && (
+            <>
+              <BreadcrumbSeparator>
+                <ChevronRight className="w-4 h-4" />
+              </BreadcrumbSeparator>
+              <BreadcrumbItem>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="hover:bg-blue-50 font-medium">
+                      {currentSemester}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {currentYearData?.semesters.map((semester) => (
+                      <DropdownMenuItem
+                        key={semester.name}
+                        onClick={() => {
+                          setCurrentSemester(semester.name)
+                          setCurrentSubject(null)
+                        }}
+                      >
+                        {semester.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </BreadcrumbItem>
+            </>
+          )}
+          {currentSubject && (
+            <>
+              <BreadcrumbSeparator>
+                <ChevronRight className="w-4 h-4" />
+              </BreadcrumbSeparator>
+              <BreadcrumbItem>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="hover:bg-blue-50 font-medium">
+                      {currentSubject}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {currentSemesterData?.subjects.map((subject) => (
+                      <DropdownMenuItem
+                        key={subject}
+                        onClick={() => {
+                          setCurrentSubject(subject)
+                        }}
                       >
                         {subject}
                       </DropdownMenuItem>
@@ -265,13 +349,12 @@ const BreadcrumbNavigation = ({
                 </DropdownMenu>
               </BreadcrumbItem>
             </>
-          ) : null}
+          )}
         </BreadcrumbList>
       </Breadcrumb>
     </div>
-  );
-};
-
+  )
+}
 
 const AnalyticsView = ({ staticFiles }) => {
   return (
@@ -292,15 +375,25 @@ const AnalyticsView = ({ staticFiles }) => {
           <CardDescription>Latest learning materials and resources</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden rounded-xl">
+          <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Upload Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Size
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Upload Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Downloads
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -314,12 +407,8 @@ const AnalyticsView = ({ staticFiles }) => {
                         <span className="font-medium">{file.name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {file.size}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {file.uploadDate}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{file.size}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{file.uploadDate}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge variant="secondary">{file.downloads} downloads</Badge>
                     </td>
@@ -337,13 +426,15 @@ const AnalyticsView = ({ staticFiles }) => {
         </CardContent>
       </Card>
     </div>
-  );
-};
+  )
+}
 
 const CourseView = ({
   currentCourse,
   currentYear,
   setCurrentYear,
+  currentSemester,
+  setCurrentSemester,
   searchTerm,
   setSearchTerm,
   viewMode,
@@ -353,6 +444,8 @@ const CourseView = ({
   setIsModalOpen,
   setCurrentSubject,
 }) => {
+  const currentYearData = courses[currentCourse]?.years.find((year) => year.name === currentYear)
+
   return (
     <div className="space-y-6">
       <Card>
@@ -370,7 +463,10 @@ const CourseView = ({
                 <Button
                   key={year.name}
                   variant={currentYear === year.name ? "default" : "outline"}
-                  onClick={() => setCurrentYear(year.name)}
+                  onClick={() => {
+                    setCurrentYear(year.name)
+                    setCurrentSemester(year.semesters[0].name)
+                  }}
                   className="px-6"
                 >
                   {year.name}
@@ -381,79 +477,86 @@ const CourseView = ({
         </CardContent>
       </Card>
 
-      <div className="flex space-x-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search subjects..."
-            className="w-full pl-10 pr-4 py-2 bg-white rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => setViewMode((prev) => (prev === "grid" ? "list" : "grid"))}
-          className="px-4"
-        >
-          {viewMode === "grid" ? <List className="w-5 h-5" /> : <Filter className="w-5 h-5" />}
-        </Button>
-      </div>
-
-      <div
-        className={
-          viewMode === "grid"
-            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-            : "space-y-4"
-        }
-      >
-        {filteredSubjects.map((subject, index) => (
-          <Card
-            key={index}
-            className="overflow-hidden hover:shadow-lg transition-shadow"
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+        <h2 className="text-2xl font-bold">{currentYear}</h2>
+        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search subjects..."
+              className="w-full pl-10 pr-4 py-2 bg-white rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setViewMode((prev) => (prev === "grid" ? "list" : "grid"))}
+            className="px-4"
           >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <Book className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <CardTitle className="text-lg">{subject}</CardTitle>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setCurrentSubject(subject); // Update subject state
-                  }}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  View
-                </Button>
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
+            {viewMode === "grid" ? <List className="w-5 h-5" /> : <Filter className="w-5 h-5" />}
+          </Button>
+        </div>
       </div>
+
+      <Tabs value={currentSemester} onValueChange={setCurrentSemester}>
+        <TabsList className="mb-4">
+          {currentYearData?.semesters.map((semester) => (
+            <TabsTrigger key={semester.name} value={semester.name}>
+              {semester.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {currentYearData?.semesters.map((semester) => (
+          <TabsContent key={semester.name} value={semester.name}>
+            <SubjectList
+              subjects={filteredSubjects.filter((subject) => semester.subjects.includes(subject))}
+              viewMode={viewMode}
+              setCurrentSubject={setCurrentSubject}
+            />
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
-  );
-};
+  )
+}
 
+const SubjectList = ({ subjects, viewMode, setCurrentSubject }) => {
+  return (
+    <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-4"}>
+      {subjects.map((subject, index) => (
+        <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Book className="w-5 h-5 text-blue-600" />
+                </div>
+                <CardTitle className="text-lg">{subject}</CardTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCurrentSubject(subject)
+                }}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                View
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  )
+}
 
-const ViewSubject = ({
-  currentSubject,
-  topics,
-  searchTerm,
-  setSearchTerm,
-  viewMode,
-  setViewMode,
-}) => {
+const ViewSubject = ({ currentSubject, topics, searchTerm, setSearchTerm, viewMode, setViewMode }) => {
   const filteredTopics = useMemo(() => {
-    return topics.filter((topic) =>
-      topic.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [topics, searchTerm]);
+    return topics.filter((topic) => topic.toLowerCase().includes(searchTerm.toLowerCase()))
+  }, [topics, searchTerm])
 
   return (
     <div className="space-y-6">
@@ -462,8 +565,8 @@ const ViewSubject = ({
           <CardTitle>{currentSubject}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+            <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
@@ -475,117 +578,87 @@ const ViewSubject = ({
             </div>
             <Button
               variant="outline"
-              onClick={() =>
-                setViewMode((prev) => (prev === "grid" ? "list" : "grid"))
-              }
+              onClick={() => setViewMode((prev) => (prev === "grid" ? "list" : "grid"))}
               className="px-4"
             >
-              {viewMode === "grid" ? (
-                <List className="w-5 h-5" />
-              ) : (
-                <Filter className="w-5 h-5" />
-              )}
+              {viewMode === "grid" ? <List className="w-5 h-5" /> : <Filter className="w-5 h-5" />}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <div
-        className={
-          viewMode === "grid"
-            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-            : "space-y-4"
-        }
-      >
-        {/* {filteredTopics.map((topic, index) => (
-          <Card
-            key={index}
-            className="overflow-hidden hover:shadow-lg transition-shadow"
-          >
-            <CardHeader>
-              <CardTitle className="text-lg">{topic}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))} */}
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow"
-          >
-            <CardHeader>
-              <CardTitle className="text-lg">Still in development</CardTitle>
-            </CardHeader>
-          </Card>
+      <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-4"}>
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="text-lg">Still in development</CardTitle>
+          </CardHeader>
+        </Card>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const FloatingUploadButton = ({ setIsModalOpen }) => {
   return (
     <div className="fixed bottom-6 right-6">
-      <Button
-        onClick={() => setIsModalOpen(true)}
-        className="shadow-lg"
-        size="lg"
-      >
+      <Button onClick={() => setIsModalOpen(true)} className="shadow-lg" size="lg">
         <Upload className="w-5 h-5 mr-2" />
         Upload File
       </Button>
     </div>
-  );
-};
-
+  )
+}
 
 export default function Resources() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [viewMode, setViewMode] = useState("grid");
-  const [currentCourse, setCurrentCourse] = useState(
-    "Associate in Computer Technology"
-  );
-  const [currentYear, setCurrentYear] = useState("Year 1");
-  const [currentSubject, setCurrentSubject] = useState(null);
-  const [breadcrumb, setBreadcrumb] = useState([currentCourse, currentYear]);
-  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedSubject, setSelectedSubject] = useState(null)
+  const [viewMode, setViewMode] = useState("grid")
+  const [currentCourse, setCurrentCourse] = useState("Associate in Computer Technology")
+  const [currentYear, setCurrentYear] = useState("Year 1")
+  const [currentSemester, setCurrentSemester] = useState("Semester 1")
+  const [currentSubject, setCurrentSubject] = useState(null)
+  const [showAnalytics, setShowAnalytics] = useState(false)
 
   const handleUpload = useCallback((file, subject) => {
-    console.log("Uploading:", file.name, "for subject:", subject);
+    console.log("Uploading:", file.name, "for subject:", subject)
     // Implement actual file upload logic here
-  }, []);
+  }, [])
 
   const handleCourseChange = useCallback((course) => {
-    setCurrentCourse(course);
-    setCurrentYear(courses[course].years[0].name);
-    setCurrentSubject(null);
-    setShowAnalytics(false);
-    setBreadcrumb([course]);
-  }, []);
+    setCurrentCourse(course)
+    setCurrentYear(courses[course].years[0].name)
+    setCurrentSemester(courses[course].years[0].semesters[0].name)
+    setCurrentSubject(null)
+    setShowAnalytics(false)
+  }, [])
 
   const filteredSubjects = useMemo(() => {
-    const currentYearData = courses[currentCourse]?.years?.find(
-      (year) => year.name === currentYear
-    );
+    const currentYearData = courses[currentCourse]?.years?.find((year) => year.name === currentYear)
     return currentYearData
-      ? currentYearData.subjects.filter((subject) =>
-          subject.toLowerCase().includes(searchTerm.toLowerCase())
+      ? currentYearData.semesters.flatMap((semester) =>
+          semester.subjects.filter((subject) => subject.toLowerCase().includes(searchTerm.toLowerCase())),
         )
-      : [];
-  }, [currentCourse, currentYear, searchTerm]);
+      : []
+  }, [currentCourse, currentYear, searchTerm])
 
   React.useEffect(() => {
-    setSearchTerm("");
-  }, [currentCourse, currentYear, currentSubject]);
+    setSearchTerm("")
+  }, [currentYear, currentSemester])
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6">
+    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-      <BreadcrumbNavigation
+        <BreadcrumbNavigation
           showAnalytics={showAnalytics}
           setShowAnalytics={setShowAnalytics}
           currentCourse={currentCourse}
           currentYear={currentYear}
+          currentSemester={currentSemester}
           currentSubject={currentSubject}
           handleCourseChange={handleCourseChange}
           setCurrentYear={setCurrentYear}
+          setCurrentSemester={setCurrentSemester}
           setCurrentSubject={setCurrentSubject}
         />
 
@@ -595,8 +668,8 @@ export default function Resources() {
           <ViewSubject
             currentCourse={currentCourse}
             currentYear={currentYear}
+            currentSemester={currentSemester}
             currentSubject={currentSubject}
-            setBreadcrumb={setBreadcrumb}
             topics={filteredSubjects}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -608,6 +681,8 @@ export default function Resources() {
             currentCourse={currentCourse}
             currentYear={currentYear}
             setCurrentYear={setCurrentYear}
+            currentSemester={currentSemester}
+            setCurrentSemester={setCurrentSemester}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             viewMode={viewMode}
@@ -615,29 +690,24 @@ export default function Resources() {
             filteredSubjects={filteredSubjects}
             setSelectedSubject={setSelectedSubject}
             setIsModalOpen={setIsModalOpen}
-            setCurrentSubject={setCurrentSubject} // Pass here
-            setBreadcrumb={setBreadcrumb} // Pass here
+            setCurrentSubject={setCurrentSubject}
           />
         )}
-
 
         <UploadModal
           isOpen={isModalOpen}
           onClose={() => {
-            setIsModalOpen(false);
-            setSelectedSubject(null);
+            setIsModalOpen(false)
+            setSelectedSubject(null)
           }}
           onUpload={handleUpload}
           selectedSubject={selectedSubject}
           setSelectedSubject={setSelectedSubject}
         />
 
-      {currentSubject && (
-        <FloatingUploadButton setIsModalOpen={setIsModalOpen}/>
-        )}
+        {currentSubject && <FloatingUploadButton setIsModalOpen={setIsModalOpen} />}
       </div>
     </div>
-
-    
-  );
+  )
 }
+
