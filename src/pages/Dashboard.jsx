@@ -3,8 +3,8 @@ import Events from "@/app/dashboard/Events";
 import Home from "@/app/dashboard/Home";
 import Resources from "@/app/dashboard/Resources";
 import Tasks from "@/app/dashboard/Tasks";
-import Sidebar from "@/components/Sidebar";
-import Topbar from "@/components/Topbar";
+import Sidebar from "@/components/layout/Sidebar";
+import Topbar from "@/components/layout/Topbar";
 
 const Dashboard = () => {
   console.log("Dashboard Component Rendered");
