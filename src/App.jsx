@@ -4,6 +4,7 @@ import SignUp from './app/auth/SignUp';
 import LogIn from './app/auth/LogIn';
 import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
+import ForgotPassword from './app/auth/ForgotPassword';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<LogIn />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/dashboard/*" element={<Dashboard />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
