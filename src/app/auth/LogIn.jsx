@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { EyeIcon, EyeOffIcon, Loader2 } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader2, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Lock } from "lucide-react";
@@ -9,35 +9,25 @@ const cn = (...classes) => classes.filter(Boolean).join(" ");
 
 const smoothTransition = {
   type: "spring",
-  stiffness: 300,
-  damping: 30,
+  stiffness: 260,
+  damping: 25,
 };
 
 const FloatingLabelInput = React.memo(
-  ({
-    id,
-    label,
-    type = "text",
-    value,
-    onChange,
-    required = false,
-    icon: Icon,
-    rightIcon,
-  }) => {
+  ({ id, label, type = "text", value, onChange, required = false, icon: Icon, rightIcon }) => {
     const [isFocused, setIsFocused] = useState(false);
-
-    const handleFocus = useCallback(() => setIsFocused(true), []);
-    const handleBlur = useCallback(() => {
-      if (value.length === 0) setIsFocused(false);
-    }, [value]);
 
     return (
       <div className="relative w-full group">
         <div className="relative flex items-center">
           {Icon && (
-            <div className="absolute left-3.5 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+            <motion.div
+              className="absolute left-3.5 text-gray-400 group-focus-within:text-blue-500"
+              animate={{ scale: isFocused ? 1.1 : 1 }}
+              transition={smoothTransition}
+            >
               <Icon className="h-4 w-4" />
-            </div>
+            </motion.div>
           )}
           <input
             id={id}
@@ -50,12 +40,13 @@ const FloatingLabelInput = React.memo(
             } pt-3 pb-1 rounded-lg
                     bg-white ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-500
                     text-gray-900 text-sm transition-all duration-200 outline-none
-                    peer placeholder-transparent`}
+                    peer placeholder-transparent shadow-sm`}
             placeholder={label}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => value.length === 0 && setIsFocused(false)}
+            autoComplete={type === "password" ? "current-password" : "username"}
           />
-          <label
+          <motion.label
             htmlFor={id}
             className={`absolute left-0 ${
               Icon ? "ml-10" : "ml-3.5"
@@ -63,11 +54,11 @@ const FloatingLabelInput = React.memo(
                     transform -translate-y-2 scale-75 top-2 z-10 origin-[0] 
                     peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 
                     peer-focus:scale-75 peer-focus:-translate-y-2
-                    text-gray-500 peer-focus:text-blue-500 text-sm`}
+                    text-gray-500 peer-focus:text-blue-500 text-sm font-medium`}
           >
             {label}
             {required && <span className="text-red-500 ml-0.5">*</span>}
-          </label>
+          </motion.label>
           {rightIcon}
         </div>
       </div>
@@ -75,67 +66,59 @@ const FloatingLabelInput = React.memo(
   }
 );
 
-const AnimatedButton = React.memo(
-  motion(({ className, children, isLoading, ...props }) => (
-    <button
-      className={cn(
-        "px-4 py-2 font-semibold rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
-        className
-      )}
-      disabled={isLoading}
-      {...props}
-    >
-      <div className="flex items-center justify-center gap-2">
-        {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-        {children}
-      </div>
-    </button>
-  ))
-);
-
-AnimatedButton.displayName = "AnimatedButton";
-
 export default function LogIn() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
-  const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
     emailOrUsername: "",
     password: "",
   });
 
+  const validateForm = () => {
+    const errors = {};
+    if (!formData.emailOrUsername) {
+      errors.emailOrUsername = "Email or username is required";
+    }
+    if (!formData.password) {
+      errors.password = "Password is required";
+    }
+    return errors;
+  };
+
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    setError(null);
   };
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setError(Object.values(errors).join(", "));
+      return;
+    }
+
     setError(null);
-    setFormErrors({});
     setIsLoading(true);
 
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // login logic here
-      navigate('/dashboard');  
+      navigate('/dashboard');
     } catch (err) {
       setError("An error occurred during login. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [navigate, formData]);
 
   const togglePasswordVisibility = useCallback(() => {
     setShowPassword((prev) => !prev);
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/95 via-indigo-50/95 to-violet-50/95 backdrop-blur-sm">
       <div className="flex flex-col lg:flex-row min-h-screen">
         <motion.div
           className="w-full lg:w-1/2 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-8"
@@ -144,117 +127,173 @@ export default function LogIn() {
           transition={{ duration: 0.8 }}
         >
           <div className="max-w-md mx-auto w-full space-y-6">
+            {/* Back Button Added Here */}
+            <motion.div
+              className="flex justify-start mb-2"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Link
+                to="/"
+                className="text-sm text-gray-600 hover:text-blue-600 flex items-center gap-1 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="relative">
+                  Back to home
+                  <span className="absolute bottom-0 left-0 w-full h-px bg-current origin-left transform scale-x-0 transition-transform duration-300 hover:scale-x-100" />
+                </span>
+              </Link>
+            </motion.div>
+
             <AnimatePresence mode="wait">
               <motion.div
                 key="loginForm"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
                 transition={{ duration: 0.3 }}
               >
                 {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <Alert variant="destructive" className="shadow-lg">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  </motion.div>
                 )}
-                <div className="text-center space-y-2 mb-6">
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-600 bg-clip-text text-transparent">
+
+                <motion.div 
+                  className="text-center space-y-2 mb-6"
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
                     Welcome back
                   </h1>
                   <p className="text-gray-600 text-sm">
                     Don't have an account?{" "}
                     <Link to="/signup">
                       <motion.span
-                        className="text-blue-600 font-medium hover:text-blue-700"
+                        className="text-blue-600 font-medium hover:text-blue-700 relative"
                         whileHover={{ scale: 1.05 }}
                         transition={smoothTransition}
                       >
+                        <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 origin-bottom transform scale-x-0 transition-transform duration-300 hover:scale-x-100" />
                         Sign up
                       </motion.span>
                     </Link>
                   </p>
-                </div>
+                </motion.div>
+
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  <FloatingLabelInput
-                    id="emailOrUsername"
-                    label="Email or Username"
-                    value={formData.emailOrUsername}
-                    onChange={handleChange("emailOrUsername")}
-                    required
-                    icon={User}
-                  />
-
-                  <div className="relative">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
                     <FloatingLabelInput
-                      id="password"
-                      label="Password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={handleChange("password")}
+                      id="emailOrUsername"
+                      label="Email or Username"
+                      value={formData.emailOrUsername}
+                      onChange={handleChange("emailOrUsername")}
                       required
-                      icon={Lock}
-                      rightIcon={
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <motion.button
-                            type="button"
-                            className="p-1.5 text-gray-500 hover:text-gray-700 focus:outline-none"
-                            onClick={togglePasswordVisibility}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <AnimatePresence mode="wait" initial={false}>
-                              {showPassword ? (
-                                <motion.div
-                                  key="eyeOff"
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  exit={{ opacity: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                >
-                                  <EyeOffIcon className="h-4 w-4" />
-                                </motion.div>
-                              ) : (
-                                <motion.div
-                                  key="eye"
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  exit={{ opacity: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                >
-                                  <EyeIcon className="h-4 w-4" />
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </motion.button>
-                        </div>
-                      }
+                      icon={User}
                     />
-                  </div>
+                  </motion.div>
 
-                  <div className="flex justify-end">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <div className="relative">
+                      <FloatingLabelInput
+                        id="password"
+                        label="Password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleChange("password")}
+                        required
+                        icon={Lock}
+                        rightIcon={
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <motion.button
+                              type="button"
+                              aria-label={showPassword ? "Hide password" : "Show password"}
+                              aria-pressed={showPassword}
+                              className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
+                              onClick={togglePasswordVisibility}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              <AnimatePresence mode="wait" initial={false}>
+                                {showPassword ? (
+                                  <motion.div
+                                    key="eyeOff"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <EyeOffIcon className="h-4 w-4" />
+                                  </motion.div>
+                                ) : (
+                                  <motion.div
+                                    key="eye"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <EyeIcon className="h-4 w-4" />
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </motion.button>
+                          </div>
+                        }
+                      />
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    className="flex justify-end"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                  >
                     <motion.a
-                      href="*"
-                      className="text-sm text-blue-600 hover:underline"
-                      whileHover={{ scale: 1.05 }}
+                      href="/forgot-password"
+                      className="text-sm text-blue-600 hover:text-blue-700 relative"
+                      whileHover={{ scale: 1.02 }}
                       transition={smoothTransition}
                     >
+                      <span className="absolute bottom-0 left-0 w-full h-px bg-current origin-left transform scale-x-0 transition-transform duration-300 hover:scale-x-100" />
                       Forgot your password?
                     </motion.a>
-                  </div>
+                  </motion.div>
 
                   <motion.button
                     type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-600 
-                               text-white rounded-lg font-medium shadow-md shadow-blue-500/20 
-                               flex items-center justify-center gap-2 group"
-                    whileHover={{ scale: 1.01 }}
+                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-500 
+                             text-white rounded-lg font-medium shadow-lg shadow-blue-500/30 
+                             flex items-center justify-center gap-2 group relative overflow-hidden"
+                    whileHover={{ 
+                      scale: 1.01,
+                      background: "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)"
+                    }}
                     whileTap={{ scale: 0.98 }}
                     transition={smoothTransition}
                     disabled={isLoading}
                   >
                     {isLoading ? (
                       <motion.div
-                        className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                         animate={{ rotate: 360 }}
                         transition={{
                           duration: 1,
@@ -263,11 +302,22 @@ export default function LogIn() {
                         }}
                       />
                     ) : (
-                      <>Login</>
+                      <>
+                        <span className="relative z-10">Login</span>
+                        <motion.div
+                          className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                          initial={{ opacity: 0 }}
+                        />
+                      </>
                     )}
                   </motion.button>
 
-                  <div className="relative text-center my-4">
+                  <motion.div
+                    className="relative text-center my-6"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                  >
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t border-gray-300"></div>
                     </div>
@@ -276,19 +326,22 @@ export default function LogIn() {
                         Or continue with
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <AnimatedButton
+                  <motion.button
                     type="button"
-                    className="w-full border border-slate-300 text-slate-700 hover:border-slate-400 bg-white"
-                    whileHover={{ scale: 1.02 }}
+                    className="w-full h-12 border border-gray-300 text-gray-700 rounded-lg
+                             font-medium flex items-center justify-center gap-2 shadow-sm
+                             hover:border-gray-400 hover:shadow-md bg-white relative
+                             transition-all duration-300"
+                    whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     transition={smoothTransition}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
-                      className="h-5 w-5 mr-2 inline-block"
+                      className="h-5 w-5"
                     >
                       <path
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -307,8 +360,9 @@ export default function LogIn() {
                         fill="#EA4335"
                       />
                     </svg>
-                    Login with Google
-                  </AnimatedButton>
+                    <span>Continue with Google</span>
+                    <div className="absolute inset-0 bg-black/5 opacity-0 hover:opacity-100 transition-opacity rounded-lg" />
+                  </motion.button>
                 </form>
               </motion.div>
             </AnimatePresence>
@@ -327,8 +381,29 @@ export default function LogIn() {
               backgroundImage: `url('/images/LVauthbg.png')`,
             }}
           >
-           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-blue-600/30 to-blue-600/30 backdrop-blur-sm" />
-           <img src="/images/headLogo.png" alt="Logo" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1/2 drop-shadow-xl" />
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-blue-600/20 to-blue-600/10 backdrop-blur-[2px]"
+              animate={{
+                opacity: [0.8, 1],
+              }}
+              transition={{ duration: 8, repeat: Infinity, repeatType: "reverse" }}
+            />
+            <motion.img 
+              src="/images/headLogo.png"
+              alt="Application Logo"
+              className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 w-1/2 drop-shadow-xl"
+              loading="lazy"
+              initial={{ scale: 0.95, y: '-50%' }}
+              animate={{ scale: 1 }}
+              transition={{ 
+                scale: {
+                  duration: 8,
+                  repeat: Infinity,
+                  repeatType: "mirror",
+                  ease: "easeInOut"
+                }
+              }}
+            />
           </div>
         </motion.div>
       </div>

@@ -3,6 +3,27 @@ import { Link } from "react-router-dom";
 import { ChevronRight, GraduationCap, Book, Target } from "lucide-react";
 
 const LandingPage = () => {
+  const features = [
+    {
+      icon: GraduationCap,
+      title: "Personalized Learning Path",
+      description:
+        "Get a customized roadmap tailored to your goals and learning style.",
+    },
+    {
+      icon: Book,
+      title: "Comprehensive Resources",
+      description:
+        "Access a vast library of study materials, from notes to practice exams.",
+    },
+    {
+      icon: Target,
+      title: "Progress Tracking",
+      description:
+        "Monitor your academic performance with detailed analytics and insights.",
+    },
+  ];
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background with overlay */}
@@ -17,23 +38,20 @@ const LandingPage = () => {
 
       <div className="relative z-10">
         {/* Header with glass effect */}
-        <header className="backdrop-blur-sm bg-white/5">
-          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-            <a 
-              href="/" 
-              className="flex items-center animate-fade-in-left"
-            >
+        <header className="backdrop-blur-md bg-white/5 fixed w-full z-20">
+          <div className="container mx-auto px-4 py-2 flex flex-col items-center md:flex-row md:justify-between md:py-1">
+            <a href="/" className="flex items-center mb-2 md:mb-0 animate-fade-in-left">
               <img
                 src="/images/headLogoV2.png"
                 alt="Logo"
-                className="w-25 h-20"
+                className="w-20 h-16 md:w-25 md:h-20"
               />
             </a>
             <div className="animate-fade-in-right">
               <Link to="/login">
                 <Button
                   variant="secondary"
-                  className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-semibold px-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:translate-y-[-2px]"
+                  className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-semibold px-4 md:px-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:translate-y-[-2px]"
                 >
                   Log In
                 </Button>
@@ -43,67 +61,103 @@ const LandingPage = () => {
         </header>
 
         {/* Hero Section */}
-        <main className="container mx-auto px-4 pt-20 lg:pt-32">
+        <main className="container mx-auto px-4 pt-16 xs:pt-20 md:pt-24 lg:pt-56 pb-8 md:pb-16">
           <div className="max-w-3xl">
-            <h1 
-              className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight animate-fade-in-up"
-              style={{ '--delay': '0ms' }}
+            <h1
+              className="text-3xl xs:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-tight animate-fade-in-up"
+              style={{ "--delay": "0ms" }}
             >
               Empowering Students,
               <br />
               <span className="text-yellow-400">Enabling Excellence.</span>
             </h1>
-            
+            <h2
+              className="text-xl xs:text-2xl md:text-3xl text-yellow-400 mb-3 md:mb-4 animate-fade-in-up"
+              style={{ "--delay": "200ms" }}
+            >
+              Your All-in-One Academic Companion
+            </h2>
+
             <div
               className="w-32 border-2 border-yellow-400 mb-8 animate-expand"
             />
-            
-            <p 
-              className="text-lg md:text-xl text-white/90 mb-12 max-w-2xl leading-relaxed animate-fade-in-up"
-              style={{ '--delay': '400ms' }}
+
+            <p
+              className="text-base xs:text-lg md:text-xl text-white/90 mb-8 md:mb-12 max-w-2xl mx-auto md:mx-0 leading-relaxed animate-fade-in-up"
+              style={{ "--delay": "400ms" }}
             >
-              Discover a unified platform for academic resources and progress
+              Discover a unified platform for academic resources and progress 
               tracking all tailored to help you achieve your educational goals.
             </p>
-
-            <div
-              className="space-y-8 animate-fade-in-up"
-              style={{ '--delay': '600ms' }}
-            >
-              <Link to="/signup">
-                <Button
-                  size="lg"
-                  className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-semibold text-lg px-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:translate-y-[-2px] group"
-                >
-                  Get Started
-                  <ChevronRight className="ml-2 h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-
-              {/* Feature highlights */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
-                {[
-                  { icon: GraduationCap, text: "Personalized Learning Path", delay: "800ms" },
-                  { icon: Book, text: "Comprehensive Resources", delay: "900ms" },
-                  { icon: Target, text: "Progress Tracking", delay: "1000ms" }
-                ].map((feature, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center space-x-4 text-white/90 animate-fade-in-up"
-                    style={{ '--delay': feature.delay }}
-                  >
-                    <div className="p-3 bg-white/10 rounded-lg">
-                      <feature.icon className="h-6 w-6" />
-                    </div>
-                    <p className="text-sm">{feature.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </main>
+
+        {/* Feature Cards */}
+        <div className="flex flex-col md:flex-row justify-center gap-4 m-4 md:m-12">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className="bg-white/10 backdrop-blur-sm rounded-lg p-4 md:p-6 text-center transform transition duration-300 hover:scale-105 animate-fade-in-up"
+              style={{ "--delay": `${800 + index * 100}ms` }}
+            >
+              <feature.icon className="h-10 w-10 md:h-12 md:w-12 text-yellow-400 mx-auto mb-3 md:mb-4" />
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-2">
+                {feature.title}
+              </h3>
+              <p className="text-white/80 text-sm md:text-base">
+                {feature.description}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* About Section */}
+        <section className="container mx-auto px-4 mt-12 md:mt-24">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-6 md:mb-8 text-center animate-fade-in-up" style={{ "--delay": "0ms" }}>
+            About Student Resource Hub
+          </h2>
+          <p className="text-white/80 max-w-3xl mx-auto text-center text-base md:text-lg lg:text-xl animate-fade-in-up" style={{ "--delay": "200ms" }}>
+            Student Resource Hub is a comprehensive platform designed to support
+            students throughout their academic journey. We provide personalized
+            learning paths, a vast library of study materials, advanced progress
+            tracking tools, and a vibrant community for peer and mentor support.
+            Our mission is to empower students to achieve their full potential
+            by making academic success more accessible and manageable.
+          </p>
+        </section>
+
+        {/* Secondary CTA Section */}
+        <section className="container mx-auto px-4 mt-12 md:mt-24 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3 md:mb-4 animate-fade-in-up" style={{ "--delay": "0ms" }}>
+            Ready to Transform Your Academic Journey?
+          </h2>
+          <p className="text-white/80 mb-6 md:mb-8 text-base md:text-lg animate-fade-in-up" style={{ "--delay": "200ms" }}>
+            Join thousands of students who are already achieving their goals
+            with Student Resource Hub.
+          </p>
+          <div className="animate-fade-in-up" style={{ "--delay": "400ms" }}>
+            <Link to="/signup">
+              <Button
+                size="lg"
+                className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-semibold text-base md:text-lg px-6 md:px-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:translate-y-[-2px] group"
+              >
+                Get Started Now
+                <ChevronRight className="ml-2 h-4 w-4 md:h-5 md:w-5 transform group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="mt-12 md:mt-24 py-4 md:py-8 bg-blue-900/50 text-white/80 text-center">
+          <p className="text-sm md:text-base animate-fade-in-up" style={{ "--delay": "0ms" }}>
+            © {new Date().getFullYear()} Student Resource Hub. All rights
+            reserved.
+          </p>
+        </footer>
       </div>
 
+      {/* CSS Animations */}
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -138,17 +192,6 @@ const LandingPage = () => {
           }
         }
 
-        @keyframes expand {
-          from {
-            width: 0;
-            opacity: 0;
-          }
-          to {
-            width: 8rem;
-            opacity: 1;
-          }
-        }
-
         .animate-fade-in-up {
           opacity: 0;
           animation: fadeInUp 0.7s ease-out forwards;
@@ -163,12 +206,6 @@ const LandingPage = () => {
         .animate-fade-in-right {
           opacity: 0;
           animation: fadeInRight 0.5s ease-out forwards;
-        }
-
-        .animate-expand {
-          opacity: 0;
-          animation: expand 0.7s ease-out forwards;
-          animation-delay: 300ms;
         }
       `}</style>
     </div>
