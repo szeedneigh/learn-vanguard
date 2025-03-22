@@ -39,7 +39,7 @@ const LandingPage = () => {
       <div className="relative z-10">
         {/* Header with glass effect */}
         <header className="backdrop-blur-md bg-white/5 fixed w-full z-20">
-          <div className="container mx-auto px-4 py-2 flex flex-col items-center md:flex-row md:justify-between md:py-1">
+          <div className="container mx-auto px-4 py-2 flex justify-between md:flex-row md:justify-between md:py-1">
             <a href="/" className="flex items-center mb-2 md:mb-0 animate-fade-in-left">
               <img
                 src="/images/headLogoV2.png"
@@ -47,7 +47,7 @@ const LandingPage = () => {
                 className="w-20 h-16 md:w-25 md:h-20"
               />
             </a>
-            <div className="animate-fade-in-right">
+            <div className="animate-fade-in-right mt-4">
               <Link to="/login">
                 <Button
                   variant="secondary"
@@ -61,7 +61,7 @@ const LandingPage = () => {
         </header>
 
         {/* Hero Section */}
-        <main className="container mx-auto px-4 pt-16 xs:pt-20 md:pt-24 lg:pt-56 pb-8 md:pb-16">
+        <main className="container mx-auto px-4 pt-32 xs:pt-32 md:pt-36 lg:pt-56 pb-8 md:pb-16">
           <div className="max-w-3xl">
             <h1
               className="text-3xl xs:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-tight animate-fade-in-up"
@@ -93,23 +93,26 @@ const LandingPage = () => {
         </main>
 
         {/* Feature Cards */}
-        <div className="flex flex-col md:flex-row justify-center gap-4 m-4 md:m-12">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="bg-white/10 backdrop-blur-sm rounded-lg p-4 md:p-6 text-center transform transition duration-300 hover:scale-105 animate-fade-in-up"
-              style={{ "--delay": `${800 + index * 100}ms` }}
-            >
-              <feature.icon className="h-10 w-10 md:h-12 md:w-12 text-yellow-400 mx-auto mb-3 md:mb-4" />
-              <h3 className="text-lg md:text-xl font-semibold text-white mb-2">
-                {feature.title}
-              </h3>
-              <p className="text-white/80 text-sm md:text-base">
-                {feature.description}
-              </p>
-            </div>
-          ))}
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {features.map((feature, index) => (
+              <div
+                key={index}
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-4 sm:p-6 text-center transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] hover:scale-[1.02] hover:shadow-2xl animate-fade-in-up transform-gpu will-change-transform"
+                style={{ "--delay": `${600 + index * 100}ms` }}
+              >
+                <feature.icon className="h-10 w-10 sm:h-12 sm:w-12 text-yellow-400 mx-auto mb-3 sm:mb-4 transition-transform duration-300 ease-in-out hover:scale-110" />
+                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-sm sm:text-base text-white/80">
+                  {feature.description}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
+
 
         {/* About Section */}
         <section className="container mx-auto px-4 mt-12 md:mt-24">
