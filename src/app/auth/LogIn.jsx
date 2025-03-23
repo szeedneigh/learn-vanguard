@@ -14,7 +14,7 @@ const smoothTransition = {
 };
 
 const FloatingLabelInput = React.memo(
-  ({ id, label, type = "text", value, onChange, required = false, icon: Icon, rightIcon }) => {
+  ({ id, label, type = "text", value, onChange, required = false, icon: Icon, rightIcon, error }) => {
     const [isFocused, setIsFocused] = useState(false);
 
     return (
@@ -38,13 +38,15 @@ const FloatingLabelInput = React.memo(
             className={`w-full h-12 ${Icon ? "pl-10" : "pl-3.5"} ${
               rightIcon ? "pr-10" : "pr-3.5"
             } pt-3 pb-1 rounded-lg
-                    bg-white ring-1 ring-gray-200 focus:ring-2 focus:ring-blue-500
+                    bg-white ring-1 ${error ? "ring-red-500" : "ring-gray-200"} focus:ring-2 focus:ring-blue-500
                     text-gray-900 text-sm transition-all duration-200 outline-none
                     peer placeholder-transparent shadow-sm`}
             placeholder={label}
             onFocus={() => setIsFocused(true)}
             onBlur={() => value.length === 0 && setIsFocused(false)}
             autoComplete={type === "password" ? "current-password" : "username"}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${id}-error` : undefined}
           />
           <motion.label
             htmlFor={id}
@@ -54,23 +56,85 @@ const FloatingLabelInput = React.memo(
                     transform -translate-y-2 scale-75 top-2 z-10 origin-[0] 
                     peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 
                     peer-focus:scale-75 peer-focus:-translate-y-2
-                    text-gray-500 peer-focus:text-blue-500 text-sm font-medium`}
+                    ${error ? "text-red-500" : "text-gray-500"} peer-focus:text-blue-500 text-sm font-medium`}
           >
             {label}
             {required && <span className="text-red-500 ml-0.5">*</span>}
           </motion.label>
           {rightIcon}
         </div>
+        {error && (
+          <p id={`${id}-error`} className="text-red-500 text-sm mt-1 pl-3.5">
+            {error}
+          </p>
+        )}
       </div>
     );
   }
 );
 
+const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  const togglePasswordVisibility = useCallback(() => {
+    setShowPassword((prev) => !prev);
+  }, []);
+
+  return (
+    <FloatingLabelInput
+      id={id}
+      label={label}
+      type={showPassword ? "text" : "password"}
+      value={value}
+      onChange={onChange}
+      required
+      icon={Lock}
+      error={error}
+      rightIcon={
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+          <motion.button
+            type="button"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
+            onClick={togglePasswordVisibility}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {showPassword ? (
+                <motion.div
+                  key="eyeOff"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <EyeOffIcon className="h-4 w-4" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="eye"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <EyeIcon className="h-4 w-4" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </div>
+      }
+    />
+  );
+});
+
 export default function LogIn() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState([]);
   const [formData, setFormData] = useState({
     emailOrUsername: "",
     password: "",
@@ -78,44 +142,52 @@ export default function LogIn() {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.emailOrUsername) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+
+    if (!formData.emailOrUsername.trim()) {
       errors.emailOrUsername = "Email or username is required";
+    } else if (
+      !emailRegex.test(formData.emailOrUsername) && 
+      !usernameRegex.test(formData.emailOrUsername)
+    ) {
+      errors.emailOrUsername = "Invalid email or username format";
     }
+
     if (!formData.password) {
       errors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      errors.password = "Password must be at least 8 characters";
     }
+
     return errors;
   };
 
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-    setError(null);
+    setErrors([]);
   };
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setError(Object.values(errors).join(", "));
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
       return;
     }
 
-    setError(null);
+    setErrors([]);
     setIsLoading(true);
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       navigate('/dashboard');
     } catch (err) {
-      setError("An error occurred during login. Please try again.");
+      setErrors({ form: "An error occurred during login. Please try again." });
     } finally {
       setIsLoading(false);
     }
   }, [navigate, formData]);
-
-  const togglePasswordVisibility = useCallback(() => {
-    setShowPassword((prev) => !prev);
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/95 via-indigo-50/95 to-violet-50/95 backdrop-blur-sm">
@@ -127,7 +199,6 @@ export default function LogIn() {
           transition={{ duration: 0.8 }}
         >
           <div className="max-w-md mx-auto w-full space-y-6">
-            {/* Back Button Added Here */}
             <motion.div
               className="flex justify-start mb-2"
               initial={{ opacity: 0, x: -20 }}
@@ -137,6 +208,7 @@ export default function LogIn() {
               <Link
                 to="/"
                 className="text-sm text-gray-600 hover:text-blue-600 flex items-center gap-1 transition-colors"
+                aria-label="Return to homepage"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="relative">
@@ -154,14 +226,14 @@ export default function LogIn() {
                 exit={{ opacity: 0, y: 20 }}
                 transition={{ duration: 0.3 }}
               >
-                {error && (
+                {errors.form && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
-                    <Alert variant="destructive" className="shadow-lg">
-                      <AlertDescription>{error}</AlertDescription>
+                    <Alert variant="destructive" className="shadow-lg" role="alert" aria-live="assertive">
+                      <AlertDescription>{errors.form}</AlertDescription>
                     </Alert>
                   </motion.div>
                 )}
@@ -177,11 +249,11 @@ export default function LogIn() {
                   </h1>
                   <p className="text-gray-600 text-sm">
                     Don't have an account?{" "}
-                    <Link to="/signup">
+                    <Link to="/signup" className="text-blue-600 font-medium hover:text-blue-700 relative">
                       <motion.span
-                        className="text-blue-600 font-medium hover:text-blue-700 relative"
                         whileHover={{ scale: 1.05 }}
                         transition={smoothTransition}
+                        className="inline-block"
                       >
                         <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 origin-bottom transform scale-x-0 transition-transform duration-300 hover:scale-x-100" />
                         Sign up
@@ -190,7 +262,7 @@ export default function LogIn() {
                   </p>
                 </motion.div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -203,6 +275,7 @@ export default function LogIn() {
                       onChange={handleChange("emailOrUsername")}
                       required
                       icon={User}
+                      error={errors.emailOrUsername}
                     />
                   </motion.div>
 
@@ -211,54 +284,13 @@ export default function LogIn() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4 }}
                   >
-                    <div className="relative">
-                      <FloatingLabelInput
-                        id="password"
-                        label="Password"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={handleChange("password")}
-                        required
-                        icon={Lock}
-                        rightIcon={
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <motion.button
-                              type="button"
-                              aria-label={showPassword ? "Hide password" : "Show password"}
-                              aria-pressed={showPassword}
-                              className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
-                              onClick={togglePasswordVisibility}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <AnimatePresence mode="wait" initial={false}>
-                                {showPassword ? (
-                                  <motion.div
-                                    key="eyeOff"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                  >
-                                    <EyeOffIcon className="h-4 w-4" />
-                                  </motion.div>
-                                ) : (
-                                  <motion.div
-                                    key="eye"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                  >
-                                    <EyeIcon className="h-4 w-4" />
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </motion.button>
-                          </div>
-                        }
-                      />
-                    </div>
+                    <PasswordInput
+                      id="password"
+                      label="Password"
+                      value={formData.password}
+                      onChange={handleChange("password")}
+                      error={errors.password}
+                    />
                   </motion.div>
 
                   <motion.div
@@ -267,15 +299,19 @@ export default function LogIn() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <motion.a
-                      href="/forgot-password"
+                    <Link
+                      to="/forgot-password"
                       className="text-sm text-blue-600 hover:text-blue-700 relative"
-                      whileHover={{ scale: 1.02 }}
-                      transition={smoothTransition}
                     >
-                      <span className="absolute bottom-0 left-0 w-full h-px bg-current origin-left transform scale-x-0 transition-transform duration-300 hover:scale-x-100" />
-                      Forgot your password?
-                    </motion.a>
+                      <motion.span
+                        whileHover={{ scale: 1.02 }}
+                        transition={smoothTransition}
+                        className="inline-block"
+                      >
+                        <span className="absolute bottom-0 left-0 w-full h-px bg-current origin-left transform scale-x-0 transition-transform duration-300 hover:scale-x-100" />
+                        Forgot your password?
+                      </motion.span>
+                    </Link>
                   </motion.div>
 
                   <motion.button
@@ -290,6 +326,7 @@ export default function LogIn() {
                     whileTap={{ scale: 0.98 }}
                     transition={smoothTransition}
                     disabled={isLoading}
+                    aria-label={isLoading ? "Logging in..." : "Login"}
                   >
                     {isLoading ? (
                       <motion.div
@@ -328,8 +365,9 @@ export default function LogIn() {
                     </div>
                   </motion.div>
 
-                  <motion.button
-                    type="button"
+                  <motion.a
+                    href="https://accounts.google.com"
+                    rel="noopener noreferrer"
                     className="w-full h-12 border border-gray-300 text-gray-700 rounded-lg
                              font-medium flex items-center justify-center gap-2 shadow-sm
                              hover:border-gray-400 hover:shadow-md bg-white relative
@@ -362,7 +400,7 @@ export default function LogIn() {
                     </svg>
                     <span>Continue with Google</span>
                     <div className="absolute inset-0 bg-black/5 opacity-0 hover:opacity-100 transition-opacity rounded-lg" />
-                  </motion.button>
+                  </motion.a>
                 </form>
               </motion.div>
             </AnimatePresence>
@@ -391,17 +429,14 @@ export default function LogIn() {
             <motion.img 
               src="/images/headLogo.png"
               alt="Application Logo"
-              className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 w-1/2 drop-shadow-xl"
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1/2 drop-shadow-xl"
               loading="lazy"
-              initial={{ scale: 0.95, y: '-50%' }}
-              animate={{ scale: 1 }}
+              initial={{ opacity: 0.9 }}
+              animate={{ opacity: 1 }}
               transition={{ 
-                scale: {
-                  duration: 8,
-                  repeat: Infinity,
-                  repeatType: "mirror",
-                  ease: "easeInOut"
-                }
+                duration: 2,
+                repeat: Infinity,
+                repeatType: "mirror"
               }}
             />
           </div>
