@@ -214,20 +214,6 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
         <img src="https://img.shields.io/badge/GitHub-jasminemanansala-black?style=flat-square&logo=github"/>
       </a>
     </td>
-    <td align="center" width="400">
-      <img src="https://img.shields.io/badge/Role-SQA-red?style=for-the-badge&logo=testcafe&logoColor=white"/>
-      <br>
-      <img src="/api/placeholder/100/100" width="100" height="100" style="border-radius: 50%"/>
-      <br>
-      <b>Allen Murphy Bactol</b>
-      <br>
-      <sub><code>Manual Testing | Bug Tracking</code></sub>
-      <br>
-      <br>
-      <a href="https://github.com/Al-Mone">
-        <img src="https://img.shields.io/badge/GitHub-Al--Mone-black?style=flat-square&logo=github"/>
-      </a>
-    </td>
   </tr>
 </table>
 
