@@ -5,9 +5,9 @@ import Resources from "@/app/dashboard/Resources";
 import Tasks from "@/app/dashboard/Tasks";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import { Toaster } from '@/components/ui/toaster';
 
 const Dashboard = () => {
-  console.log("Dashboard Component Rendered");
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -22,6 +22,7 @@ const Dashboard = () => {
             <Route path="resources" element={<Resources />} />
             <Route path="events" element={<Events />} />
           </Routes>
+          <Toaster />
         </main>
       </div>
     </div>
