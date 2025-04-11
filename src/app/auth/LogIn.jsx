@@ -1,11 +1,10 @@
 import React, { useState, useCallback } from "react";
+import PropTypes from "prop-types";
 import { motion, AnimatePresence } from "framer-motion";
-import { EyeIcon, EyeOffIcon, Loader2, ArrowLeft } from "lucide-react";
+import { EyeIcon, EyeOffIcon, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Lock } from "lucide-react";
-
-const cn = (...classes) => classes.filter(Boolean).join(" ");
 
 const smoothTransition = {
   type: "spring",
@@ -73,6 +72,23 @@ const FloatingLabelInput = React.memo(
   }
 );
 
+// Add displayName for debugging
+FloatingLabelInput.displayName = "FloatingLabelInput";
+
+// Add PropTypes validation
+FloatingLabelInput.propTypes = {
+  id: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  type: PropTypes.string,
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  required: PropTypes.bool,
+  icon: PropTypes.elementType,
+  rightIcon: PropTypes.node,
+  error: PropTypes.string,
+};
+
+
 const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -131,6 +147,18 @@ const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
   );
 });
 
+// Add displayName for debugging
+PasswordInput.displayName = "PasswordInput";
+
+// Add PropTypes validation
+PasswordInput.propTypes = {
+  id: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  error: PropTypes.string,
+};
+
 export default function LogIn() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -141,25 +169,28 @@ export default function LogIn() {
   });
 
   const validateForm = () => {
-    const errors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const usernameRegex = /^[a-zA-Z0-9_]+$/;
 
-    if (!formData.emailOrUsername.trim()) {
+    const errors = {};
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; 
+    const usernameRegex = /^[a-zA-Z0-9_]+$/; 
+
+    const trimmedInput = formData.emailOrUsername.trim();
+    if (!trimmedInput) {
       errors.emailOrUsername = "Email or username is required";
     } else if (
-      !emailRegex.test(formData.emailOrUsername) && 
-      !usernameRegex.test(formData.emailOrUsername)
+      !emailRegex.test(trimmedInput) && 
+      !usernameRegex.test(trimmedInput)
     ) {
       errors.emailOrUsername = "Invalid email or username format";
     }
 
+    // Validate Password
     if (!formData.password) {
       errors.password = "Password is required";
-    } else if (formData.password.length < 8) {
+    } else if (formData.password.length < 8) { 
       errors.password = "Password must be at least 8 characters";
     }
-
     return errors;
   };
 
@@ -180,10 +211,11 @@ export default function LogIn() {
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000)); 
       navigate('/dashboard');
     } catch (err) {
-      setErrors({ form: "An error occurred during login. Please try again." });
+      console.error("Login error:", err); 
+      setErrors({ form: "An error occurred during login. Please try again." }); 
     } finally {
       setIsLoading(false);
     }

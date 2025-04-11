@@ -13,8 +13,8 @@ import {
   BookOpen,
   Calendar,
   X,
-  Loader2,
 } from "lucide-react";
+import PropTypes from 'prop-types'; 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const smoothTransition = {
@@ -22,8 +22,6 @@ const smoothTransition = {
   stiffness: 260,
   damping: 25,
 };
-
-const cn = (...classes) => classes.filter(Boolean).join(" ");
 
 const FloatingLabelInput = React.memo(
   ({ id, label, type = "text", value, onChange, required = false, icon: Icon, error }) => {
@@ -82,6 +80,19 @@ const FloatingLabelInput = React.memo(
   }
 );
 
+FloatingLabelInput.propTypes = {
+  id: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  type: PropTypes.string,
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  required: PropTypes.bool,
+  icon: PropTypes.elementType,
+  error: PropTypes.string,
+};
+
+FloatingLabelInput.displayName = 'FloatingLabelInput';
+
 const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -135,6 +146,16 @@ const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
   );
 });
 
+PasswordInput.propTypes = {
+  id: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  error: PropTypes.string,
+};
+
+PasswordInput.displayName = 'PasswordInput';
+
 const SelectInput = React.memo(({ value, onChange, options, label, icon: Icon, error }) => (
   <div className="relative w-full group">
     <div className="relative flex items-center">
@@ -171,6 +192,21 @@ const SelectInput = React.memo(({ value, onChange, options, label, icon: Icon, e
   </div>
 ));
 
+SelectInput.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  options: PropTypes.arrayOf(PropTypes.shape({
+    value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    label: PropTypes.string.isRequired,
+    disabled: PropTypes.bool,
+  })).isRequired,
+  label: PropTypes.string.isRequired,
+  icon: PropTypes.elementType,
+  error: PropTypes.string,
+};
+
+SelectInput.displayName = 'SelectInput';
+
 const SignUp = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -188,71 +224,121 @@ const SignUp = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const validateStep1 = useCallback(() => {
-    const errors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!formData.firstname.trim()) errors.firstname = "First name is required";
-    if (!formData.lastname.trim()) errors.lastname = "Last name is required";
-    if (!formData.email) {
-      errors.email = "Email is required";
-    } else if (!emailRegex.test(formData.email)) {
-      errors.email = "Invalid email format";
+  // --- Validation Logic ---
+  const validateField = useCallback((name, value) => {
+    switch (name) {
+      case 'firstname':
+        return !value.trim() ? "First name is required" : "";
+      case 'lastname':
+        return !value.trim() ? "Last name is required" : "";
+      case 'email': {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value) return "Email is required";
+        return !emailRegex.test(value) ? "Invalid email format" : "";
+      }
+      case 'password': {
+        if (!value) return "Password is required";
+        const minLength = 8;
+        const hasUpperCase = /[A-Z]/.test(value);
+        const hasLowerCase = /[a-z]/.test(value);
+        const hasNumber = /[0-9]/.test(value);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(value);
+        if (value.length < minLength) return `Password must be at least ${minLength} characters`;
+        if (!hasUpperCase) return "Password must include an uppercase letter";
+        if (!hasLowerCase) return "Password must include a lowercase letter";
+        if (!hasNumber) return "Password must include a number";
+        if (!hasSpecialChar) return "Password must include a special character";
+        return "";
+      }
+      case 'studentNo':
+        return !value.trim() ? "Student number is required" : "";
+      case 'course':
+        return !value ? "Course is required" : "";
+      case 'yearLevel':
+        return !value ? "Year level is required" : "";
+      default:
+        return "";
     }
-    if (!formData.password) {
-      errors.password = "Password is required";
-    } else if (formData.password.length < 8) {
-      errors.password = "Password must be at least 8 characters";
+  }, []);
+
+  const validateStep = useCallback((stepToValidate) => {
+    const errors = {};
+    const fieldsToValidate = stepToValidate === 1
+      ? ['firstname', 'lastname', 'email', 'password']
+      : ['studentNo', 'course', 'yearLevel'];
+
+    fieldsToValidate.forEach(field => {
+      const error = validateField(field, formData[field]);
+      if (error) errors[field] = error;
+    });
+
+    if (stepToValidate === 2 && !acceptedTerms) {
+      errors.terms = "You must accept the terms and conditions";
     }
 
     return errors;
-  }, [formData]);
+  }, [formData, acceptedTerms, validateField]);
+  // --- End Validation Logic ---
 
-  const validateStep2 = useCallback(() => {
-    const errors = {};
-    if (!formData.studentNo.trim()) errors.studentNo = "Student number is required";
-    if (!formData.course) errors.course = "Course is required";
-    if (!formData.yearLevel) errors.yearLevel = "Year level is required";
-    return errors;
-  }, [formData]);
-
-  const handleSubmitStep1 = useCallback((e) => {
-    e.preventDefault();
-    const errors = validateStep1();
-    if (Object.keys(errors).length > 0) {
-      setErrors(errors);
-      return;
-    }
-    setErrors({});
-    setStep(2);
-  }, [validateStep1]);
-
-  const handleSubmitStep2 = useCallback(async (e) => {
-    e.preventDefault();
-    const errors = validateStep2();
-    if (Object.keys(errors).length > 0) {
-      setErrors(errors);
-      return;
-    }
-    if (!acceptedTerms) {
-      setErrors({ terms: "You must accept the terms and conditions" });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      navigate('/dashboard');
-    } catch (error) {
-      setErrors({ form: "Registration failed. Please try again." });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [acceptedTerms, validateStep2, navigate]);
+  const handleInputChange = useCallback((e) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+    const error = validateField(id, value);
+    setErrors(prev => ({ ...prev, [id]: error }));
+  }, [validateField]);
 
   const clearError = useCallback((field) => {
     setErrors(prev => ({ ...prev, [field]: "" }));
   }, []);
+
+  const handleSubmitStep1 = useCallback((e) => {
+    e.preventDefault();
+    const stepErrors = validateStep(1);
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
+      return;
+    }
+    setErrors({});
+    setStep(2);
+  }, [validateStep]);
+
+  const handleSubmitStep2 = useCallback(async (e) => {
+    e.preventDefault();
+    const stepErrors = validateStep(2);
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
+      return;
+    }
+
+    setIsLoading(true);
+    setErrors({});
+
+    // --- Secure API Call Placeholder ---
+    // IMPORTANT: Replace this mock delay with a real API call
+    // - Use HTTPS for all communication.
+    // - Send data securely (e.g., as JSON payload).
+    // - Implement robust server-side validation for all fields.
+    // - Handle potential API errors gracefully (network issues, server errors).
+    // - Implement server-side rate limiting to prevent brute-force attacks.
+    // - Consider CSRF protection if using session-based authentication.
+    try {
+      console.log("Submitting registration data:", formData); // Log data for debugging (remove in production)
+      // Example: const response = await fetch('/api/register', { method: 'POST', ... });
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
+
+      // Assuming successful registration:
+      navigate('/dashboard'); // Or to an email verification page
+
+    } catch (error) {
+      console.error("Registration failed:", error);
+      // Provide user-friendly error messages. Avoid exposing internal details.
+      setErrors({ form: "Registration failed. Please check your details or try again later." });
+    } finally {
+      setIsLoading(false);
+    }
+    // --- End Secure API Call Placeholder ---
+
+  }, [formData, validateStep, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 backdrop-blur-sm">
@@ -329,10 +415,7 @@ const SignUp = () => {
                         id="firstname"
                         label="First Name"
                         value={formData.firstname}
-                        onChange={(e) => {
-                          setFormData(prev => ({ ...prev, firstname: e.target.value }));
-                          clearError('firstname');
-                        }}
+                        onChange={handleInputChange}
                         error={errors.firstname}
                         required
                         icon={User}
@@ -341,10 +424,7 @@ const SignUp = () => {
                         id="lastname"
                         label="Last Name"
                         value={formData.lastname}
-                        onChange={(e) => {
-                          setFormData(prev => ({ ...prev, lastname: e.target.value }));
-                          clearError('lastname');
-                        }}
+                        onChange={handleInputChange}
                         error={errors.lastname}
                         required
                         icon={User}
@@ -356,25 +436,26 @@ const SignUp = () => {
                       label="Email Address"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => {
-                        setFormData(prev => ({ ...prev, email: e.target.value }));
-                        clearError('email');
-                      }}
+                      onChange={handleInputChange}
                       error={errors.email}
                       required
                       icon={Mail}
                     />
 
-                    <PasswordInput
-                      id="password"
-                      label="Password"
-                      value={formData.password}
-                      onChange={(e) => {
-                        setFormData(prev => ({ ...prev, password: e.target.value }));
-                        clearError('password');
-                      }}
-                      error={errors.password}
-                    />
+                    <div>
+                      <PasswordInput
+                        id="password"
+                        label="Password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        error={errors.password}
+                      />
+                      {errors.password && !formData.password && ( 
+                        <p className="text-gray-500 text-xs mt-1 pl-1">
+                          Minimum of 8 characterss, upper, lower, number, special char.
+                        </p>
+                      )}
+                    </div>
 
                     <motion.button
                       type="submit"
@@ -459,62 +540,59 @@ const SignUp = () => {
                   </div>
 
                   <form onSubmit={handleSubmitStep2} className="space-y-5" noValidate>
-                    <FloatingLabelInput
-                      id="studentNo"
-                      label="Student Number"
-                      value={formData.studentNo}
-                      onChange={(e) => {
-                        setFormData(prev => ({ ...prev, studentNo: e.target.value }));
-                        clearError('studentNo');
-                      }}
-                      error={errors.studentNo}
-                      required
-                      icon={GraduationCap}
-                    />
+                      <FloatingLabelInput
+                        id="studentNo"
+                        label="Student Number"
+                        value={formData.studentNo}
+                        onChange={handleInputChange}
+                        error={errors.studentNo}
+                        required
+                        icon={GraduationCap}
+                      />
 
                     <SelectInput
                       value={formData.course}
-                      onChange={(e) => {
-                        setFormData(prev => ({ ...prev, course: e.target.value }));
-                        clearError('course');
-                      }}
+                      onChange={(e) => handleInputChange({ target: { id: 'course', value: e.target.value } })}
                       options={[
+                        { value: "", label: "Select Course", disabled: true }, 
                         { value: "BSIS", label: "Bachelor of Science in Information Systems" },
                         { value: "ACT", label: "Associate in Computer Technology" },
                       ]}
-                      label="Select Course"
+                      label="Course"
                       icon={BookOpen}
                       error={errors.course}
                     />
 
                     <SelectInput
                       value={formData.yearLevel}
-                      onChange={(e) => {
-                        setFormData(prev => ({ ...prev, yearLevel: e.target.value }));
-                        clearError('yearLevel');
-                      }}
+                      onChange={(e) => handleInputChange({ target: { id: 'yearLevel', value: e.target.value } })}
                       options={[
+                        { value: "", label: "Select Year Level", disabled: true },
                         { value: "1", label: "First Year" },
                         { value: "2", label: "Second Year" },
                         { value: "3", label: "Third Year" },
                         { value: "4", label: "Fourth Year" },
                       ]}
-                      label="Select Year Level"
+                      label="Year Level"
                       icon={Calendar}
                       error={errors.yearLevel}
                     />
 
-                    <div className="flex items-start space-x-2">
+                    <div className="flex items-start space-x-2 pt-1">
                       <motion.input
                         type="checkbox"
                         id="terms"
                         checked={acceptedTerms}
                         onChange={(e) => {
                           setAcceptedTerms(e.target.checked);
-                          clearError('terms');
+                          if (!e.target.checked && errors.terms) {
+                             setErrors(prev => ({ ...prev, terms: "You must accept the terms and conditions" }));
+                          } else {
+                             clearError('terms');
+                          }
                         }}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 
-                                  focus:ring-blue-500 transition-all duration-200"
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600
+                                  focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                       />

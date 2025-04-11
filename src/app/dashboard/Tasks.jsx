@@ -1,8 +1,23 @@
-import { Calendar, PlusCircle, Trash2, Edit2, Search, CheckCircle2, AlertCircle, ArrowUp } from "lucide-react";
+import {
+  Calendar,
+  PlusCircle,
+  Trash2,
+  Edit2,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  ArrowUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import TaskModal from "@/components/modal/AddTaskModal";
@@ -25,7 +40,7 @@ const Tasks = () => {
     handleDeleteTask,
     handleStatusChange,
     filteredTasks,
-    stats
+    stats,
   } = useTasks(toast);
 
   return (
@@ -40,10 +55,29 @@ const Tasks = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <StatCard title="Total Tasks" value={stats.total} icon={<CheckCircle2 />} />
-          <StatCard title="Completed" value={stats.completed} icon={<CheckCircle2 />} variant="success" />
-          <StatCard title="In Progress" value={stats.inProgress} icon={<ArrowUp />} variant="info" />
-          <StatCard title="Overdue" value={stats.overdue} icon={<AlertCircle />} variant="destructive" />
+          <StatCard
+            title="Total Tasks"
+            value={stats.total}
+            icon={<CheckCircle2 />}
+          />
+          <StatCard
+            title="Completed"
+            value={stats.completed}
+            icon={<CheckCircle2 />}
+            variant="success"
+          />
+          <StatCard
+            title="In Progress"
+            value={stats.inProgress}
+            icon={<ArrowUp />}
+            variant="info"
+          />
+          <StatCard
+            title="Overdue"
+            value={stats.overdue}
+            icon={<AlertCircle />}
+            variant="destructive"
+          />
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -83,7 +117,7 @@ const Tasks = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTasks.map(task => (
+          {filteredTasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
@@ -92,7 +126,9 @@ const Tasks = () => {
                 setIsModalOpen(true);
               }}
               onDelete={() => handleDeleteTask(task.id)}
-              onStatusChange={(newStatus) => handleStatusChange(task.id, newStatus)}
+              onStatusChange={(newStatus) =>
+                handleStatusChange(task.id, newStatus)
+              }
             />
           ))}
         </div>
@@ -113,15 +149,15 @@ const Tasks = () => {
 
 const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
   const statusColors = {
-    'not-started': 'bg-gray-100 text-gray-800',
-    'in-progress': 'bg-blue-100 text-blue-800',
-    'completed': 'bg-green-100 text-green-800'
+    "not-started": "bg-gray-100 text-gray-800",
+    "in-progress": "bg-blue-100 text-blue-800",
+    completed: "bg-green-100 text-green-800",
   };
 
   const priorityColors = {
-    'High': 'text-red-600',
-    'Medium': 'text-amber-600',
-    'Low': 'text-emerald-600'
+    High: "text-red-600",
+    Medium: "text-amber-600",
+    Low: "text-emerald-600",
   };
 
   return (
@@ -131,10 +167,14 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{task.name}</h3>
-              <Badge className={`${priorityColors[task.priority]} border-2 bg-white hover:bg-gray-200`}>
+              <Badge
+                className={`${
+                  priorityColors[task.priority]
+                } border-2 bg-white hover:bg-gray-200`}
+              >
                 {task.priority} Priority
               </Badge>
-            </div>  
+            </div>
             <p className="text-sm text-gray-600">{task.description}</p>
           </div>
           <div className="flex gap-2">
@@ -168,12 +208,12 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
   );
 };
 
-const StatCard = ({ title, value, icon, variant = 'default' }) => {
+const StatCard = ({ title, value, icon, variant = "default" }) => {
   const variants = {
-    default: 'bg-white text-gray-900',
-    success: 'bg-green-50 text-green-800',
-    info: 'bg-blue-50 text-blue-800',
-    destructive: 'bg-red-50 text-red-800'
+    default: "bg-white text-gray-900",
+    success: "bg-green-50 text-green-800",
+    info: "bg-blue-50 text-blue-800",
+    destructive: "bg-red-50 text-red-800",
   };
 
   return (
@@ -183,9 +223,7 @@ const StatCard = ({ title, value, icon, variant = 'default' }) => {
           <h3 className="text-sm font-medium">{title}</h3>
           <p className="text-2xl font-bold">{value}</p>
         </div>
-        <div className="p-2 rounded-full">
-          {icon}
-        </div>
+        <div className="p-2 rounded-full">{icon}</div>
       </CardContent>
     </Card>
   );
