@@ -7,6 +7,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Archive
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ const navigation = [
   { name: "Tasks", href: "/dashboard/tasks", icon: ListTodo },
   { name: "Resources", href: "/dashboard/resources", icon: BookOpen },
   { name: "Events", href: "/dashboard/events", icon: Calendar },
+  { name: "Archive", href: "/dashboard/archive", icon: Archive }
 ];
 
 const NavigationItem = memo(({ item, isCollapsed, isActive }) => {
