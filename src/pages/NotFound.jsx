@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 
 const smoothTransition = {
@@ -9,6 +9,12 @@ const smoothTransition = {
 }
 
 export default function NotFound() {
+  const navigate = useNavigate();
+  
+  const handleGoBack = () => {
+    navigate(-1); 
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 flex items-center justify-center px-4">
       <motion.div
@@ -38,8 +44,9 @@ export default function NotFound() {
           transition={{ delay: 0.6, duration: 0.8 }}
         >
           <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-          <Link to="/" className="relative block">
+          <div className="relative block">
             <motion.button
+              onClick={handleGoBack}
               className="w-full py-3 px-6 bg-white text-blue-600 rounded-lg font-medium shadow-sm 
                          hover:shadow-lg transition-all duration-300 ease-in-out
                          flex items-center justify-center gap-2 group"
@@ -47,9 +54,9 @@ export default function NotFound() {
               whileTap={{ scale: 0.98 }}
             >
               <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-              Back to Home
+              Back
             </motion.button>
-          </Link>
+          </div>
         </motion.div>
 
         <motion.div
@@ -70,4 +77,3 @@ export default function NotFound() {
     </div>
   )
 }
-
