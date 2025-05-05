@@ -6,6 +6,7 @@ import Tasks from "@/app/dashboard/Tasks";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 import Archive from "@/app/dashboard/Archive";
+import Users from "@/app/dashboard/Users";
 import { Toaster } from '@/components/ui/toaster';
 
 const Dashboard = () => {
@@ -23,6 +24,7 @@ const Dashboard = () => {
             <Route path="resources" element={<Resources />} />
             <Route path="events" element={<Events />} />
             <Route path="archive" element={<Archive />} />
+            <Route path="users" element={<Users />} />
           </Routes>
           <Toaster />
         </main>
