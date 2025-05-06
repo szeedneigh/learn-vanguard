@@ -1,510 +1,373 @@
-import React, { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Info, Edit, Trash } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import PropTypes from 'prop-types';
-// Import hook, constants, AND the helper function
-import { useCalendarState, courseColors, statusClasses, capitalize, toLocaleDateStringISO } from "@/lib/hooks/useCalendarState";
+import React, { useState, useCallback } from "react";
+import dayjs from "dayjs";
+import isoWeek from "dayjs/plugin/isoWeek";
 
+dayjs.extend(isoWeek);
 
-function CalendarHeader({ currentDate, currentView, onPrevious, onNext, onViewChange, onAddTask }) {
-  const formattedDate = useMemo(() => {
-    if (currentView === "month") {
-      return currentDate.toLocaleString("default", { month: "long", year: "numeric" });
-    } else if (currentView === "week") {
-      const startOfWeek = new Date(currentDate);
-      startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      return `Week of ${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}`;
-    } else {
-      return currentDate.toLocaleDateString("default", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const Events = () => {
+  const [view, setView] = useState("month"); // "day", "week", "month"
+  const [currentDate, setCurrentDate] = useState(dayjs());
+  const [events, setEvents] = useState([
+    { date: "2025-01-13", title: "Project Deadline" },
+    { date: "2025-01-13", title: "Team Meeting" },
+    { date: "2025-01-16", title: "CT Project Deadline" },
+    { date: "2025-01-20", title: "Clearance" },
+    { date: "2025-01-25", title: "Appdev Project Submission" },
+  ]); // Static events data
+  const [showAddEvent, setShowAddEvent] = useState(false); // Modal visibility
+  const [newEvent, setNewEvent] = useState({ date: "", title: "" }); // New event data
+  const [showMoreEvents, setShowMoreEvents] = useState(false); // Modal for "View More"
+  const [selectedDate, setSelectedDate] = useState(null); // Date for "View More" modal
+  const today = dayjs();
+
+  const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const startOfMonth = currentDate.startOf("month");
+  const endOfMonth = currentDate.endOf("month");
+  const startOfWeek = currentDate.startOf("isoWeek");
+  const endOfWeek = currentDate.endOf("isoWeek");
+
+  const handlePrev = useCallback(() => {
+    setCurrentDate((prev) =>
+      view === "month"
+        ? prev.subtract(1, "month")
+        : view === "week"
+        ? prev.subtract(1, "week")
+        : prev.subtract(1, "day")
+    );
+  }, [view]);
+
+  const handleNext = useCallback(() => {
+    setCurrentDate((prev) =>
+      view === "month"
+        ? prev.add(1, "month")
+        : view === "week"
+        ? prev.add(1, "week")
+        : prev.add(1, "day")
+    );
+  }, [view]);
+
+  const handleToday = useCallback(() => {
+    setCurrentDate(today);
+  }, [today]);
+
+  const handleShowAddEvent = () => {
+    setNewEvent((prevEvent) => ({
+      ...prevEvent,
+      date: view === "day" ? currentDate.format("YYYY-MM-DD") : "",
+    }));
+    setShowAddEvent(true);
+  };
+  
+
+  const handleAddEvent = useCallback(() => {
+    if (!newEvent.date || !newEvent.title.trim()) {
+      alert("Please provide a valid date and title.");
+      return;
     }
-  }, [currentDate, currentView]);
+    setEvents((prevEvents) => [
+      ...prevEvents,
+      { ...newEvent, date: dayjs(newEvent.date).format("YYYY-MM-DD") },
+    ]);
+    setShowAddEvent(false);
+    setNewEvent({ date: "", title: "" });
+  }, [newEvent]);
 
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-2">
-        <Button variant="outline" size="icon" onClick={onPrevious}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <h2 className="text-xl font-bold min-w-[200px] text-center">{formattedDate}</h2>
-        <Button variant="outline" size="icon" onClick={onNext}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="flex items-center space-x-2">
-        <Select value={currentView} onValueChange={onViewChange}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="Select view" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="month">Month</SelectItem>
-            <SelectItem value="week">Week</SelectItem>
-            <SelectItem value="day">Day</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button onClick={onAddTask}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Task
-        </Button>
-      </div>
-    </div>
+  const handleDeleteEvent = useCallback(
+    (eventToDelete) => {
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event !== eventToDelete)
+      );
+    },
+    [events]
   );
-}
 
-// Prop types for CalendarHeader
-CalendarHeader.propTypes = {
-  currentDate: PropTypes.instanceOf(Date).isRequired,
-  currentView: PropTypes.oneOf(['month', 'week', 'day']).isRequired,
-  onPrevious: PropTypes.func.isRequired,
-  onNext: PropTypes.func.isRequired,
-  onViewChange: PropTypes.func.isRequired,
-  onAddTask: PropTypes.func.isRequired,
-};
+  const handleDayClick = (date) => {
+    setView("day");
+    setCurrentDate(date);
+  };
 
+  const handleViewMoreClick = (date) => {
+    setSelectedDate(date);
+    setShowMoreEvents(true);
+  };
 
-function CalendarGrid({ grid, view, onTaskClick }) {
-  // Use the imported helper to get today's date string in local timezone
-  const todayDateString = toLocaleDateStringISO(new Date());
-
-  return (
-    <Card>
-      <CardContent className="p-0">
-        {view !== "day" && (
-          <div className="grid grid-cols-7 border-b text-center">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className="border-r p-2 font-medium text-sm text-muted-foreground last:border-r-0">
-                {day}
+  const renderDays = () => {
+    const days = [];
+    let dateIterator =
+      view === "month" ? startOfMonth.startOf("isoWeek") : startOfWeek;
+  
+    const isWithinRange = (date) =>
+      view === "month"
+        ? date.isBefore(endOfMonth.endOf("isoWeek").add(1, "day"))
+        : date.isBefore(endOfWeek.add(1, "day"));
+  
+    while (isWithinRange(dateIterator)) {
+      days.push(dateIterator);
+      dateIterator = dateIterator.add(1, "day");
+    }
+  
+    if (view === "week") {
+      days.splice(7);
+    }
+  
+    return days.map((date, idx) => (
+      <div
+        key={idx}
+        className={`border p-5 h-32 flex flex-col relative cursor-pointer ${
+          date.isSame(currentDate, "month") || view === "week"
+            ? ""
+            : "text-gray-400"
+        } ${
+          date.isSame(today, "day")
+            ? "border-blue-500 border-2 text-blue-500 font-bold"
+            : ""
+        }`}
+        onClick={() => handleDayClick(date)}
+      >
+        <div className="text-sm font-medium">{date.date()}</div>
+        <div className="flex-1 overflow-hidden">
+          {events
+            .filter((event) => dayjs(event.date).isSame(date, "day"))
+            .slice(0, 2)
+            .map((event, eventIdx) => (
+              <div
+                key={eventIdx}
+                className="text-xs bg-blue-100 text-blue-700 p-1 rounded mt-1"
+              >
+                {event.title}
               </div>
             ))}
-          </div>
+        </div>
+        {events.filter((event) => dayjs(event.date).isSame(date, "day")).length >
+          2 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewMoreClick(date);
+            }}
+            className="text-xs text-gray-500 mt-1 underline"
+          >
+            + More
+          </button>
         )}
-        <div className={`grid ${view === "day" ? "grid-cols-1" : "grid-cols-7"}`}>
-          {grid.map((week, weekIndex) =>
-            week.map((cell, dayIndex) => (
-              <div
-                key={`${weekIndex}-${dayIndex}`}
-                className={`min-h-[120px] border-b border-r p-1 last:border-r-0 ${!cell.isCurrentMonth ? "bg-muted/30 text-muted-foreground" : "bg-background"} ${weekIndex === grid.length - 1 ? 'border-b-0' : ''}`}
+      </div>
+    ));
+  };
+  
+
+  const renderDayView = () => {
+    const dayEvents = events.filter((event) =>
+      dayjs(event.date).isSame(currentDate, "day")
+    );
+
+    return (
+      <div>
+        <h3 className="text-lg font-semibold mb-4">
+          Events on {currentDate.format("MMMM D, YYYY")}
+        </h3>
+        <ul>
+          {dayEvents.length > 0 ? (
+            dayEvents.map((event, idx) => (
+              <li
+                key={idx}
+                className="border p-4 rounded-lg mb-2 bg-gray-100 text-gray-800"
               >
-                <div className="flex justify-between items-center p-1">
-                  <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-full text-sm font-medium ${
-                      // Compare cell's local date string with today's local date string
-                      cell.dateString === todayDateString ? "bg-primary text-primary-foreground" : ""
-                    }`}
-                  >
-                    {cell.day}
-                  </span>
-                  {cell.tasks?.length > 0 && (
-                    <Badge variant="secondary" className="text-xs px-1.5">
-                      {cell.tasks.length} task{cell.tasks.length > 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                </div>
-                <ScrollArea className="h-[80px] pr-2">
-                  <div className="space-y-1 p-1">
-                    {cell.tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={() => onTaskClick(task)}
-                        className={`${statusClasses[task.status]} flex items-center rounded px-1.5 py-0.5 text-xs cursor-pointer hover:opacity-80 border`}
-                      >
-                        <div className={`${courseColors[task.course] || 'bg-gray-500'} mr-1.5 h-2 w-2 rounded-full flex-shrink-0`} />
-                        <span className="truncate flex-grow">{task.title}</span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Prop types for CalendarGrid
-CalendarGrid.propTypes = {
-    grid: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.shape({
-        day: PropTypes.number.isRequired,
-        dateString: PropTypes.string.isRequired,
-        isCurrentMonth: PropTypes.bool.isRequired,
-        tasks: PropTypes.arrayOf(PropTypes.object).isRequired,
-    }))).isRequired,
-    view: PropTypes.oneOf(['month', 'week', 'day']).isRequired,
-    onTaskClick: PropTypes.func.isRequired,
-};
-
-function UpcomingDeadlines({ tasks, onTaskClick }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Upcoming Deadlines</CardTitle>
-        <CardDescription>Tasks due in the next 7 days (excluding completed).</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[200px] pr-4">
-          <div className="space-y-2">
-            {tasks.length > 0 ? (
-              tasks.map((task) => (
-                <div
-                  key={task.id}
-                  onClick={() => onTaskClick(task)}
-                  className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                {event.title}
+                <button
+                  onClick={() => handleDeleteEvent(event)}
+                  className="ml-4 text-red-500 text-sm font-bold"
                 >
-                  <div className="flex items-center space-x-3 overflow-hidden">
-                    <div className={`${courseColors[task.course] || 'bg-gray-500'} h-10 w-1 rounded-full flex-shrink-0`} />
-                    <div className="overflow-hidden">
-                      <h4 className="font-medium truncate">{task.title}</h4>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {/* Ensure date display is consistent, consider using toLocaleDateStringISO if needed */}
-                        {task.course} • Due: {new Date(task.date + 'T00:00:00').toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                  <Badge className={`${statusClasses[task.status]} ml-2 flex-shrink-0`}>
-                    {capitalize(task.status)}
-                  </Badge>
-                </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
-                <Info className="h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">No upcoming deadlines in the next 7 days.</p>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  );
-}
+                  Delete
+                </button>
+              </li>
+            ))
+          ) : (
+            <p className="text-gray-500">No events for this day.</p>
+          )}
+        </ul>
+        <button
+          onClick={() => setView("month")}
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-700"
+        >
+          Back to Month View
+        </button>
+      </div>
+    );
+  };
 
-UpcomingDeadlines.propTypes = {
-    tasks: PropTypes.arrayOf(PropTypes.shape({
-        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-        title: PropTypes.string.isRequired,
-        date: PropTypes.string.isRequired,
-        status: PropTypes.string.isRequired,
-        priority: PropTypes.string.isRequired,
-        course: PropTypes.string.isRequired,
-        description: PropTypes.string,
-    })).isRequired,
-    onTaskClick: PropTypes.func.isRequired,
-};
+  const renderMoreEventsModal = () => {
+    const moreEvents = events.filter((event) =>
+      dayjs(event.date).isSame(selectedDate, "day")
+    );
 
-function TaskDetailDialog({ task, open, onOpenChange, onEdit, onDelete }) {
-  if (!task) return null;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{task.title}</DialogTitle>
-          {/* Ensure date display is consistent */}
-          <DialogDescription>Due: {new Date(task.date + 'T00:00:00').toLocaleDateString()}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="flex flex-wrap gap-2">
-            <Badge className={statusClasses[task.status]}>
-              {capitalize(task.status)}
-            </Badge>
-            <Badge variant="outline">{capitalize(task.priority)} priority</Badge>
+    return (
+      showMoreEvents && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-4 rounded-lg shadow-lg w-96">
+            <h3 className="text-lg font-semibold mb-4">
+              Events on {dayjs(selectedDate).format("MMMM D, YYYY")}
+            </h3>
+            <ul>
+              {moreEvents.map((event, idx) => (
+                <li
+                  key={idx}
+                  className="border p-4 rounded-lg mb-2 bg-gray-100 text-gray-800"
+                >
+                  {event.title}
+                  <button
+                    onClick={() => handleDeleteEvent(event)}
+                    className="ml-4 text-red-500 text-sm font-bold"
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => setShowMoreEvents(false)}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg"
+            >
+              Close
+            </button>
           </div>
-          <div>
-            <h4 className="text-sm font-medium mb-1 text-muted-foreground">Course</h4>
-            <div className="flex items-center">
-              <div className={`${courseColors[task.course] || 'bg-gray-500'} h-3 w-3 rounded-full mr-2 flex-shrink-0`} />
-              <span>{task.course}</span>
-            </div>
-          </div>
-          {task.description && (
-             <div>
-               <h4 className="text-sm font-medium mb-1 text-muted-foreground">Description</h4>
-               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
-             </div>
-           )}
         </div>
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onDelete(task.id)}>
-            <Trash className="mr-2 h-4 w-4" /> Delete
-          </Button>
-          <Button onClick={() => onEdit(task)}>
-            <Edit className="mr-2 h-4 w-4" /> Edit
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-TaskDetailDialog.propTypes = {
-    task: PropTypes.shape({
-        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-        title: PropTypes.string.isRequired,
-        date: PropTypes.string.isRequired,
-        status: PropTypes.string.isRequired,
-        priority: PropTypes.string.isRequired,
-        course: PropTypes.string.isRequired,
-        description: PropTypes.string,
-    }),
-    open: PropTypes.bool.isRequired,
-    onOpenChange: PropTypes.func.isRequired,
-    onEdit: PropTypes.func.isRequired,
-    onDelete: PropTypes.func.isRequired,
-};
-
-
-function TaskFormDialog({ open, onOpenChange, task, onSave, onCancel }) {
-  const [formData, setFormData] = useState({});
-  const isEditMode = !!task;
-
-  React.useEffect(() => {
-    if (open) {
-      setFormData(
-        task || {
-          title: "",
-          // Default date input to local 'YYYY-MM-DD'
-          date: toLocaleDateStringISO(new Date()),
-          description: "",
-          course: Object.keys(courseColors)[0] || "General",
-          priority: "medium",
-          status: "not-started",
-        }
-      );
-    }
-  }, [task, open]);
-
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+      )
+    );
   };
-
-  const handleSelectChange = (name, value) => {
-     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.title || !formData.date) {
-        console.error("Title and Date are required.");
-        return;
-    };
-    onSave(formData);
-  };
-
-
-  const handleDialogClose = (isOpen) => {
-      if (!isOpen) {
-          onCancel();
-      }
-      onOpenChange(isOpen);
-  }
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{isEditMode ? "Edit Task" : "Add New Task"}</DialogTitle>
-          <DialogDescription>
-            {isEditMode ? "Update the details for this task." : "Fill in the details for the new task."}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          {/* Title */}
-          <div className="space-y-1">
-            <label htmlFor="title" className="text-sm font-medium">Title</label>
-            <Input
-              id="title"
-              name="title"
-              value={formData.title || ''}
-              onChange={handleInputChange}
-              placeholder="e.g., Complete project proposal"
-              required
-              autoFocus
+    <div className="bg-white rounded-lg shadow-md p-4">
+      {/* Add Event Modal */}
+      {showAddEvent && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 pointer-events-auto"
+          onClick={() => setShowAddEvent(false)}
+        >
+          <div
+            className="bg-white p-4 rounded-lg shadow-lg w-96 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-2">Add Event</h3>
+            <input
+              type="date"
+              value={newEvent.date}
+              onChange={(e) =>
+                setNewEvent({ ...newEvent, date: e.target.value })
+              }
+              className="w-full border rounded p-2 mb-2"
             />
-          </div>
-
-          {/* Date & Course */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label htmlFor="date" className="text-sm font-medium">Due Date</label>
-              <Input
-                id="date"
-                name="date"
-                type="date"
-                value={formData.date || ''}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="course" className="text-sm font-medium">Course / Category</label>
-              <Select name="course" value={formData.course || ''} onValueChange={(value) => handleSelectChange('course', value)}>
-                <SelectTrigger id="course">
-                  <SelectValue placeholder="Select course" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(courseColors).map((course) => (
-                    <SelectItem key={course} value={course}>
-                      {course}
-                    </SelectItem>
-                  ))}
-                   <SelectItem value="General">General</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Priority & Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label htmlFor="priority" className="text-sm font-medium">Priority</label>
-              <Select name="priority" value={formData.priority || ''} onValueChange={(value) => handleSelectChange('priority', value)}>
-                <SelectTrigger id="priority">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="urgent">Urgent</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="status" className="text-sm font-medium">Status</label>
-              <Select name="status" value={formData.status || ''} onValueChange={(value) => handleSelectChange('status', value)}>
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(statusClasses).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {capitalize(status)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-1">
-            <label htmlFor="description" className="text-sm font-medium">Description (Optional)</label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description || ''}
-              onChange={handleInputChange}
-              placeholder="Add any relevant details or notes..."
-              rows={3}
+            <input
+              type="text"
+              value={newEvent.title}
+              maxLength={30}
+              onChange={(e) =>
+                setNewEvent({ ...newEvent, title: e.target.value })
+              }
+              placeholder="Event Title (Max 30 characters)"
+              className="w-full border rounded p-2 mb-2"
             />
+            <p className="text-right text-sm text-gray-500">
+              {30 - newEvent.title.length} characters remaining
+            </p>
+            <div className="flex justify-end space-x-2 mt-2">
+              <button
+                onClick={() => setShowAddEvent(false)}
+                className="px-4 py-2 bg-gray-200 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddEvent}
+                className="px-4 py-2 bg-blue-500 text-white rounded"
+                disabled={!newEvent.title || !newEvent.date}
+              >
+                Add Event
+              </button>
+            </div>
           </div>
+        </div>
+      )}
 
-          {/* Footer */}
-          <DialogFooter className="mt-4">
-            <Button variant="outline" type="button" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button type="submit">{isEditMode ? "Save Changes" : "Create Task"}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+      {/* Header */}
+      <header className="flex justify-between items-center mb-3">
+        <div>
+          <h2 className="text-3xl font-semibold mb-3">
+            {currentDate.format("MMMM YYYY")}
+          </h2>
+          <nav className="flex space-x-4 mb-4">
+            <button
+              onClick={() => setView("day")}
+              className={`px-3 py-1 text-m rounded ${
+                view === "day" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-blue-500 hover:text-white"
+              }`}
+            >
+              Day
+            </button>
+            <button
+              onClick={() => setView("week")}
+              className={`px-3 py-1 text-sm rounded ${
+                view === "week" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-blue-500 hover:text-white"
+              }`}
+            >
+              Week
+            </button>
+            <button
+              onClick={() => setView("month")}
+              className={`px-3 py-1 text-sm rounded ${
+                view === "month" ? "bg-blue-500 text-white" : "bg-gray-200 hover:bg-blue-500 hover:text-white"
+              }`}
+            >
+              Month
+            </button>
+          </nav>
+        </div>
+        <div className="space-x-2">
+          <button onClick={handlePrev} className="px-3 py-1 bg-gray-200 rounded hover:bg-blue-500 hover:text-white">
+            {"<"}
+          </button>
+          <button onClick={handleToday} className="px-3 py-1 bg-gray-200 rounded hover:bg-blue-500 hover:text-white">
+            Today
+          </button>
+          <button onClick={handleNext} className="px-3 py-1 bg-gray-200 rounded hover:bg-blue-500 hover:text-white">
+            {">"}
+          </button>
+        </div>
+      </header>
 
-// Prop types for TaskFormDialog
-TaskFormDialog.propTypes = {
-    open: PropTypes.bool.isRequired,
-    onOpenChange: PropTypes.func.isRequired,
-    task: PropTypes.shape({
-        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-        title: PropTypes.string,
-        date: PropTypes.string,
-        description: PropTypes.string,
-        course: PropTypes.string,
-        priority: PropTypes.string,
-        status: PropTypes.string,
-    }),
-    onSave: PropTypes.func.isRequired,
-    onCancel: PropTypes.func.isRequired,
-};
+      {/* Add Event Button */}
+      <div className="mb-4">
+      <button
+        onClick={handleShowAddEvent}
+        className="px-4 py-2 bg-blue-500 text-white rounded-lg mb-3 hover:bg-blue-700"
+      >
+        + Add Event
+      </button>
+      </div>
 
+      {/* Render Views */}
+      {view === "day"
+        ? renderDayView()
+        : view === "week" || view === "month"
+        ? (
+          <>
+            <div className="grid grid-cols-7 gap-2 text-center text-sm">
+              {daysOfWeek.map((day, idx) => (
+                <div key={idx} className="font-semibold text-gray-700">
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 mt-2">{renderDays()}</div>
+          </>
+        )
+        : null}
 
-// --- Main Component ---
-
-export default function Events() {
-  const {
-    currentDate,
-    currentView,
-    setCurrentView,
-    selectedTask,
-    isTaskDetailOpen,
-    setIsTaskDetailOpen,
-    isTaskFormOpen,
-    setIsTaskFormOpen,
-    handlePrevious,
-    handleNext,
-    handleTaskClick,
-    openAddTaskForm,
-    openEditTaskForm,
-    closeTaskForm,
-    handleSaveTask,
-    handleDeleteTask,
-    calendarGrid,
-    upcomingTasks,
-  } = useCalendarState();
-
-  return (
-    <div className="space-y-6 p-4 md:p-6">
-      <CalendarHeader
-        currentDate={currentDate}
-        currentView={currentView}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onViewChange={setCurrentView}
-        onAddTask={openAddTaskForm}
-      />
-
-      <CalendarGrid
-        grid={calendarGrid}
-        view={currentView}
-        onTaskClick={handleTaskClick}
-      />
-
-      <UpcomingDeadlines
-        tasks={upcomingTasks}
-        onTaskClick={handleTaskClick}
-      />
-
-      {/* Dialogs */}
-      <TaskDetailDialog
-        task={selectedTask}
-        open={isTaskDetailOpen}
-        onOpenChange={setIsTaskDetailOpen}
-        onEdit={openEditTaskForm}
-        onDelete={handleDeleteTask}
-      />
-
-      <TaskFormDialog
-        key={selectedTask?.id || 'new-task-form'}
-        open={isTaskFormOpen}
-        onOpenChange={setIsTaskFormOpen}
-        task={selectedTask}
-        onSave={handleSaveTask}
-        onCancel={closeTaskForm}
-      />
+      {/* More Events Modal */}
+      {renderMoreEventsModal()}
     </div>
   );
-}
+};
+
+export default Events;
+ 
