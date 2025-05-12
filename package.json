@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@mswjs/data": "^0.16.2",
     "@mswjs/http-middleware": "^0.10.3",
     "@radix-ui/react-dialog": "^1.1.5",
