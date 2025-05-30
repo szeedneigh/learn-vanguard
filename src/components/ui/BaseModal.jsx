@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,7 @@ const BaseModal = ({
   const modalRef = useRef(null);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = (event) => {   
       if (closeOnOutsideClick && modalRef.current && !modalRef.current.contains(event.target)) {
         onClose();
       }
