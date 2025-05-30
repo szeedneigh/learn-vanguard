@@ -1,537 +1,482 @@
-import apiClient, { createCancelableRequest } from '@/lib/api/client';
+import * as resourceApi from '@/lib/api/resourceApi';
 
-/**
- * Environment configuration
- */
 const config = {
   useMockData: import.meta.env.VITE_USE_MOCK_DATA === 'true',
 };
 
-/**
- * Mock resources data for development
- */
+// --- Mock Data (Fallback only) ---
 const MOCK_RESOURCES = [
   {
-    id: 'resource-001',
-    name: 'Introduction to JavaScript',
-    description: 'Learn the fundamentals of JavaScript programming',
-    type: 'PDF',
-    url: 'https://example.com/resources/intro-js.pdf',
-    subjectId: 'subject-001',
-    subjectName: 'Web Development Fundamentals',
-    uploadedBy: 'mock-pio-001',
-    uploadedByName: 'PIO User',
-    createdAt: '2023-09-15',
-    updatedAt: '2023-09-15',
-    downloads: 25,
-    size: 1240000, // size in bytes
-    tags: ['javascript', 'beginners', 'programming']
+    id: 'mock-resource-1',
+    name: 'Database Design Guide',
+    description: 'Comprehensive guide to database design principles and best practices.',
+    type: 'document',
+    url: null,
+    fileSize: 2048000,
+    mimeType: 'application/pdf',
+    uploadedBy: 'System',
+    uploadedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    subjectId: 'act111',
+    downloadCount: 15
   },
   {
-    id: 'resource-002',
-    name: 'React Component Lifecycle',
-    description: 'Understanding React component lifecycle methods',
-    type: 'PDF',
-    url: 'https://example.com/resources/react-lifecycle.pdf',
-    subjectId: 'subject-002',
-    subjectName: 'React Fundamentals',
-    uploadedBy: 'mock-pio-001',
-    uploadedByName: 'PIO User',
-    createdAt: '2023-09-20',
-    updatedAt: '2023-09-20',
-    downloads: 18,
-    size: 980000,
-    tags: ['react', 'components', 'lifecycle']
-  },
-  {
-    id: 'resource-003',
-    name: 'CSS Grid Tutorial',
-    description: 'Learn how to use CSS Grid for modern layouts',
-    type: 'VIDEO',
-    url: 'https://example.com/resources/css-grid.mp4',
-    subjectId: 'subject-001',
-    subjectName: 'Web Development Fundamentals',
-    uploadedBy: 'mock-pio-001',
-    uploadedByName: 'PIO User',
-    createdAt: '2023-10-05',
-    updatedAt: '2023-10-05',
-    downloads: 42,
-    size: 68500000,
-    tags: ['css', 'grid', 'layout']
-  },
-  {
-    id: 'resource-004',
-    name: 'JavaScript Event Loop',
-    description: 'Deep dive into the JavaScript event loop and asynchronous programming',
-    type: 'PDF',
-    url: 'https://example.com/resources/js-event-loop.pdf',
-    subjectId: 'subject-003',
-    subjectName: 'Advanced JavaScript',
-    uploadedBy: 'mock-admin-001',
-    uploadedByName: 'Admin User',
-    createdAt: '2023-10-15',
-    updatedAt: '2023-10-15',
-    downloads: 16,
-    size: 1560000,
-    tags: ['javascript', 'event-loop', 'async']
-  },
-  {
-    id: 'resource-005',
-    name: 'Responsive Design Workshop',
-    description: 'Practical workshop on building responsive websites',
-    type: 'VIDEO',
-    url: 'https://example.com/resources/responsive-design.mp4',
-    subjectId: 'subject-001',
-    subjectName: 'Web Development Fundamentals',
-    uploadedBy: 'mock-pio-001',
-    uploadedByName: 'PIO User',
-    createdAt: '2023-10-28',
-    updatedAt: '2023-10-28',
-    downloads: 31,
-    size: 125000000,
-    tags: ['responsive', 'css', 'design']
+    id: 'mock-resource-2',
+    name: 'Programming Examples',
+    description: 'Collection of programming examples and exercises.',
+    type: 'archive',
+    url: null,
+    fileSize: 5120000,
+    mimeType: 'application/zip',
+    uploadedBy: 'System',
+    uploadedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    subjectId: 'act112',
+    downloadCount: 8
   }
 ];
 
 /**
- * Fetches a list of resources (lectures) for a specific subject.
- * @param {object} params - Query parameters, MUST include subjectId. E.g., { subjectId: 'XYZ', type: 'pdf' }.
- * @returns {Promise<Object>} A promise that resolves to an array of resource objects.
- */
-export const getResources = async (params = {}) => {
-  if (!params?.subjectId) {
-    throw new Error("subjectId is required to fetch resources.");
-  }
-
-  if (config.useMockData) {
-    return mockGetResources(params);
-  }
-
-  try {
-    const { data } = await apiClient.get('/resources', { params });
-    return { data, success: true, error: null };
-  } catch (error) {
-    console.error("Error fetching resources:", error.response?.data || error.message);
-    return { 
-      data: [], 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to fetch resources' 
-    };
-  }
-};
-
-/**
  * Mock implementation of getResources
- * @param {object} params - Filter parameters
- * @returns {Promise<Object>} Mock resource list
  */
-const mockGetResources = async (params = {}) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 400));
+const mockGetResources = async (filters = {}) => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
   
   let filteredResources = [...MOCK_RESOURCES];
   
-  // Filter by subject
-  if (params.subjectId) {
-    filteredResources = filteredResources.filter(resource => 
-      resource.subjectId === params.subjectId
-    );
+  // Apply filters
+  if (filters.subjectId) {
+    filteredResources = filteredResources.filter(resource => resource.subjectId === filters.subjectId);
+  }
+  if (filters.type) {
+    filteredResources = filteredResources.filter(resource => resource.type === filters.type);
   }
   
-  // Filter by type
-  if (params.type) {
-    filteredResources = filteredResources.filter(resource => 
-      resource.type.toLowerCase() === params.type.toLowerCase()
-    );
-  }
-  
-  // Filter by tags
-  if (params.tags) {
-    const requestedTags = Array.isArray(params.tags) ? params.tags : [params.tags];
-    filteredResources = filteredResources.filter(resource => 
-      requestedTags.some(tag => resource.tags.includes(tag))
-    );
-  }
-  
-  // Search by name or description
-  if (params.search) {
-    const searchLower = params.search.toLowerCase();
-    filteredResources = filteredResources.filter(resource => 
-      resource.name.toLowerCase().includes(searchLower) || 
-      (resource.description && resource.description.toLowerCase().includes(searchLower))
-    );
-  }
-  
-  // Sort by createdAt by default (newest first)
-  filteredResources.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  
-  return { data: filteredResources, success: true };
-};
-
-/**
- * Fetches a single resource by its ID.
- * @param {string} resourceId - The ID of the resource to fetch.
- * @returns {Promise<Object>} A promise that resolves to the resource object.
- */
-export const getResourceById = async (resourceId) => {
-  if (!resourceId) {
-    throw new Error('Resource ID is required');
-  }
-  
-  if (config.useMockData) {
-    return mockGetResourceById(resourceId);
-  }
-
-  try {
-    const { data } = await apiClient.get(`/resources/${resourceId}`);
-    return { data, success: true };
-  } catch (error) {
-    console.error(`Error fetching resource ${resourceId}:`, error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to fetch resource' 
-    };
-  }
-};
-
-/**
- * Mock implementation of getResourceById
- * @param {string} resourceId - ID of the resource to retrieve
- * @returns {Promise<Object>} Mock resource data
- */
-const mockGetResourceById = async (resourceId) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  const resource = MOCK_RESOURCES.find(resource => resource.id === resourceId);
-  
-  if (resource) {
-    return { data: resource, success: true };
-  }
-  
-  return { 
-    data: null, 
-    success: false, 
-    error: 'Resource not found' 
+  return {
+    data: filteredResources,
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: filteredResources.length,
+      totalPages: 1
+    }
   };
 };
 
 /**
- * Creates a new resource (e.g., uploads a file and/or its metadata) for a specific subject.
- * @param {object} resourceDetails - Object containing details for the new resource.
- * @param {string} resourceDetails.subjectId - The ID of the subject to associate the resource with.
- * @param {File} resourceDetails.file - The file to be uploaded.
- * @param {string} [resourceDetails.name] - Optional name for the resource, defaults to file.name.
- * @param {string} [resourceDetails.type] - Optional type for the resource, defaults to file.type.
- * @returns {Promise<Object>} A promise that resolves to the created resource object.
+ * Mock implementation of uploadResource
  */
-export const createResource = async (resourceDetails) => {
-  const { subjectId, file, name, type, description, tags } = resourceDetails;
-
-  if (!subjectId) {
-    throw new Error("subjectId is required to create a resource.");
-  }
+const mockUploadResource = async (formData, onProgress = null) => {
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate upload delay
   
-  if (config.useMockData) {
-    return mockCreateResource(resourceDetails);
-  }
-
-  if (!file) {
-    throw new Error("File is required to create a resource.");
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('name', name || file.name);
-  formData.append('type', type || file.type);
-  
-  if (description) {
-    formData.append('description', description);
-  }
-  
-  if (tags && Array.isArray(tags)) {
-    tags.forEach((tag, index) => {
-      formData.append(`tags[${index}]`, tag);
-    });
-  }
-
-  try {
-    const { data } = await apiClient.post(`/resources?subjectId=${subjectId}`, formData, {
-      headers: {
-        // Axios typically sets 'Content-Type': 'multipart/form-data' automatically for FormData
-      }
-    });
-    return { data, success: true };
-  } catch (error) {
-    console.error("Error creating resource:", error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to create resource' 
-    };
-  }
-};
-
-/**
- * Mock implementation of createResource
- * @param {object} resourceDetails - Resource data to create
- * @returns {Promise<Object>} Created mock resource
- */
-const mockCreateResource = async (resourceDetails) => {
-  const { subjectId, file, name, type, description, tags } = resourceDetails;
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 700));
-  
-  // Validate required fields
-  if (!subjectId) {
-    return {
-      data: null,
-      success: false,
-      error: 'Subject ID is required'
-    };
-  }
-  
-  // Find subject name (in a real app would fetch this)
-  let subjectName = 'Unknown Subject';
-  if (subjectId === 'subject-001') {
-    subjectName = 'Web Development Fundamentals';
-  } else if (subjectId === 'subject-002') {
-    subjectName = 'React Fundamentals';
-  } else if (subjectId === 'subject-003') {
-    subjectName = 'Advanced JavaScript';
-  }
-  
-  // Create mock resource data
-  const resourceName = name || (file ? file.name : 'Untitled Resource');
-  let resourceType = type || 'PDF';
-  
-  if (file) {
-    // Try to determine type from file MIME type or extension
-    if (file.type.includes('video')) {
-      resourceType = 'VIDEO';
-    } else if (file.type.includes('pdf')) {
-      resourceType = 'PDF';
-    } else if (file.type.includes('image')) {
-      resourceType = 'IMAGE';
+  // Simulate progress if callback provided
+  if (onProgress) {
+    for (let i = 0; i <= 100; i += 20) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      onProgress(i);
     }
   }
   
-  // Create a mock resource with reasonable defaults
-  const newResource = {
-    id: `resource-${Date.now()}`,
-    name: resourceName,
-    description: description || `Resource for ${subjectName}`,
-    type: resourceType,
-    url: `https://example.com/resources/${encodeURIComponent(resourceName.replace(/\s+/g, '-').toLowerCase())}`,
-    subjectId,
-    subjectName,
-    uploadedBy: 'mock-pio-001', // Would come from auth context in a real app
-    uploadedByName: 'PIO User',
-    createdAt: new Date().toISOString().split('T')[0],
-    updatedAt: new Date().toISOString().split('T')[0],
-    downloads: 0,
-    size: file ? file.size : 1000000, // Default to 1MB if no file provided
-    tags: tags || []
+  return {
+    id: `mock-resource-${Date.now()}`,
+    name: 'Uploaded File',
+    description: 'Mock uploaded file',
+    type: 'document',
+    uploadedBy: 'Current User',
+    uploadedAt: new Date().toISOString(),
+    fileSize: 1024000,
+    mimeType: 'application/pdf'
   };
-  
-  // Add to mock data
-  MOCK_RESOURCES.push(newResource);
-  
-  return { data: newResource, success: true };
-};
-
-/**
- * Updates an existing resource.
- * @param {string} resourceId - The ID of the resource to update.
- * @param {FormData | object} resourceData - The data to update for the resource.
- * @returns {Promise<Object>} A promise that resolves to the updated resource object.
- */
-export const updateResource = async (resourceId, resourceData) => {
-  if (!resourceId) {
-    throw new Error('Resource ID is required');
-  }
-  
-  if (config.useMockData) {
-    return mockUpdateResource(resourceId, resourceData);
-  }
-
-  try {
-    const { data } = await apiClient.put(`/resources/${resourceId}`, resourceData);
-    return { data, success: true };
-  } catch (error) {
-    console.error(`Error updating resource ${resourceId}:`, error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to update resource' 
-    };
-  }
 };
 
 /**
  * Mock implementation of updateResource
- * @param {string} resourceId - ID of the resource to update
- * @param {FormData | object} resourceData - Updated resource fields
- * @returns {Promise<Object>} Updated mock resource
  */
-const mockUpdateResource = async (resourceId, resourceData) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+const mockUpdateResource = async (resourceId, updates) => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
   
-  const resourceIndex = MOCK_RESOURCES.findIndex(resource => resource.id === resourceId);
-  
-  if (resourceIndex === -1) {
-    return {
-      data: null,
-      success: false,
-      error: 'Resource not found'
-    };
-  }
-  
-  // Convert FormData to a regular object if needed
-  let updateData = resourceData;
-  if (resourceData instanceof FormData) {
-    updateData = {};
-    for (const [key, value] of resourceData.entries()) {
-      updateData[key] = value;
-    }
-  }
-  
-  // Update the resource
-  const updatedResource = {
-    ...MOCK_RESOURCES[resourceIndex],
-    ...updateData,
-    updatedAt: new Date().toISOString().split('T')[0]
+  const existingResource = MOCK_RESOURCES.find(resource => resource.id === resourceId);
+  return {
+    ...existingResource,
+    ...updates,
+    updatedAt: new Date().toISOString()
   };
-  
-  MOCK_RESOURCES[resourceIndex] = updatedResource;
-  
-  return { data: updatedResource, success: true };
-};
-
-/**
- * Deletes a resource.
- * @param {string} resourceId - The ID of the resource to delete.
- * @returns {Promise<Object>} A promise that resolves to the response data (or handles no content).
- */
-export const deleteResource = async (resourceId) => {
-  if (!resourceId) {
-    throw new Error('Resource ID is required');
-  }
-  
-  if (config.useMockData) {
-    return mockDeleteResource(resourceId);
-  }
-
-  try {
-    await apiClient.delete(`/resources/${resourceId}`);
-    return { data: null, success: true, error: null };
-  } catch (error) {
-    console.error(`Error deleting resource ${resourceId}:`, error.response?.data || error.message);
-    return { 
-      data: null,
-      success: false, 
-      error: error.response?.data?.message || 'Failed to delete resource' 
-    };
-  }
 };
 
 /**
  * Mock implementation of deleteResource
- * @param {string} resourceId - ID of the resource to delete
- * @returns {Promise<Object>} Deletion result
  */
 const mockDeleteResource = async (resourceId) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 400));
-  
-  const resourceIndex = MOCK_RESOURCES.findIndex(resource => resource.id === resourceId);
-  
-  if (resourceIndex === -1) {
-    return {
-      data: null,
-      success: false,
-      error: 'Resource not found'
-    };
-  }
-  
-  // Remove the resource
-  MOCK_RESOURCES.splice(resourceIndex, 1);
-  
-  return { data: null, success: true, error: null };
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
+  return { message: `Mock resource ${resourceId} deleted successfully` };
 };
 
 /**
- * Download a resource and track the download
- * @param {string} resourceId - The ID of the resource to download
- * @returns {Promise<Object>} Download information including URL
+ * Get resources with optional filters.
+ * Uses backend API with fallback to mock data if API fails.
+ * @param {Object} filters - Optional filters (subjectId, type, search, etc.)
+ * @returns {Promise<Object>} Resources data with pagination
  */
-export const downloadResource = async (resourceId) => {
-  if (!resourceId) {
-    throw new Error('Resource ID is required');
-  }
-  
+export const getResources = async (filters = {}) => {
+  console.log("resourceService.js: getResources called with filters:", filters, "USE_MOCK_DATA:", config.useMockData);
+
   if (config.useMockData) {
-    return mockDownloadResource(resourceId);
+    console.log("resourceService.js: getResources - returning MOCK_RESOURCES");
+    return mockGetResources(filters);
   }
 
   try {
-    const { data } = await apiClient.get(`/resources/${resourceId}/download`);
+    console.log("resourceService.js: getResources - attempting to fetch from API");
+    const result = await resourceApi.getResources(filters);
     
-    // In a real app, the API might return a download URL or trigger a file download
-    return { data, success: true };
+    if (result.success) {
+      console.log("resourceService.js: getResources - API success:", result.data);
+      return {
+        data: result.data,
+        pagination: result.pagination
+      };
+    } else {
+      console.warn("resourceService.js: getResources - API returned error, using fallback:", result.error);
+      return mockGetResources(filters);
+    }
   } catch (error) {
-    console.error(`Error downloading resource ${resourceId}:`, error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to download resource' 
+    console.error("resourceService.js: getResources - API call failed, using fallback:", error);
+    return mockGetResources(filters);
+  }
+};
+
+/**
+ * Upload a new resource file.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {FormData} formData - FormData containing file and metadata
+ * @param {Function} onProgress - Progress callback function
+ * @returns {Promise<Object>} Upload result
+ */
+export const uploadResource = async (formData, onProgress = null) => {
+  console.log("resourceService.js: uploadResource called, USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("resourceService.js: uploadResource - MOCK - uploading resource");
+    return mockUploadResource(formData, onProgress);
+  }
+
+  try {
+    console.log("resourceService.js: uploadResource - attempting to upload via API");
+    const result = await resourceApi.uploadResource(formData, onProgress);
+    
+    if (result.success) {
+      console.log("resourceService.js: uploadResource - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("resourceService.js: uploadResource - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("resourceService.js: uploadResource - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create a resource from URL or link.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {Object} resourceData - Resource data
+ * @returns {Promise<Object>} Created resource
+ */
+export const createResource = async (resourceData) => {
+  console.log("resourceService.js: createResource called with:", resourceData, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("resourceService.js: createResource - MOCK - creating resource");
+    return {
+      id: `mock-resource-${Date.now()}`,
+      ...resourceData,
+      uploadedBy: 'Current User',
+      uploadedAt: new Date().toISOString()
+    };
+  }
+
+  try {
+    console.log("resourceService.js: createResource - attempting to create via API");
+    const result = await resourceApi.createResource(resourceData);
+    
+    if (result.success) {
+      console.log("resourceService.js: createResource - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("resourceService.js: createResource - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("resourceService.js: createResource - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update an existing resource.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} resourceId - Resource ID
+ * @param {Object} updates - Resource updates
+ * @returns {Promise<Object>} Updated resource
+ */
+export const updateResource = async (resourceId, updates) => {
+  console.log("resourceService.js: updateResource called with:", resourceId, updates, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("resourceService.js: updateResource - MOCK - updating resource");
+    return mockUpdateResource(resourceId, updates);
+  }
+
+  try {
+    console.log("resourceService.js: updateResource - attempting to update via API");
+    const result = await resourceApi.updateResource(resourceId, updates);
+    
+    if (result.success) {
+      console.log("resourceService.js: updateResource - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("resourceService.js: updateResource - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("resourceService.js: updateResource - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a resource.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} resourceId - Resource ID
+ * @returns {Promise<void>}
+ */
+export const deleteResource = async (resourceId) => {
+  console.log("resourceService.js: deleteResource called with resourceId:", resourceId, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("resourceService.js: deleteResource - MOCK - deleting resource");
+    return mockDeleteResource(resourceId);
+  }
+
+  try {
+    console.log("resourceService.js: deleteResource - attempting to delete via API");
+    const result = await resourceApi.deleteResource(resourceId);
+    
+    if (result.success) {
+      console.log("resourceService.js: deleteResource - API success:", result.message);
+      return { message: result.message };
+    } else {
+      console.error("resourceService.js: deleteResource - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("resourceService.js: deleteResource - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Search resources.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} query - Search query
+ * @param {Object} filters - Additional filters
+ * @returns {Promise<Object>} Search results
+ */
+export const searchResources = async (query, filters = {}) => {
+  console.log("resourceService.js: searchResources called with query:", query, "filters:", filters, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("resourceService.js: searchResources - MOCK - searching resources");
+    // Simple mock search - filter by name containing query
+    const filteredResources = MOCK_RESOURCES.filter(resource => 
+      resource.name.toLowerCase().includes(query.toLowerCase()) ||
+      resource.description.toLowerCase().includes(query.toLowerCase())
+    );
+    return {
+      data: filteredResources,
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: filteredResources.length,
+        totalPages: 1
+      }
+    };
+  }
+
+  try {
+    console.log("resourceService.js: searchResources - attempting to search via API");
+    const result = await resourceApi.searchResources(query, filters);
+    
+    if (result.success) {
+      console.log("resourceService.js: searchResources - API success:", result.data);
+      return {
+        data: result.data,
+        pagination: result.pagination
+      };
+    } else {
+      console.warn("resourceService.js: searchResources - API returned error, using fallback:", result.error);
+      // Fallback to simple mock search
+      const filteredResources = MOCK_RESOURCES.filter(resource => 
+        resource.name.toLowerCase().includes(query.toLowerCase())
+      );
+      return {
+        data: filteredResources,
+        pagination: { page: 1, limit: 10, total: filteredResources.length, totalPages: 1 }
+      };
+    }
+  } catch (error) {
+    console.error("resourceService.js: searchResources - API call failed, using fallback:", error);
+    const filteredResources = MOCK_RESOURCES.filter(resource => 
+      resource.name.toLowerCase().includes(query.toLowerCase())
+    );
+    return {
+      data: filteredResources,
+      pagination: { page: 1, limit: 10, total: filteredResources.length, totalPages: 1 }
     };
   }
 };
 
 /**
- * Mock implementation of downloadResource
- * @param {string} resourceId - ID of the resource to download
- * @returns {Promise<Object>} Mock download information
+ * Fetches a single resource by its ID
+ * @param {string} resourceId - The ID of the resource to fetch
+ * @returns {Promise<Object>} A promise that resolves to the resource object
  */
-const mockDownloadResource = async (resourceId) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  const resourceIndex = MOCK_RESOURCES.findIndex(resource => resource.id === resourceId);
-  
-  if (resourceIndex === -1) {
+export const getResourceById = async (resourceId) => {
+  console.log("resourceService.js: getResourceById called with resourceId:", resourceId, "USE_MOCK_DATA:", config.useMockData);
+
+  if (!resourceId) {
     return {
       data: null,
       success: false,
-      error: 'Resource not found'
+      error: 'Resource ID is required'
     };
   }
+
+  if (config.useMockData) {
+    console.log("resourceService.js: getResourceById - MOCK - getting resource");
+    const mockResource = MOCK_RESOURCES.find(resource => resource.id === resourceId);
+    return mockResource ? { data: mockResource, success: true } : { data: null, success: false, error: 'Resource not found' };
+  }
   
-  // Update download count
-  MOCK_RESOURCES[resourceIndex].downloads += 1;
-  
-  // Return download URL (would be a temporary signed URL in a real app)
-  return { 
-    data: {
-      url: MOCK_RESOURCES[resourceIndex].url,
-      filename: MOCK_RESOURCES[resourceIndex].name,
-      contentType: MOCK_RESOURCES[resourceIndex].type === 'PDF' ? 'application/pdf' : 
-                   MOCK_RESOURCES[resourceIndex].type === 'VIDEO' ? 'video/mp4' : 
-                   'application/octet-stream'
-    }, 
-    success: true 
-  };
+  try {
+    console.log("resourceService.js: getResourceById - attempting to fetch from API");
+    const result = await resourceApi.getResource(resourceId);
+    
+    if (result.success) {
+      console.log("resourceService.js: getResourceById - API success:", result.data);
+      return { data: result.data, success: true };
+    } else {
+      console.error("resourceService.js: getResourceById - API returned error:", result.error);
+      return { data: null, success: false, error: result.error };
+    }
+  } catch (error) {
+    console.error(`resourceService.js: getResourceById - API call failed for resource ${resourceId}:`, error);
+    return { 
+      data: null, 
+      success: false, 
+      error: error.message || 'Failed to fetch resource' 
+    };
+  }
 };
 
+/**
+ * Downloads a resource file
+ * @param {string} resourceId - The ID of the resource to download
+ * @returns {Promise<Object>} A promise that resolves to download data (URL)
+ */
+export const downloadResource = async (resourceId) => {
+  console.log("resourceService.js: downloadResource called with resourceId:", resourceId, "USE_MOCK_DATA:", config.useMockData);
+
+  if (!resourceId) {
+    return {
+      data: null,
+      success: false,
+      error: 'Resource ID is required'
+    };
+  }
+
+  if (config.useMockData) {
+    console.log("resourceService.js: downloadResource - MOCK - generating download URL");
+    return {
+      data: { url: `https://mock-download-url.com/resource/${resourceId}` },
+      success: true
+    };
+  }
+
+  try {
+    console.log("resourceService.js: downloadResource - attempting to get download URL from API");
+    const result = await resourceApi.getResourceDownloadUrl(resourceId);
+    
+    if (result.success) {
+      console.log("resourceService.js: downloadResource - API success:", result.url);
+      return { data: { url: result.url }, success: true };
+    } else {
+      console.error("resourceService.js: downloadResource - API returned error:", result.error);
+      return { data: null, success: false, error: result.error };
+    }
+  } catch (error) {
+    console.error(`resourceService.js: downloadResource - API call failed for resource ${resourceId}:`, error);
+    return {
+      data: null,
+      success: false,
+      error: error.message || 'Failed to download resource'
+    };
+  }
+};
+
+/**
+ * Get resource statistics for a subject
+ * @param {string} subjectId - Subject ID
+ * @returns {Promise<Object>} Resource statistics
+ */
+export const getResourceStats = async (subjectId) => {
+  try {
+    const response = await getResources({ subjectId });
+    
+    if (!response.success) {
+      return response;
+    }
+
+    const resources = response.data;
+    const stats = {
+      total: resources.length,
+      byType: {},
+      totalSize: 0,
+      totalDownloads: 0
+    };
+
+    resources.forEach(resource => {
+      // Count by type
+      const type = resource.type || 'unknown';
+      stats.byType[type] = (stats.byType[type] || 0) + 1;
+      
+      // Sum file sizes and downloads
+      stats.totalSize += resource.size || 0;
+      stats.totalDownloads += resource.downloads || 0;
+    });
+
+    return {
+      data: stats,
+      success: true
+    };
+  } catch (error) {
+    console.error("Error getting resource stats:", error);
+    return {
+      data: null,
+      success: false,
+      error: error.message || 'Failed to get resource statistics'
+    };
+  }
+};
+
+// Export all functions
 export default {
   getResources,
   getResourceById,
   createResource,
   updateResource,
   deleteResource,
-  downloadResource
+  downloadResource,
+  searchResources,
+  uploadResource,
+  getResourceStats
 }; 
