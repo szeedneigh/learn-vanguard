@@ -1,454 +1,438 @@
-import apiClient from '@/lib/api/client';
-import { ROLES } from '@/lib/constants';
+import * as userApi from '@/lib/api/userApi';
 
-/**
- * Environment configuration
- */
 const config = {
   useMockData: import.meta.env.VITE_USE_MOCK_DATA === 'true',
 };
 
-/**
- * Mock users data for development
- */
+// --- Mock Data (Fallback only) ---
 const MOCK_USERS = [
   {
-    id: 'mock-admin-001',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: ROLES.ADMIN,
-    status: 'ACTIVE',
-    department: 'Administration',
-    avatar: null,
-    createdAt: '2023-01-01',
-    lastLogin: '2023-11-15'
+    id: 'mock-user-1',
+    email: 'john.doe@student.laverdad.edu.ph',
+    fullName: 'John Doe',
+    role: 'STUDENT',
+    programId: 'bsis',
+    year: 1,
+    semester: '1st Semester',
+    status: 'active',
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    lastLoginAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
-    id: 'mock-pio-001',
-    name: 'PIO User',
-    email: 'pio@example.com',
-    role: ROLES.PIO,
-    status: 'ACTIVE',
-    department: 'Program Implementation',
-    avatar: null,
-    createdAt: '2023-02-15',
-    lastLogin: '2023-11-14'
-  },
-  {
-    id: 'mock-student-001',
-    name: 'Student User',
-    email: 'student@example.com',
-    role: ROLES.STUDENT,
-    status: 'ACTIVE',
-    department: null,
-    avatar: null,
-    createdAt: '2023-03-20',
-    lastLogin: '2023-11-13'
-  },
-  {
-    id: 'mock-student-002',
-    name: 'Jane Smith',
-    email: 'jane.smith@example.com',
-    role: ROLES.STUDENT,
-    status: 'ACTIVE',
-    department: null,
-    avatar: null,
-    createdAt: '2023-04-10',
-    lastLogin: '2023-11-10'
-  },
-  {
-    id: 'mock-student-003',
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    role: ROLES.STUDENT,
-    status: 'INACTIVE',
-    department: null,
-    avatar: null,
-    createdAt: '2023-04-15',
-    lastLogin: '2023-10-25'
-  },
-  {
-    id: 'mock-pio-002',
-    name: 'Alex Johnson',
-    email: 'alex.johnson@example.com',
-    role: ROLES.PIO,
-    status: 'ACTIVE',
-    department: 'Program Implementation',
-    avatar: null,
-    createdAt: '2023-05-05',
-    lastLogin: '2023-11-12'
+    id: 'mock-user-2',
+    email: 'jane.smith@student.laverdad.edu.ph',
+    fullName: 'Jane Smith',
+    role: 'PIO',
+    assignedClass: 'BSIS-First Year',
+    status: 'active',
+    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    lastLoginAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
   }
 ];
 
 /**
- * Get users based on provided filters
- * @param {Object} params - Query parameters for filtering users
- * @returns {Promise<Object>} Object containing users array and pagination info
- */
-export const getUsers = async (params = {}) => {
-  if (config.useMockData) {
-    return mockGetUsers(params);
-  }
-
-  try {
-    const { data } = await apiClient.get('/users', { params });
-    // Ensure consistent response shape
-    const responseData = {
-      users: Array.isArray(data) ? data : (data.users || []),
-      pagination: data.pagination || null
-    };
-    return { data: responseData, success: true };
-  } catch (error) {
-    console.error('Error fetching users:', error.response?.data || error.message);
-    return { 
-      data: { users: [], pagination: null }, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to fetch users' 
-    };
-  }
-};
-
-/**
  * Mock implementation of getUsers
- * @param {Object} params - Filter parameters
- * @returns {Promise<Object>} Mock user list with pagination
  */
-const mockGetUsers = async (params = {}) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+const mockGetUsers = async (filters = {}) => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
   
   let filteredUsers = [...MOCK_USERS];
   
-  // Apply role filter if provided
-  if (params.role) {
-    filteredUsers = filteredUsers.filter(user => user.role === params.role);
+  // Apply filters
+  if (filters.role) {
+    filteredUsers = filteredUsers.filter(user => user.role === filters.role);
   }
-  
-  // Apply status filter if provided
-  if (params.status) {
-    filteredUsers = filteredUsers.filter(user => user.status === params.status);
-  }
-  
-  // Apply department filter if provided
-  if (params.department) {
-    filteredUsers = filteredUsers.filter(user => user.department === params.department);
-  }
-  
-  // Apply search filter if provided
-  if (params.search) {
-    const searchLower = params.search.toLowerCase();
+  if (filters.search) {
+    const searchLower = filters.search.toLowerCase();
     filteredUsers = filteredUsers.filter(user => 
-      user.name.toLowerCase().includes(searchLower) || 
+      user.fullName.toLowerCase().includes(searchLower) ||
       user.email.toLowerCase().includes(searchLower)
     );
   }
   
-  // Handle pagination
-  const page = Number(params.page) || 1;
-  const limit = Number(params.limit) || filteredUsers.length;
-  
-  // If pagination is requested
-  if (params.page || params.limit) {
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    
-    // Get paginated results
-    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
-    
-    return { 
-      data: {
-        users: paginatedUsers,
-        pagination: {
-          total: filteredUsers.length,
-          page,
-          limit,
-          pages: Math.ceil(filteredUsers.length / limit)
-        }
-      }, 
-      success: true 
-    };
-  }
-  
-  // Return all results with null pagination when no pagination is requested
-  return { 
-    data: {
-      users: filteredUsers,
-      pagination: null
-    }, 
-    success: true 
+  return {
+    data: filteredUsers,
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: filteredUsers.length,
+      totalPages: 1
+    }
   };
 };
 
 /**
- * Get a specific user by ID
- * @param {string} userId - ID of the user to retrieve
- * @returns {Promise<Object>} User data
+ * Mock implementation of getCurrentUserProfile
  */
-export const getUserById = async (userId) => {
-  if (!userId) {
-    throw new Error('User ID is required');
-  }
-  
-  if (config.useMockData) {
-    return mockGetUserById(userId);
-  }
-
-  try {
-    const { data } = await apiClient.get(`/users/${userId}`);
-    return { data, success: true };
-  } catch (error) {
-    console.error(`Error fetching user ${userId}:`, error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to fetch user' 
-    };
-  }
+const mockGetCurrentUserProfile = async () => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
+  return MOCK_USERS[0]; // Return first mock user as current user
 };
 
 /**
- * Mock implementation of getUserById
- * @param {string} userId - ID of the user to retrieve
- * @returns {Promise<Object>} Mock user data
+ * Mock implementation of updateCurrentUserProfile
  */
-const mockGetUserById = async (userId) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
+const mockUpdateCurrentUserProfile = async (profileData) => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
   
-  const user = MOCK_USERS.find(user => user.id === userId);
-  
-  if (user) {
-    return { data: user, success: true };
-  }
-  
-  return { 
-    data: null, 
-    success: false, 
-    error: 'User not found' 
+  return {
+    ...MOCK_USERS[0],
+    ...profileData,
+    updatedAt: new Date().toISOString()
   };
-};
-
-/**
- * Create a new user
- * @param {Object} userData - New user details
- * @returns {Promise<Object>} Created user
- */
-export const createUser = async (userData) => {
-  if (config.useMockData) {
-    return mockCreateUser(userData);
-  }
-
-  try {
-    const { data } = await apiClient.post('/users', userData);
-    return { data, success: true };
-  } catch (error) {
-    console.error('Error creating user:', error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to create user' 
-    };
-  }
-};
-
-/**
- * Mock implementation of createUser
- * @param {Object} userData - User data to create
- * @returns {Promise<Object>} Created mock user
- */
-const mockCreateUser = async (userData) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 700));
-  
-  // Validate required fields
-  if (!userData.name || !userData.email || !userData.role) {
-    return {
-      data: null,
-      success: false,
-      error: 'Name, email, and role are required fields'
-    };
-  }
-  
-  // Check if email already exists
-  const emailExists = MOCK_USERS.some(user => user.email.toLowerCase() === userData.email.toLowerCase());
-  if (emailExists) {
-    return {
-      data: null,
-      success: false,
-      error: 'Email already in use'
-    };
-  }
-  
-  const newUser = {
-    id: `mock-user-${Date.now()}`,
-    ...userData,
-    status: userData.status || 'ACTIVE',
-    createdAt: new Date().toISOString().split('T')[0],
-    lastLogin: null
-  };
-  
-  // Add to mock data
-  MOCK_USERS.push(newUser);
-  
-  return { data: newUser, success: true };
-};
-
-/**
- * Update an existing user
- * @param {string} userId - ID of the user to update
- * @param {Object} userData - Updated user fields
- * @returns {Promise<Object>} Updated user
- */
-export const updateUser = async (userId, userData) => {
-  if (!userId) {
-    throw new Error('User ID is required');
-  }
-  
-  if (config.useMockData) {
-    return mockUpdateUser(userId, userData);
-  }
-
-  try {
-    const { data } = await apiClient.put(`/users/${userId}`, userData);
-    return { data, success: true };
-  } catch (error) {
-    console.error(`Error updating user ${userId}:`, error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to update user' 
-    };
-  }
 };
 
 /**
  * Mock implementation of updateUser
- * @param {string} userId - ID of the user to update
- * @param {Object} userData - Updated user fields
- * @returns {Promise<Object>} Updated mock user
  */
-const mockUpdateUser = async (userId, userData) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+const mockUpdateUser = async (userId, updates) => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
   
-  const userIndex = MOCK_USERS.findIndex(user => user.id === userId);
-  
-  if (userIndex === -1) {
-    return {
-      data: null,
-      success: false,
-      error: 'User not found'
-    };
-  }
-  
-  // Check if email is being changed and if it already exists
-  if (userData.email && 
-      userData.email.toLowerCase() !== MOCK_USERS[userIndex].email.toLowerCase() &&
-      MOCK_USERS.some(user => user.email.toLowerCase() === userData.email.toLowerCase())) {
-    return {
-      data: null,
-      success: false,
-      error: 'Email already in use'
-    };
-  }
-  
-  // Update the user
-  const updatedUser = {
-    ...MOCK_USERS[userIndex],
-    ...userData
+  const existingUser = MOCK_USERS.find(user => user.id === userId);
+  return {
+    ...existingUser,
+    ...updates,
+    updatedAt: new Date().toISOString()
   };
-  
-  MOCK_USERS[userIndex] = updatedUser;
-  
-  return { data: updatedUser, success: true };
-};
-
-/**
- * Delete a user
- * @param {string} userId - ID of the user to delete
- * @returns {Promise<Object>} Deletion result
- */
-export const deleteUser = async (userId) => {
-  if (!userId) {
-    throw new Error('User ID is required');
-  }
-  
-  if (config.useMockData) {
-    return mockDeleteUser(userId);
-  }
-
-  try {
-    await apiClient.delete(`/users/${userId}`);
-    return { success: true };
-  } catch (error) {
-    console.error(`Error deleting user ${userId}:`, error.response?.data || error.message);
-    return { 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to delete user' 
-    };
-  }
 };
 
 /**
  * Mock implementation of deleteUser
- * @param {string} userId - ID of the user to delete
- * @returns {Promise<Object>} Deletion result
  */
 const mockDeleteUser = async (userId) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 400));
-  
-  const userIndex = MOCK_USERS.findIndex(user => user.id === userId);
-  
-  if (userIndex === -1) {
-    return {
-      success: false,
-      error: 'User not found'
-    };
-  }
-  
-  // Check if user is one of the default mock users
-  if (['mock-admin-001', 'mock-pio-001', 'mock-student-001'].includes(userId)) {
-    return {
-      success: false,
-      error: 'Cannot delete default users in mock mode'
-    };
-  }
-  
-  // Remove the user
-  MOCK_USERS.splice(userIndex, 1);
-  
-  return { success: true };
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
+  return { message: `Mock user ${userId} deleted successfully` };
 };
 
 /**
- * Update user role
- * @param {string} userId - ID of the user to update
- * @param {string} role - New role value
+ * Get all users with optional filters.
+ * Uses backend API with fallback to mock data if API fails.
+ * @param {Object} filters - Optional filters (role, search, page, limit, etc.)
+ * @returns {Promise<Object>} Users data with pagination
+ */
+export const getUsers = async (filters = {}) => {
+  console.log("userService.js: getUsers called with filters:", filters, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("userService.js: getUsers - returning MOCK_USERS");
+    return mockGetUsers(filters);
+  }
+
+  try {
+    console.log("userService.js: getUsers - attempting to fetch from API");
+    const result = await userApi.getUsers(filters);
+    
+    if (result.success) {
+      console.log("userService.js: getUsers - API success:", result.data);
+      return {
+        data: result.data,
+        pagination: result.pagination
+      };
+    } else {
+      console.warn("userService.js: getUsers - API returned error, using fallback:", result.error);
+      return mockGetUsers(filters);
+    }
+  } catch (error) {
+    console.error("userService.js: getUsers - API call failed, using fallback:", error);
+    return mockGetUsers(filters);
+  }
+};
+
+/**
+ * Get current user profile.
+ * Uses backend API with fallback to mock data if API fails.
+ * @returns {Promise<Object>} Current user profile
+ */
+export const getCurrentUserProfile = async () => {
+  console.log("userService.js: getCurrentUserProfile called, USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("userService.js: getCurrentUserProfile - returning mock profile");
+    return mockGetCurrentUserProfile();
+  }
+
+  try {
+    console.log("userService.js: getCurrentUserProfile - attempting to fetch from API");
+    const result = await userApi.getCurrentUserProfile();
+    
+    if (result.success) {
+      console.log("userService.js: getCurrentUserProfile - API success:", result.data);
+      return result.data;
+    } else {
+      console.warn("userService.js: getCurrentUserProfile - API returned error, using fallback:", result.error);
+      return mockGetCurrentUserProfile();
+    }
+  } catch (error) {
+    console.error("userService.js: getCurrentUserProfile - API call failed, using fallback:", error);
+    return mockGetCurrentUserProfile();
+  }
+};
+
+/**
+ * Update current user profile.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {Object} profileData - Profile data to update
+ * @returns {Promise<Object>} Updated profile
+ */
+export const updateCurrentUserProfile = async (profileData) => {
+  console.log("userService.js: updateCurrentUserProfile called with:", profileData, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("userService.js: updateCurrentUserProfile - MOCK - updating profile");
+    return mockUpdateCurrentUserProfile(profileData);
+  }
+
+  try {
+    console.log("userService.js: updateCurrentUserProfile - attempting to update via API");
+    const result = await userApi.updateCurrentUserProfile(profileData);
+    
+    if (result.success) {
+      console.log("userService.js: updateCurrentUserProfile - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("userService.js: updateCurrentUserProfile - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("userService.js: updateCurrentUserProfile - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update a user (admin only).
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} userId - User ID
+ * @param {Object} updates - User updates
  * @returns {Promise<Object>} Updated user
  */
-export const updateUserRole = async (userId, role) => {
-  if (!Object.values(ROLES).includes(role)) {
-    throw new Error('Invalid role');
+export const updateUser = async (userId, updates) => {
+  console.log("userService.js: updateUser called with:", userId, updates, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("userService.js: updateUser - MOCK - updating user");
+    return mockUpdateUser(userId, updates);
   }
-  return updateUser(userId, { role });
+
+  try {
+    console.log("userService.js: updateUser - attempting to update via API");
+    const result = await userApi.updateUser(userId, updates);
+    
+    if (result.success) {
+      console.log("userService.js: updateUser - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("userService.js: updateUser - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("userService.js: updateUser - API call failed:", error);
+    throw error;
+  }
 };
 
 /**
- * Get students (shorthand for getting users with student role)
- * @param {Object} params - Query parameters
- * @returns {Promise<Object>} List of student users
+ * Delete a user (admin only).
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} userId - User ID
+ * @returns {Promise<void>}
  */
-export const getStudents = async (params = {}) => {
-  return getUsers({ ...params, role: ROLES.STUDENT });
+export const deleteUser = async (userId) => {
+  console.log("userService.js: deleteUser called with userId:", userId, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("userService.js: deleteUser - MOCK - deleting user");
+    return mockDeleteUser(userId);
+  }
+
+  try {
+    console.log("userService.js: deleteUser - attempting to delete via API");
+    const result = await userApi.deleteUser(userId);
+    
+    if (result.success) {
+      console.log("userService.js: deleteUser - API success:", result.message);
+      return { message: result.message };
+    } else {
+      console.error("userService.js: deleteUser - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("userService.js: deleteUser - API call failed:", error);
+    throw error;
+  }
 };
 
-export default {
-  getUsers,
-  getUserById,
-  createUser,
-  updateUser,
-  deleteUser,
-  updateUserRole,
-  getStudents
+/**
+ * Search users.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} query - Search query
+ * @param {Object} filters - Additional filters
+ * @returns {Promise<Object>} Search results
+ */
+export const searchUsers = async (query, filters = {}) => {
+  console.log("userService.js: searchUsers called with query:", query, "filters:", filters, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("userService.js: searchUsers - MOCK - searching users");
+    // Simple mock search
+    const filteredUsers = MOCK_USERS.filter(user => 
+      user.fullName.toLowerCase().includes(query.toLowerCase()) ||
+      user.email.toLowerCase().includes(query.toLowerCase())
+    );
+    return {
+      data: filteredUsers,
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: filteredUsers.length,
+        totalPages: 1
+      }
+    };
+  }
+
+  try {
+    console.log("userService.js: searchUsers - attempting to search via API");
+    const result = await userApi.searchUsers(query, filters);
+    
+    if (result.success) {
+      console.log("userService.js: searchUsers - API success:", result.data);
+      return {
+        data: result.data,
+        pagination: result.pagination
+      };
+    } else {
+      console.warn("userService.js: searchUsers - API returned error, using fallback:", result.error);
+      // Fallback to simple mock search
+      const filteredUsers = MOCK_USERS.filter(user => 
+        user.fullName.toLowerCase().includes(query.toLowerCase())
+      );
+      return {
+        data: filteredUsers,
+        pagination: { page: 1, limit: 10, total: filteredUsers.length, totalPages: 1 }
+      };
+    }
+  } catch (error) {
+    console.error("userService.js: searchUsers - API call failed, using fallback:", error);
+    const filteredUsers = MOCK_USERS.filter(user => 
+      user.fullName.toLowerCase().includes(query.toLowerCase())
+    );
+    return {
+      data: filteredUsers,
+      pagination: { page: 1, limit: 10, total: filteredUsers.length, totalPages: 1 }
+    };
+  }
+};
+
+/**
+ * Get a single user by ID
+ * @param {string} userId - ID of the user to retrieve
+ * @returns {Promise<Object>} User data
+ */
+export const getUserById = async (userId) => {
+  console.log("userService.js: getUserById called with userId:", userId, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("userService.js: getUserById - MOCK - getting user");
+    const mockUser = MOCK_USERS.find(user => user.id === userId);
+    return mockUser ? { data: mockUser, success: true } : { data: null, success: false, error: 'User not found' };
+  }
+
+  try {
+    console.log("userService.js: getUserById - attempting to fetch from API");
+    const result = await userApi.getUser(userId);
+    
+    if (result.success) {
+      console.log("userService.js: getUserById - API success:", result.data);
+      return { data: result.data, success: true };
+    } else {
+      console.error("userService.js: getUserById - API returned error:", result.error);
+      return { data: null, success: false, error: result.error };
+    }
+  } catch (error) {
+    console.error(`userService.js: getUserById - API call failed for user ${userId}:`, error);
+    return { 
+      data: null, 
+      success: false, 
+      error: error.message || 'Failed to fetch user' 
+    };
+  }
+};
+
+/**
+ * Create a new user
+ * @param {Object} userData - User data to create
+ * @returns {Promise<Object>} Created user
+ */
+export const createUser = async (userData) => {
+  try {
+    const response = await userApi.createUser(userData);
+    return response;
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return {
+      data: null,
+      success: false,
+      error: error.message || 'Failed to create user'
+    };
+  }
+};
+
+/**
+ * Assign role to a user
+ * @param {string} userId - ID of the user
+ * @param {string} role - Role to assign
+ * @returns {Promise<Object>} Updated user
+ */
+export const assignUserRole = async (userId, role) => {
+  try {
+    const response = await userApi.assignRole(userId, role);
+    return response;
+  } catch (error) {
+    console.error(`Error assigning role to user ${userId}:`, error);
+    return {
+      data: null,
+      success: false,
+      error: error.message || 'Failed to assign role'
+    };
+  }
+};
+
+/**
+ * Get students by program and year
+ * @param {string} programId - Program ID
+ * @param {number} year - Academic year
+ * @returns {Promise<Array>} List of students
+ */
+export const getStudentsByProgram = async (programId, year) => {
+  try {
+    const response = await userApi.getStudentsByProgram(programId, year);
+    return response;
+  } catch (error) {
+    console.error(`Error fetching students for program ${programId}, year ${year}:`, error);
+    return {
+      data: [],
+      success: false,
+      error: error.message || 'Failed to fetch students'
+    };
+  }
+};
+
+/**
+ * Assign class to students
+ * @param {Array} studentIds - Array of student IDs
+ * @param {Object} classData - Class assignment data
+ * @returns {Promise<Object>} Assignment result
+ */
+export const assignClassToStudents = async (studentIds, classData) => {
+  try {
+    const response = await userApi.assignClass(studentIds, classData);
+    return response;
+  } catch (error) {
+    console.error('Error assigning class to students:', error);
+    return {
+      data: null,
+      success: false,
+      error: error.message || 'Failed to assign class'
+    };
+  }
 }; 
