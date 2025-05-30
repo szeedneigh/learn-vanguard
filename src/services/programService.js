@@ -1,17 +1,6 @@
-import apiClient from '@/lib/api/client';
+import * as programApi from '@/lib/api/programApi';
 
-// --- Utilities ---
-/**
- * Converts a semester display name to a stable slug
- * @param {string} semester - The semester display name (e.g. "1st Semester")
- * @returns {string} The semester slug (e.g. "semester_1")
- */
-const getSemesterSlug = (semester) => {
-  const semesterNumber = semester.match(/(\d+)/)?.[1] || '1';
-  return `semester_${semesterNumber}`;
-};
-
-// --- Mock Data ---
+// --- Mock Data (Fallback only) ---
 const MOCK_PROGRAMS = [
   {
     id: 'act',
@@ -57,68 +46,86 @@ const MOCK_SUBJECTS = {
 
 const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
+// --- Helper Functions ---
+const getSemesterSlug = (semester) => {
+  if (!semester) return 'semester_unknown';
+  return semester.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+};
+
+const getMockSubjects = (programId, year, semester) => {
+  const semesterSlug = getSemesterSlug(semester);
+  const mockKey = `${programId}_year${year}_${semesterSlug}`;
+  return MOCK_SUBJECTS[mockKey] || [];
+};
+
 // --- Service Functions ---
 
 /**
  * Fetches all programs.
- * Returns mock data if USE_MOCK_DATA is true.
- * @throws {Error} When not using mock data (implementation pending)
+ * Uses backend API with fallback to mock data if API fails.
  */
 export const getPrograms = async () => {
   console.log("programService.js: getPrograms called. USE_MOCK_DATA:", USE_MOCK_DATA);
+  
   if (USE_MOCK_DATA) {
     console.log("programService.js: getPrograms - returning MOCK_PROGRAMS");
     return Promise.resolve(MOCK_PROGRAMS);
   }
-  console.log("programService.js: getPrograms - API implementation pending");
-  throw new Error("getPrograms API implementation not yet available");
+
+  try {
+    console.log("programService.js: getPrograms - attempting to fetch from API");
+    const result = await programApi.getPrograms();
+    
+    if (result.success) {
+      console.log("programService.js: getPrograms - API success:", result.data);
+      return result.data;
+    } else {
+      console.warn("programService.js: getPrograms - API returned error, using fallback:", result.error);
+      return MOCK_PROGRAMS;
+    }
+  } catch (error) {
+    console.error("programService.js: getPrograms - API call failed, using fallback:", error);
+    return MOCK_PROGRAMS;
+  }
 };
 
 /**
  * Fetches subjects for a given program, year, and semester.
- * Returns mock data if USE_MOCK_DATA is true.
- * @param {{ programId: string, year: number, semester: string }} params
+ * Uses backend API with fallback to mock data if API fails.
  */
 export const getSubjects = async ({ programId, year, semester }) => {
   console.log(`programService.js: getSubjects called with programId: ${programId}, year: ${year}, semester: ${semester}. USE_MOCK_DATA: ${USE_MOCK_DATA}`);
+  
   if (USE_MOCK_DATA) {
-    const semesterSlug = getSemesterSlug(semester);
-    const mockKey = `${programId}_year${year}_${semesterSlug}`;
-    const subjects = MOCK_SUBJECTS[mockKey] || [];
-    console.log("programService.js: getSubjects - returning MOCK_SUBJECTS for key:", mockKey, subjects);
-    return Promise.resolve(subjects); // Simulate async behavior
+    const subjects = getMockSubjects(programId, year, semester);
+    console.log("programService.js: getSubjects - returning MOCK_SUBJECTS:", subjects);
+    return Promise.resolve(subjects);
   }
-  console.log("programService.js: getSubjects - attempting to fetch from API");
+
   try {
-    // API: GET /subjects?programId=X&year=Y&semester=Z
-    const endpoint = `/subjects?programId=${programId}&year=${year}&semester=${semester}`;
-    const { data } = await apiClient.get(endpoint);
-    console.log("programService.js: getSubjects - raw data from API:", data);
-    const result = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
-    console.log("programService.js: getSubjects - processed result:", result);
-    return result;
-  } catch (error) {
-    console.error("programService.js: Error fetching subjects:", error);
-    if (error.response) {
-      console.error("programService.js: Error response data:", error.response.data);
-      console.error("programService.js: Error response status:", error.response.status);
-    } else if (error.request) {
-      console.error("programService.js: Error request data:", error.request);
+    console.log("programService.js: getSubjects - attempting to fetch from API");
+    const result = await programApi.getSubjects({ programId, year, semester });
+    
+    if (result.success) {
+      console.log("programService.js: getSubjects - API success:", result.data);
+      return result.data;
     } else {
-      console.error("programService.js: Error message:", error.message);
+      console.warn("programService.js: getSubjects - API returned error, using fallback:", result.error);
+      return getMockSubjects(programId, year, semester);
     }
-    return []; // Return empty array on error
+  } catch (error) {
+    console.error("programService.js: getSubjects - API call failed, using fallback:", error);
+    return getMockSubjects(programId, year, semester);
   }
 };
 
 /**
  * Creates a new subject.
- * Returns mock data if USE_MOCK_DATA is true.
- * @param {object} subjectData - The data for the subject to create.
- * @returns {Promise<object>} The created subject object.
+ * Uses backend API with fallback to mock behavior if API fails.
  */
 export const createSubject = async (subjectData) => {
   console.log("programService.js: createSubject called with:", subjectData, "USE_MOCK_DATA:", USE_MOCK_DATA);
+  
   if (USE_MOCK_DATA) {
     console.log("programService.js: createSubject - MOCK - creating:", subjectData);
     const mockId = `mock_subject_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -130,7 +137,7 @@ export const createSubject = async (subjectData) => {
     };
     
     // Add to mock subjects if the semester exists
-    const mockKey = `${subjectData.programId}_year${subjectData.year}_${subjectData.semester}`;
+    const mockKey = `${subjectData.programId}_year${subjectData.yearName}_${getSemesterSlug(subjectData.semesterName)}`;
     if (MOCK_SUBJECTS[mockKey]) {
       MOCK_SUBJECTS[mockKey].push(newMockSubject);
     }
@@ -139,56 +146,73 @@ export const createSubject = async (subjectData) => {
   }
 
   try {
-    const { data } = await apiClient.post('/subjects', subjectData); // API: POST /subjects
-    console.log("programService.js: createSubject - response data:", data);
-    return data;
+    console.log("programService.js: createSubject - attempting to create via API");
+    const result = await programApi.createSubject(subjectData);
+    
+    if (result.success) {
+      console.log("programService.js: createSubject - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("programService.js: createSubject - API returned error:", result.error);
+      throw new Error(result.error);
+    }
   } catch (error) {
-    console.error("programService.js: Error creating subject:", error.response?.data || error.message);
+    console.error("programService.js: createSubject - API call failed:", error);
     throw error;
   }
 };
 
 /**
  * Updates an existing subject.
- * @param {string} subjectId - The ID of the subject to update.
- * @param {object} subjectData - The data to update.
- * @returns {Promise<object>} The updated subject object.
  */
 export const updateSubject = async (subjectId, subjectData) => {
-  // if (USE_MOCK_DATA) {
-  //   console.log("programService.js: updateSubject - MOCK - pretending to update:", subjectId, subjectData);
-  //   // Find and update in a mock list if maintaining state
-  //   return Promise.resolve({ id: subjectId, ...subjectData });
-  // }
+  console.log("programService.js: updateSubject called with:", subjectId, subjectData);
+  
+  if (USE_MOCK_DATA) {
+    console.log("programService.js: updateSubject - MOCK - pretending to update:", subjectId, subjectData);
+    return Promise.resolve({ id: subjectId, ...subjectData });
+  }
+
   try {
-    const { data } = await apiClient.put(`/subjects/${subjectId}`, subjectData); // API: PUT /subjects/:subjectId
-    return data;
+    const result = await programApi.updateSubject(subjectId, subjectData);
+    
+    if (result.success) {
+      console.log("programService.js: updateSubject - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("programService.js: updateSubject - API returned error:", result.error);
+      throw new Error(result.error);
+    }
   } catch (error) {
-    console.error(`Error updating subject ${subjectId}:`, error.response?.data || error.message);
+    console.error("programService.js: updateSubject - API call failed:", error);
     throw error;
   }
 };
 
 /**
  * Deletes a subject by its ID.
- * Returns mock data if USE_MOCK_DATA is true.
- * @param {string} subjectId - The ID of the subject to delete.
  */
 export const deleteSubject = async (subjectId) => {
   console.log("programService.js: deleteSubject called with subjectId:", subjectId, "USE_MOCK_DATA:", USE_MOCK_DATA);
+  
   if (USE_MOCK_DATA) {
     console.log("programService.js: deleteSubject - MOCK - pretending to delete:", subjectId);
-    // Simulate finding and "removing" the subject from a mock list if you had one
-    // For now, just return a success message.
     return Promise.resolve({ message: `Mock subject ${subjectId} deleted successfully` });
   }
-  // When not using mock data, proceed with API call
+
   try {
-    const { data } = await apiClient.delete(`/subjects/${subjectId}`); // API: DELETE /subjects/:subjectId
-    console.log("programService.js: deleteSubject - API response data:", data);
-    return data;
+    console.log("programService.js: deleteSubject - attempting to delete via API");
+    const result = await programApi.deleteSubject(subjectId);
+    
+    if (result.success) {
+      console.log("programService.js: deleteSubject - API success:", result.message);
+      return { message: result.message };
+    } else {
+      console.error("programService.js: deleteSubject - API returned error:", result.error);
+      throw new Error(result.error);
+    }
   } catch (error) {
-    console.error(`programService.js: Error deleting subject ${subjectId} from API:`, error.response?.data || error.message);
+    console.error("programService.js: deleteSubject - API call failed:", error);
     throw error;
   }
 }; 
