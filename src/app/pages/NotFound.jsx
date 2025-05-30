@@ -34,7 +34,7 @@ export default function NotFound() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }}>
           <h1 className="text-6xl font-bold text-blue-600 mb-2">404</h1>
           <h2 className="text-3xl font-semibold text-gray-800 mb-4">Page Not Found</h2>
-          <p className="text-gray-600 mb-8">Oops! The page you're looking for is under development.</p>
+          <p className="text-gray-600 mb-8">Oops! The page you&apos;re looking for is not available</p>
         </motion.div>
 
         <motion.div
