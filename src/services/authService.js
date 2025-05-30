@@ -1,305 +1,257 @@
 import apiClient from '@/lib/api/client';
 import { ROLES } from '@/lib/constants';
 import { jwtDecode } from 'jwt-decode';
-import { authConfig } from '@/config/auth';
-
-// Mock user data for development
-const MOCK_USERS = {
-  admin: {
-    id: 'mock-admin-001',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: ROLES.ADMIN,
-    password: 'password123', // Would never store password in plaintext in a real app
-  },
-  pio: {
-    id: 'mock-pio-001',
-    name: 'PIO User',
-    email: 'pio@example.com',
-    role: ROLES.PIO,
-    password: 'passwordPIO',
-  },
-  student: {
-    id: 'mock-student-001',
-    name: 'Student User',
-    email: 'student@example.com',
-    role: ROLES.STUDENT,
-    password: 'passwordStudent',
-  },
-};
+import { environment } from '@/config/environment';
+import { 
+  signInWithGoogle, 
+  signOutGoogle, 
+  getCurrentUserToken,
+  onAuthStateChanged 
+} from '@/config/firebase';
 
 /**
  * Environment configuration
  */
 const config = {
-  useMockAuth: import.meta.env.VITE_USE_MOCK_AUTH === 'true',
+  useMockAuth: environment.USE_MOCK_AUTH,
   tokenExpiryDays: 7,
 };
 
 /**
  * Authenticate user with provided credentials
- * @param {Object} credentials - User credentials (email/username and password)
+ * @param {Object} credentials - User credentials (email and password)
  * @returns {Promise<Object>} User data and tokens
  */
 export const login = async (credentials) => {
-  if (config.useMockAuth) {
-    return mockLogin(credentials);
-  }
-
   try {
     const response = await apiClient.post('/auth/login', credentials);
-    const { user, token, refreshToken } = response.data;
+    const { message, token, user } = response.data;
 
-    // Store tokens securely
+    // Store token securely
     if (token) {
       localStorage.setItem('authToken', token);
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
-      }
     }
 
-    return { user, success: true };
+    return { 
+      user, 
+      token, 
+      success: true,
+      message 
+    };
   } catch (error) {
     console.error('Login failed:', error.response?.data || error.message);
     return { 
       user: null, 
       success: false, 
-      error: error.response?.data?.message || 'Authentication failed' 
+      error: error.response?.data?.message || error.response?.data?.error?.message || 'Authentication failed' 
     };
   }
 };
 
 /**
- * Mock login implementation for development
- * @param {Object} credentials - User credentials
- * @returns {Promise<Object>} Mock user data and token
+ * Google Sign-in authentication with Firebase
+ * @returns {Promise<Object>} User data and result
  */
-const mockLogin = async (credentials) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  const providedEmail = credentials.email || credentials.username;
-  
-  // Find matching mock user
-  const matchedUser = Object.values(MOCK_USERS).find(
-    user => user.email === providedEmail && user.password === credentials.password
-  );
-
-  if (matchedUser) {
-    // Create a user object without the password
-    // eslint-disable-next-line no-unused-vars
-    const { password, ...userWithoutPassword } = matchedUser;
-    
-    // Generate mock tokens
-    const mockToken = `mock-${userWithoutPassword.role.toLowerCase()}-token-${Date.now()}`;
-    const mockRefreshToken = `mock-refresh-${userWithoutPassword.role.toLowerCase()}-${Date.now()}`;
-    
-    // Store tokens in localStorage
-    localStorage.setItem('authToken', mockToken);
-    localStorage.setItem('refreshToken', mockRefreshToken);
-    
-    return { 
-      user: userWithoutPassword, 
-      success: true 
-    };
-  }
-  
-  // Mock authentication failure
-  return { 
-    user: null, 
-    success: false, 
-    error: 'Invalid email or password' 
-  };
-};
-
-/**
- * Get the currently authenticated user's information
- * @returns {Promise<Object>} User data
- */
-export const getCurrentUser = async () => {
-  if (config.useMockAuth) {
-    return mockGetCurrentUser();
-  }
-
+export const loginWithGoogle = async () => {
   try {
-    const response = await apiClient.get('/auth/me');
-    return { 
-      user: response.data, 
-      success: true 
+    // Sign in with Google and get Firebase ID token
+    const { user: googleUser, idToken } = await signInWithGoogle();
+    
+    // Send Firebase ID token to backend for verification
+    const response = await apiClient.post('/auth/firebase', {
+      idToken: idToken
+    });
+
+    const { message, token, user, needsRegistration } = response.data;
+
+    if (needsRegistration) {
+      // Return registration required state
+      return {
+        user: null,
+        token: null,
+        success: false,
+        needsRegistration: true,
+        email: googleUser.email,
+        message: 'Additional information required'
+      };
+    }
+
+    // Store the JWT token from backend
+    if (token) {
+      localStorage.setItem('authToken', token);
+    }
+    
+    return {
+      user,
+      token,
+      success: true,
+      message: message || 'Google sign-in successful'
     };
   } catch (error) {
-    console.error('Error fetching current user:', error.response?.data || error.message);
-    return { 
-      user: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to fetch user data' 
-    };
-  }
-};
-
-/**
- * Mock implementation of getting current user
- * @returns {Promise<Object>} Mock user data
- */
-const mockGetCurrentUser = async () => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-
-  const token = localStorage.getItem('authToken');
-  
-  if (!token) {
-    return { user: null, success: false, error: 'No authentication token found' };
-  }
-
-  // Token validation logic would go here in a real implementation
-  // For mock, we'll parse the role from the token
-  
-  let mockUser = null;
-  
-  if (token.includes('admin')) {
-    // eslint-disable-next-line no-unused-vars
-    const { password, ...userWithoutPassword } = MOCK_USERS.admin;
-    mockUser = userWithoutPassword;
-  } else if (token.includes('pio')) {
-    // eslint-disable-next-line no-unused-vars
-    const { password, ...userWithoutPassword } = MOCK_USERS.pio;
-    mockUser = userWithoutPassword;
-  } else if (token.includes('student')) {
-    // eslint-disable-next-line no-unused-vars
-    const { password, ...userWithoutPassword } = MOCK_USERS.student;
-    mockUser = userWithoutPassword;
-  }
-
-  if (mockUser) {
-    return { user: mockUser, success: true };
-  }
-  
-  // Token didn't match any expected pattern
-  return { user: null, success: false, error: 'Invalid token' };
-};
-
-/**
- * Register a new user account
- * @param {Object} userData - User registration data
- * @returns {Promise<Object>} New user data and result
- */
-export const register = async (userData) => {
-  if (config.useMockAuth) {
-    return mockRegister(userData);
-  }
-
-  try {
-    const response = await apiClient.post('/auth/register', userData);
-    return { 
-      user: response.data.user, 
-      success: true 
-    };
-  } catch (error) {
-    console.error('Registration failed:', error.response?.data || error.message);
-    return { 
-      user: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Registration failed' 
-    };
-  }
-};
-
-/**
- * Mock implementation of user registration
- * @param {Object} userData - User registration data
- * @returns {Promise<Object>} Mock registration result
- */
-const mockRegister = async (userData) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  // Check if email already exists in mock data
-  const emailExists = Object.values(MOCK_USERS).some(user => user.email === userData.email);
-  
-  if (emailExists) {
+    console.error('Google sign-in failed:', error);
     return {
       user: null,
       success: false,
-      error: 'Email already in use'
+      error: error.response?.data?.message || error.message || 'Google sign-in failed'
     };
   }
-  
-  // Create a mock user (would be created by the server in reality)
-  const newMockUser = {
-    id: `mock-user-${Date.now()}`,
-    name: userData.name,
-    email: userData.email,
-    role: ROLES.STUDENT, // Default role for new registrations
-  };
-  
-  return {
-    user: newMockUser,
-    success: true
-  };
 };
 
 /**
- * Log the user out
+ * Complete Google user registration with additional info
+ * @param {Object} registrationData - Additional user information
+ * @returns {Promise<Object>} Registration result
+ */
+export const completeGoogleRegistration = async (registrationData) => {
+  try {
+    const response = await apiClient.post('/auth/firebase', registrationData);
+    const { message, token, user } = response.data;
+
+    if (token) {
+      localStorage.setItem('authToken', token);
+    }
+
+    return {
+      user,
+      token,
+      success: true,
+      message: message || 'Registration completed successfully'
+    };
+  } catch (error) {
+    console.error('Google registration failed:', error);
+    return {
+      user: null,
+      success: false,
+      error: error.response?.data?.message || error.response?.data?.error?.message || 'Registration failed'
+    };
+  }
+};
+
+/**
+ * Two-step signup process - Step 1: Initiate signup
+ * @param {Object} basicData - Basic user information (firstName, lastName, email, password)
+ * @returns {Promise<Object>} Temporary token for step 2
+ */
+export const initiateSignup = async (basicData) => {
+  try {
+    const response = await apiClient.post('/auth/signup/initiate', basicData);
+    const { message, tempToken } = response.data;
+
+    return {
+      success: true,
+      tempToken,
+      message: message || 'First step completed successfully'
+    };
+  } catch (error) {
+    console.error('Signup initiation failed:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || error.response?.data?.error?.message || 'Signup failed',
+      details: error.response?.data?.error?.details || {}
+    };
+  }
+};
+
+/**
+ * Two-step signup process - Step 2: Complete signup
+ * @param {Object} completeData - Academic information and temp token
+ * @returns {Promise<Object>} User data and JWT token
+ */
+export const completeSignup = async (completeData) => {
+  try {
+    const response = await apiClient.post('/auth/signup/complete', completeData);
+    const { message, token, user } = response.data;
+
+    if (token) {
+      localStorage.setItem('authToken', token);
+    }
+
+    return {
+      success: true,
+      token,
+      user,
+      message: message || 'Successfully created an account'
+    };
+  } catch (error) {
+    console.error('Signup completion failed:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || error.response?.data?.error?.message || 'Signup failed',
+      details: error.response?.data?.error?.details || {}
+    };
+  }
+};
+
+/**
+ * Get current authenticated user
+ * @returns {Promise<Object>} Current user data
+ */
+export const getCurrentUser = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      return { user: null, success: false, error: 'No auth token found' };
+    }
+
+    const response = await apiClient.get('/auth/me');
+    return { 
+      user: response.data.user || response.data, 
+      success: true 
+    };
+  } catch (error) {
+    console.error('Get current user failed:', error);
+    // If unauthorized, clear token
+    if (error.response?.status === 401) {
+      localStorage.removeItem('authToken');
+    }
+    return { 
+      user: null, 
+      success: false, 
+      error: error.response?.data?.message || 'Failed to get current user' 
+    };
+  }
+};
+
+/**
+ * Logout user
  * @returns {Promise<Object>} Logout result
  */
 export const logout = async () => {
-  if (config.useMockAuth) {
-    return mockLogout();
-  }
-
   try {
-    // Call logout API endpoint if needed
     await apiClient.post('/auth/logout');
-    
-    // Clean up tokens
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('refreshToken');
-    
-    return { success: true };
   } catch (error) {
-    console.error('Logout failed:', error.response?.data || error.message);
-    
-    // Still remove tokens even if the API call fails
+    console.error('Logout API call failed:', error);
+  } finally {
+    // Always clear local storage regardless of API call success
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     
-    return { 
-      success: true, // Consider logout successful even if API fails
-      error: error.response?.data?.message 
-    };
+    // Sign out from Firebase as well
+    try {
+      await signOutGoogle();
+    } catch (firebaseError) {
+      console.warn('Firebase signout failed:', firebaseError);
+    }
   }
+
+  return { success: true, message: 'Logged out successfully' };
 };
 
 /**
- * Mock implementation of logout
- * @returns {Promise<Object>} Mock logout result
- */
-const mockLogout = async () => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 200));
-  
-  // Remove tokens
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('refreshToken');
-  
-  return { success: true };
-};
-
-/**
- * Request a password reset
+ * Request password reset
  * @param {Object} data - Contains email address
  * @returns {Promise<Object>} Result of password reset request
  */
 export const requestPasswordReset = async (data) => {
-  if (config.useMockAuth) {
-    return mockRequestPasswordReset(data);
-  }
-
   try {
-    await apiClient.post('/auth/password-reset-request', data);
-    return { success: true };
+    const response = await apiClient.post('/password/forgot-password', data);
+    return { 
+      success: true,
+      message: response.data.message,
+      expiresAt: response.data.expiresAt
+    };
   } catch (error) {
-    console.error('Password reset request failed:', error.response?.data || error.message);
+    console.error('Password reset request failed:', error);
     return { 
       success: false, 
       error: error.response?.data?.message || 'Failed to request password reset' 
@@ -308,81 +260,107 @@ export const requestPasswordReset = async (data) => {
 };
 
 /**
- * Mock implementation of password reset request
- * @param {Object} data - Contains email address
- * @returns {Promise<Object>} Mock result
+ * Verify password reset code
+ * @param {Object} data - Contains email and verification code
+ * @returns {Promise<Object>} Verification result with reset token
  */
-const mockRequestPasswordReset = async (data) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Check if email exists in mock users
-  const userExists = Object.values(MOCK_USERS).some(user => user.email === data.email);
-  
-  if (!userExists) {
-    // For security, don't reveal if the email exists or not
-    // In a mock environment, we'll still return success
-    console.log('Mock: Reset requested for non-existent email, but returning success for security');
+export const verifyResetCode = async (data) => {
+  try {
+    const response = await apiClient.post('/password/verify-code', data);
+    return {
+      success: true,
+      resetToken: response.data.resetToken,
+      message: response.data.message || 'Code verified successfully'
+    };
+  } catch (error) {
+    console.error('Code verification failed:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Code verification failed'
+    };
   }
-  
-  // Always return success to prevent email enumeration
-  return { success: true };
 };
 
 /**
- * Verify authentication token
- * @returns {boolean} Whether the current token is valid
+ * Reset password with verified token
+ * @param {Object} data - Contains resetToken, password, confirmPassword
+ * @returns {Promise<Object>} Password reset result
  */
-export const verifyToken = () => {
-  const token = localStorage.getItem('authToken');
-  if (!token) return false;
-  
-  // If using mock auth, check if token includes any of our mock role strings
-  if (authConfig.useMockAuth) {
-    return token.includes('mock-') || 
-           token.includes('admin') || 
-           token.includes('pio') || 
-           token.includes('student');
-  }
-  
+export const resetPassword = async (data) => {
   try {
-    // Decode the JWT token
-    const decodedToken = jwtDecode(token);
+    const response = await apiClient.post('/password/reset', data);
+    return {
+      success: true,
+      message: response.data.message || 'Password reset successfully'
+    };
+  } catch (error) {
+    console.error('Password reset failed:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Password reset failed'
+    };
+  }
+};
+
+/**
+ * Verify if current token is valid
+ * @returns {Promise<boolean>} Token validity
+ */
+export const verifyToken = async () => {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) return false;
+
+    // Decode token to check expiration
+    const decoded = jwtDecode(token);
+    const currentTime = Date.now() / 1000;
     
-    // Check if token has expired
-    const currentTime = Date.now() / 1000; // Convert to seconds
-    if (!decodedToken.exp || decodedToken.exp < currentTime) {
+    if (decoded.exp < currentTime) {
+      localStorage.removeItem('authToken');
       return false;
     }
-    
-    // Check if token is approaching expiry and needs refresh
-    const timeUntilExpiry = decodedToken.exp - currentTime;
-    if (timeUntilExpiry < authConfig.jwt.refreshThreshold) {
-      // Token is valid but approaching expiry - trigger refresh if needed
-      console.log('Token approaching expiry, consider refreshing');
-    }
-    
+
+    // Verify with backend
+    await apiClient.get('/auth/verify');
     return true;
   } catch (error) {
-    console.error('Token validation failed:', error);
+    console.error('Token verification failed:', error);
+    localStorage.removeItem('authToken');
     return false;
   }
 };
 
 /**
- * Check if user has authentication
- * @returns {boolean} Whether the user is authenticated
+ * Check if user is authenticated
+ * @returns {boolean} Authentication status
  */
 export const isAuthenticated = () => {
-  return !!localStorage.getItem('authToken');
+  const token = localStorage.getItem('authToken');
+  if (!token) return false;
+
+  try {
+    const decoded = jwtDecode(token);
+    const currentTime = Date.now() / 1000;
+    return decoded.exp > currentTime;
+  } catch (error) {
+    console.error('Token decode failed:', error);
+    return false;
+  }
 };
 
-export default {
+// Export all auth functions
+export const authService = {
   login,
+  loginWithGoogle,
+  completeGoogleRegistration,
   logout,
-  register,
   getCurrentUser,
   requestPasswordReset,
+  verifyResetCode,
+  resetPassword,
   verifyToken,
   isAuthenticated,
+  onAuthStateChanged,
+  initiateSignup,
+  completeSignup
 }; 
