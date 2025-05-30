@@ -5,6 +5,7 @@ import { EyeIcon, EyeOffIcon, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Lock } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 const smoothTransition = {
   type: "spring",
@@ -161,34 +162,32 @@ PasswordInput.propTypes = {
 
 export default function LogIn() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState([]);
+  const { login, isLoading: authIsLoading } = useAuth();
+  const [formErrors, setFormErrors] = useState({});
+  const [apiError, setApiError] = useState(null);
   const [formData, setFormData] = useState({
     emailOrUsername: "",
     password: "",
   });
 
   const validateForm = () => {
-
     const errors = {};
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; 
-    const usernameRegex = /^[a-zA-Z0-9_]+$/; 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
 
     const trimmedInput = formData.emailOrUsername.trim();
     if (!trimmedInput) {
       errors.emailOrUsername = "Email or username is required";
     } else if (
-      !emailRegex.test(trimmedInput) && 
+      !emailRegex.test(trimmedInput) &&
       !usernameRegex.test(trimmedInput)
     ) {
       errors.emailOrUsername = "Invalid email or username format";
     }
 
-    // Validate Password
     if (!formData.password) {
       errors.password = "Password is required";
-    } else if (formData.password.length < 8) { 
+    } else if (formData.password.length < 8) {
       errors.password = "Password must be at least 8 characters";
     }
     return errors;
@@ -196,30 +195,39 @@ export default function LogIn() {
 
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-    setErrors([]);
+    setFormErrors({});
+    setApiError(null);
   };
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-    const formErrors = validateForm();
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
+    setApiError(null);
+    const currentFormErrors = validateForm();
+    if (Object.keys(currentFormErrors).length > 0) {
+      setFormErrors(currentFormErrors);
       return;
     }
 
-    setErrors([]);
-    setIsLoading(true);
+    setFormErrors({});
+
+    const credentials = {
+      ...(formData.emailOrUsername.includes('@') ? { email: formData.emailOrUsername } : { username: formData.emailOrUsername }),
+      password: formData.password,
+    };
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000)); 
-      navigate('/dashboard');
-    } catch (err) {
-      console.error("Login error:", err); 
-      setErrors({ form: "An error occurred during login. Please try again." }); 
-    } finally {
-      setIsLoading(false);
+      const { success, error } = await login(credentials);
+
+      if (success) {
+        navigate('/dashboard');
+      } else {
+        setApiError(error || "Login failed. Please check your credentials and try again.");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setApiError("An unexpected error occurred. Please try again later.");
     }
-  }, [navigate, formData]);
+  }, [navigate, formData, login]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/95 via-indigo-50/95 to-violet-50/95 backdrop-blur-sm">
@@ -258,14 +266,14 @@ export default function LogIn() {
                 exit={{ opacity: 0, y: 20 }}
                 transition={{ duration: 0.3 }}
               >
-                {errors.form && (
+                {apiError && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
                     <Alert variant="destructive" className="shadow-lg" role="alert" aria-live="assertive">
-                      <AlertDescription>{errors.form}</AlertDescription>
+                      <AlertDescription>{apiError}</AlertDescription>
                     </Alert>
                   </motion.div>
                 )}
@@ -280,7 +288,7 @@ export default function LogIn() {
                     Welcome back
                   </h1>
                   <p className="text-gray-600 text-sm">
-                    Don't have an account?{" "}
+                    Don&apos;t have an account?{" "}
                     <Link to="/signup" className="text-blue-600 font-medium hover:text-blue-700 relative">
                       <motion.span
                         whileHover={{ scale: 1.05 }}
@@ -307,7 +315,7 @@ export default function LogIn() {
                       onChange={handleChange("emailOrUsername")}
                       required
                       icon={User}
-                      error={errors.emailOrUsername}
+                      error={formErrors.emailOrUsername}
                     />
                   </motion.div>
 
@@ -321,7 +329,7 @@ export default function LogIn() {
                       label="Password"
                       value={formData.password}
                       onChange={handleChange("password")}
-                      error={errors.password}
+                      error={formErrors.password}
                     />
                   </motion.div>
 
@@ -346,40 +354,30 @@ export default function LogIn() {
                     </Link>
                   </motion.div>
 
-                  <motion.button
-                    type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-500 
-                             text-white rounded-lg font-medium shadow-lg shadow-blue-500/30 
-                             flex items-center justify-center gap-2 group relative overflow-hidden"
-                    whileHover={{ 
-                      scale: 1.01,
-                      background: "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)"
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={smoothTransition}
-                    disabled={isLoading}
-                    aria-label={isLoading ? "Logging in..." : "Login"}
+                  <motion.div
+                    className="mt-6"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.6 }}
                   >
-                    {isLoading ? (
-                      <motion.div
-                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                      />
-                    ) : (
-                      <>
-                        <span className="relative z-10">Login</span>
-                        <motion.div
-                          className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                          initial={{ opacity: 0 }}
-                        />
-                      </>
-                    )}
-                  </motion.button>
+                    <button
+                      type="submit"
+                      disabled={authIsLoading}
+                      className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {authIsLoading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Signing In...
+                        </>
+                      ) : (
+                        "Sign In"
+                      )}
+                    </button>
+                  </motion.div>
 
                   <motion.div
                     className="relative text-center my-6"
