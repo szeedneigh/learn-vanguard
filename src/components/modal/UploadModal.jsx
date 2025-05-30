@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
-import { X, FileText, AlertCircle, Upload, File, CheckCircle2 } from 'lucide-react';
+import { X, FileText, AlertCircle, Upload, File, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+import PropTypes from 'prop-types';
 
 const ALLOWED_FILE_TYPES = {
   'application/pdf': {},
@@ -16,12 +17,10 @@ const ALLOWED_FILE_TYPES = {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSelectedSubject, subjects }) => {
+export const UploadModal = ({ isOpen, onClose, onUpload, subject = null, isLoading = false }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
 
   const validateAndSetFile = useCallback((file) => {
     if (!file) return;
@@ -64,28 +63,17 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
     validateAndSetFile(file);
   };
 
-  const simulateUpload = async () => {
-    setIsUploading(true);
-    for (let i = 0; i <= 100; i += 10) {
-      setUploadProgress(i);
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    setIsUploading(false);
-  };
-
   const handleUpload = async () => {
     if (!selectedFile) {
       setErrorMessage("Please select a file to upload.");
       return;
     }
-    // if (!selectedSubject) {
-    //   setErrorMessage("Please select a subject for this file.");
-    //   return;
-    // }
+    if (!subject || !subject.id) {
+      setErrorMessage("No subject selected to upload the file to.");
+      return;
+    }
     
-    await simulateUpload();
-    onUpload(selectedFile);
-    onClose();
+    onUpload(selectedFile, subject);
   };
 
   const formatFileSize = (bytes) => {
@@ -119,7 +107,9 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Upload Materials</h2>
-                  <p className="text-sm text-gray-500 mt-1">Add learning resources</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {subject ? `For subject: ${subject.name}` : "Add learning resources"}
+                  </p>
                 </div>
                 <motion.button
                   onClick={onClose}
@@ -132,25 +122,6 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
               </div>
 
               <div className="space-y-6">
-                {/* Subject Selection */}
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Subject
-                  </label>
-                  <select
-                    className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-                    value={selectedSubject || ""}
-                    onChange={(e) => setSelectedSubject(e.target.value)}
-                  >
-                    <option value="">Select a subject</option>
-                    {subjects?.map((subject) => (
-                      <option key={subject} value={subject}>
-                        {subject}
-                      </option>
-                    ))}
-                  </select>
-                </div> */}
-
                 {/* File Drop Zone */}
                 <motion.div
                   className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
@@ -216,13 +187,6 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
                           <X className="w-4 h-4" />
                         </motion.button>
                       </div>
-                      
-                      {isUploading && (
-                        <div className="space-y-2">
-                          <Progress value={uploadProgress} className="h-2" />
-                          <p className="text-xs text-gray-500 text-right">{uploadProgress}%</p>
-                        </div>
-                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -248,30 +212,28 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
               <motion.button
                 onClick={onClose}
                 className="px-4 py-2 text-gray-700 bg-white rounded-xl hover:bg-gray-100 transition-colors shadow-sm"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={isUploading}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                disabled={isLoading}
               >
                 Cancel
               </motion.button>
               <motion.button
                 onClick={handleUpload}
-                className={`px-4 py-2 rounded-xl text-white shadow-sm flex items-center space-x-2 ${
-                  isUploading ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                disabled={!selectedFile || !selectedSubject || isUploading}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                className="px-6 py-2 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-lg flex items-center justify-center"
+                whileHover={{ scale: 1.05, boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.1)" }}
+                whileTap={{ scale: 0.95 }}
+                disabled={isLoading || !selectedFile}
               >
-                {isUploading ? (
+                {isLoading ? (
                   <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>Uploading...</span>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Uploading...
                   </>
                 ) : (
                   <>
-                    <Upload className="w-5 h-5" />
-                    <span>Upload</span>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload
                   </>
                 )}
               </motion.button>
@@ -281,4 +243,15 @@ export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSel
       )}
     </AnimatePresence>
   );
+};
+
+UploadModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onUpload: PropTypes.func.isRequired,
+  subject: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    name: PropTypes.string,
+  }),
+  isLoading: PropTypes.bool,
 };
