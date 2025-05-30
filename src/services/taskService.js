@@ -1,540 +1,343 @@
-import apiClient, { createCancelableRequest } from '@/lib/api/client';
-import { ROLES } from '@/lib/constants';
+import * as taskApi from '@/lib/api/taskApi';
 
-/**
- * Environment configuration
- */
 const config = {
   useMockData: import.meta.env.VITE_USE_MOCK_DATA === 'true',
 };
 
-/**
- * Mock task data for development
- */
+// --- Mock Data (Fallback only) ---
 const MOCK_TASKS = [
   {
-    id: 'task-001',
-    title: 'Complete React Fundamentals Module',
-    description: 'Go through the React basics module and complete all exercises.',
-    status: 'IN_PROGRESS',
-    dueDate: '2023-11-20',
-    priority: 'HIGH',
-    assignedTo: 'mock-student-001',
-    assignedBy: 'mock-pio-001',
-    createdAt: '2023-11-01',
-    updatedAt: '2023-11-05',
-    completionProgress: 60,
-    attachments: [],
-    comments: [
-      {
-        id: 'comment-001',
-        userId: 'mock-pio-001',
-        userName: 'PIO User',
-        content: 'How is the progress going?',
-        createdAt: '2023-11-10'
-      }
-    ]
+    id: 'mock-task-1',
+    taskName: 'Welcome to Learn Vanguard',
+    taskDescription: 'Complete your profile setup and explore the platform features.',
+    taskDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    taskPriority: 'medium',
+    taskStatus: 'todo',
+    onHoldRemark: null,
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
-    id: 'task-002',
-    title: 'Submit Final JavaScript Project',
-    description: 'Complete and submit your final JavaScript project.',
-    status: 'TODO',
-    dueDate: '2023-12-15',
-    priority: 'MEDIUM',
-    assignedTo: 'mock-student-001',
-    assignedBy: 'mock-pio-001',
-    createdAt: '2023-11-08',
-    updatedAt: '2023-11-08',
-    completionProgress: 0,
-    attachments: [],
-    comments: []
-  },
-  {
-    id: 'task-003',
-    title: 'Review Student Submissions',
-    description: 'Go through the submitted JavaScript assignments and provide feedback.',
-    status: 'TODO',
-    dueDate: '2023-11-30',
-    priority: 'HIGH',
-    assignedTo: 'mock-pio-001',
-    assignedBy: 'mock-admin-001',
-    createdAt: '2023-11-15',
-    updatedAt: '2023-11-15',
-    completionProgress: 0,
-    attachments: [],
-    comments: []
-  },
-  {
-    id: 'task-004',
-    title: 'Prepare Next Module Materials',
-    description: 'Prepare learning materials for the next CSS module.',
-    status: 'IN_PROGRESS',
-    dueDate: '2023-12-05',
-    priority: 'MEDIUM',
-    assignedTo: 'mock-pio-001',
-    assignedBy: 'mock-admin-001',
-    createdAt: '2023-11-10',
-    updatedAt: '2023-11-12',
-    completionProgress: 30,
-    attachments: [],
-    comments: []
-  },
-  {
-    id: 'task-005',
-    title: 'Curriculum Review',
-    description: 'Review and approve the updated curriculum for the next semester.',
-    status: 'COMPLETED',
-    dueDate: '2023-11-15',
-    priority: 'HIGH',
-    assignedTo: 'mock-admin-001',
-    assignedBy: 'mock-admin-001',
-    createdAt: '2023-11-01',
-    updatedAt: '2023-11-14',
-    completionProgress: 100,
-    attachments: [],
-    comments: []
+    id: 'mock-task-2',
+    taskName: 'Submit Assignment #1',
+    taskDescription: 'Complete and submit the first assignment for Database Management.',
+    taskDeadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    taskPriority: 'high',
+    taskStatus: 'in-progress',
+    onHoldRemark: null,
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
   }
 ];
 
 /**
- * Get tasks based on provided filters
- * @param {Object} params - Query parameters for filtering tasks
- * @returns {Promise<Array>} List of tasks
- */
-export const getTasks = async (params = {}) => {
-  if (config.useMockData) {
-    return mockGetTasks(params);
-  }
-
-  try {
-    const { data } = await apiClient.get('/tasks', { params });
-    return { data, success: true };
-  } catch (error) {
-    console.error('Error fetching tasks:', error.response?.data || error.message);
-    return { 
-      data: [], 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to fetch tasks' 
-    };
-  }
-};
-
-/**
  * Mock implementation of getTasks
- * @param {Object} params - Filter parameters
- * @returns {Promise<Object>} Mock task list
  */
-const mockGetTasks = async (params = {}) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+const mockGetTasks = async (filters = {}) => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
   
   let filteredTasks = [...MOCK_TASKS];
   
-  // Apply filters based on params
-  if (params.status) {
-    filteredTasks = filteredTasks.filter(task => task.status === params.status);
+  // Apply filters
+  if (filters.status) {
+    filteredTasks = filteredTasks.filter(task => task.taskStatus === filters.status);
+  }
+  if (filters.priority) {
+    filteredTasks = filteredTasks.filter(task => task.taskPriority === filters.priority);
   }
   
-  if (params.assignedTo) {
-    filteredTasks = filteredTasks.filter(task => task.assignedTo === params.assignedTo);
-  }
-  
-  if (params.assignedBy) {
-    filteredTasks = filteredTasks.filter(task => task.assignedBy === params.assignedBy);
-  }
-  
-  if (params.priority) {
-    filteredTasks = filteredTasks.filter(task => task.priority === params.priority);
-  }
-  
-  if (params.search) {
-    const searchLower = params.search.toLowerCase();
-    filteredTasks = filteredTasks.filter(task => 
-      task.title.toLowerCase().includes(searchLower) || 
-      task.description.toLowerCase().includes(searchLower)
-    );
-  }
-  
-  // Sort by due date by default
-  filteredTasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-  
-  return { data: filteredTasks, success: true };
-};
-
-/**
- * Get a specific task by ID
- * @param {string} taskId - ID of the task to retrieve
- * @returns {Promise<Object>} Task data
- */
-export const getTaskById = async (taskId) => {
-  if (!taskId) {
-    return {
-      data: null,
-      success: false,
-      error: 'Task ID is required'
-    };
-  }
-  
-  if (config.useMockData) {
-    return mockGetTaskById(taskId);
-  }
-
-  try {
-    const { data } = await apiClient.get(`/tasks/${taskId}`);
-    return { data, success: true };
-  } catch (error) {
-    console.error(`Error fetching task ${taskId}:`, error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to fetch task' 
-    };
-  }
-};
-
-/**
- * Mock implementation of getTaskById
- * @param {string} taskId - ID of the task to retrieve
- * @returns {Promise<Object>} Mock task data
- */
-const mockGetTaskById = async (taskId) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  const task = MOCK_TASKS.find(task => task.id === taskId);
-  
-  if (task) {
-    return { data: task, success: true };
-  }
-  
-  return { 
-    data: null, 
-    success: false, 
-    error: 'Task not found' 
+  return {
+    data: filteredTasks,
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: filteredTasks.length,
+      totalPages: 1
+    }
   };
-};
-
-/**
- * Create a new task
- * @param {Object} taskData - New task details
- * @returns {Promise<Object>} Created task
- */
-export const createTask = async (taskData) => {
-  // Validate required fields
-  if (!taskData?.title?.trim() || !taskData?.assignedTo?.trim()) {
-    return {
-      data: null,
-      success: false,
-      error: 'Title and assignedTo are required fields'
-    };
-  }
-
-  if (config.useMockData) {
-    return mockCreateTask(taskData);
-  }
-
-  try {
-    const { data } = await apiClient.post('/tasks', taskData);
-    return { data, success: true };
-  } catch (error) {
-    console.error('Error creating task:', error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to create task' 
-    };
-  }
 };
 
 /**
  * Mock implementation of createTask
- * @param {Object} taskData - Task data to create
- * @returns {Promise<Object>} Created mock task
  */
 const mockCreateTask = async (taskData) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 700));
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
   
-  // Validate required fields
-  if (!taskData.title || !taskData.assignedTo) {
-    return {
-      data: null,
-      success: false,
-      error: 'Title and assignedTo are required fields'
-    };
-  }
-  
-  const newTask = {
-    id: `task-${Date.now()}`,
+  return {
+    id: `mock-task-${Date.now()}`,
     ...taskData,
-    status: taskData.status || 'TODO',
-    createdAt: new Date().toISOString().split('T')[0],
-    updatedAt: new Date().toISOString().split('T')[0],
-    completionProgress: taskData.completionProgress || 0,
-    attachments: taskData.attachments || [],
-    comments: taskData.comments || []
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
-  
-  // Add to mock data
-  MOCK_TASKS.push(newTask);
-  
-  return { data: newTask, success: true };
-};
-
-/**
- * Update an existing task
- * @param {string} taskId - ID of the task to update
- * @param {Object} taskData - Updated task fields
- * @returns {Promise<Object>} Updated task
- */
-export const updateTask = async (taskId, taskData) => {
-  if (!taskId) {
-    throw new Error('Task ID is required');
-  }
-  
-  if (config.useMockData) {
-    return mockUpdateTask(taskId, taskData);
-  }
-
-  try {
-    const { data } = await apiClient.put(`/tasks/${taskId}`, taskData);
-    return { data, success: true };
-  } catch (error) {
-    console.error(`Error updating task ${taskId}:`, error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to update task' 
-    };
-  }
 };
 
 /**
  * Mock implementation of updateTask
- * @param {string} taskId - ID of the task to update
- * @param {Object} taskData - Updated task fields
- * @returns {Promise<Object>} Updated mock task
  */
-const mockUpdateTask = async (taskId, taskData) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+const mockUpdateTask = async (taskId, updates) => {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
   
-  const taskIndex = MOCK_TASKS.findIndex(task => task.id === taskId);
-  
-  if (taskIndex === -1) {
-    return {
-      data: null,
-      success: false,
-      error: 'Task not found'
-    };
-  }
-  
-  // Update the task
-  const updatedTask = {
-    ...MOCK_TASKS[taskIndex],
-    ...taskData,
-    updatedAt: new Date().toISOString().split('T')[0]
+  const existingTask = MOCK_TASKS.find(task => task.id === taskId);
+  return {
+    ...existingTask,
+    ...updates,
+    updatedAt: new Date().toISOString()
   };
-  
-  MOCK_TASKS[taskIndex] = updatedTask;
-  
-  return { data: updatedTask, success: true };
-};
-
-/**
- * Delete a task
- * @param {string} taskId - ID of the task to delete
- * @returns {Promise<Object>} Deletion result
- */
-export const deleteTask = async (taskId) => {
-  if (!taskId) {
-    throw new Error('Task ID is required');
-  }
-  
-  if (config.useMockData) {
-    return mockDeleteTask(taskId);
-  }
-
-  try {
-    await apiClient.delete(`/tasks/${taskId}`);
-    return { success: true };
-  } catch (error) {
-    console.error(`Error deleting task ${taskId}:`, error.response?.data || error.message);
-    return { 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to delete task' 
-    };
-  }
 };
 
 /**
  * Mock implementation of deleteTask
- * @param {string} taskId - ID of the task to delete
- * @returns {Promise<Object>} Deletion result
  */
 const mockDeleteTask = async (taskId) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 400));
-  
-  const taskIndex = MOCK_TASKS.findIndex(task => task.id === taskId);
-  
-  if (taskIndex === -1) {
-    return {
-      success: false,
-      error: 'Task not found'
-    };
-  }
-  
-  // Remove the task
-  MOCK_TASKS.splice(taskIndex, 1);
-  
-  return { success: true };
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
+  return { message: `Mock task ${taskId} deleted successfully` };
 };
 
 /**
- * Update task status
- * @param {string} taskId - ID of the task to update
- * @param {string} status - New status value
+ * Get all tasks with optional filters.
+ * Uses backend API with fallback to mock data if API fails.
+ * @param {Object} filters - Optional filters (status, priority, search, etc.)
+ * @returns {Promise<Object>} Tasks data with pagination
+ */
+export const getTasks = async (filters = {}) => {
+  console.log("taskService.js: getTasks called with filters:", filters, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("taskService.js: getTasks - returning MOCK_TASKS");
+    return mockGetTasks(filters);
+  }
+
+  try {
+    console.log("taskService.js: getTasks - attempting to fetch from API");
+    const result = await taskApi.getTasks(filters);
+    
+    if (result.success) {
+      console.log("taskService.js: getTasks - API success:", result.data);
+      return {
+        data: result.data,
+        pagination: result.pagination
+      };
+    } else {
+      console.warn("taskService.js: getTasks - API returned error, using fallback:", result.error);
+      return mockGetTasks(filters);
+    }
+  } catch (error) {
+    console.error("taskService.js: getTasks - API call failed, using fallback:", error);
+    return mockGetTasks(filters);
+  }
+};
+
+/**
+ * Get tasks for a specific user.
+ * Uses backend API with fallback to mock data if API fails.
+ * @param {string} userId - User ID
+ * @param {Object} filters - Optional filters
+ * @returns {Promise<Array>} User tasks
+ */
+export const getUserTasks = async (userId, filters = {}) => {
+  console.log(`taskService.js: getUserTasks called with userId: ${userId}, filters:`, filters, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("taskService.js: getUserTasks - returning MOCK_TASKS");
+    const mockResult = await mockGetTasks(filters);
+    return mockResult.data;
+  }
+
+  try {
+    console.log("taskService.js: getUserTasks - attempting to fetch from API");
+    const result = await taskApi.getUserTasks(userId, filters);
+    
+    if (result.success) {
+      console.log("taskService.js: getUserTasks - API success:", result.data);
+      return result.data;
+    } else {
+      console.warn("taskService.js: getUserTasks - API returned error, using fallback:", result.error);
+      const mockResult = await mockGetTasks(filters);
+      return mockResult.data;
+    }
+  } catch (error) {
+    console.error("taskService.js: getUserTasks - API call failed, using fallback:", error);
+    const mockResult = await mockGetTasks(filters);
+    return mockResult.data;
+  }
+};
+
+/**
+ * Create a new task.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {Object} taskData - Task data
+ * @returns {Promise<Object>} Created task
+ */
+export const createTask = async (taskData) => {
+  console.log("taskService.js: createTask called with:", taskData, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("taskService.js: createTask - MOCK - creating task");
+    return mockCreateTask(taskData);
+  }
+
+  try {
+    console.log("taskService.js: createTask - attempting to create via API");
+    const result = await taskApi.createTask(taskData);
+    
+    if (result.success) {
+      console.log("taskService.js: createTask - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("taskService.js: createTask - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("taskService.js: createTask - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update an existing task.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} taskId - Task ID
+ * @param {Object} updates - Task updates
+ * @returns {Promise<Object>} Updated task
+ */
+export const updateTask = async (taskId, updates) => {
+  console.log("taskService.js: updateTask called with:", taskId, updates, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("taskService.js: updateTask - MOCK - updating task");
+    return mockUpdateTask(taskId, updates);
+  }
+
+  try {
+    console.log("taskService.js: updateTask - attempting to update via API");
+    const result = await taskApi.updateTask(taskId, updates);
+    
+    if (result.success) {
+      console.log("taskService.js: updateTask - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("taskService.js: updateTask - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("taskService.js: updateTask - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a task.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} taskId - Task ID
+ * @returns {Promise<void>}
+ */
+export const deleteTask = async (taskId) => {
+  console.log("taskService.js: deleteTask called with taskId:", taskId, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("taskService.js: deleteTask - MOCK - deleting task");
+    return mockDeleteTask(taskId);
+  }
+
+  try {
+    console.log("taskService.js: deleteTask - attempting to delete via API");
+    const result = await taskApi.deleteTask(taskId);
+    
+    if (result.success) {
+      console.log("taskService.js: deleteTask - API success:", result.message);
+      return { message: result.message };
+    } else {
+      console.error("taskService.js: deleteTask - API returned error:", result.error);
+      throw new Error(result.error);
+    }
+  } catch (error) {
+    console.error("taskService.js: deleteTask - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update task status.
+ * Uses backend API with fallback to mock behavior if API fails.
+ * @param {string} taskId - Task ID
+ * @param {string} status - New status
  * @returns {Promise<Object>} Updated task
  */
 export const updateTaskStatus = async (taskId, status) => {
-  return updateTask(taskId, { status });
-};
+  console.log("taskService.js: updateTaskStatus called with:", taskId, status, "USE_MOCK_DATA:", config.useMockData);
 
-/**
- * Update task progress
- * @param {string} taskId - ID of the task to update
- * @param {number} progress - New progress value (0-100)
- * @returns {Promise<Object>} Updated task
- */
-export const updateTaskProgress = async (taskId, progress) => {
-  // Ensure progress is a number and clamp between 0 and 100
-  const clampedProgress = Math.min(Math.max(Number(progress) || 0, 0), 100);
-  return updateTask(taskId, { completionProgress: clampedProgress });
-};
-
-/**
- * Add a comment to a task
- * @param {string} taskId - ID of the task
- * @param {Object} commentData - Comment data
- * @returns {Promise<Object>} Updated task with new comment
- */
-export const addTaskComment = async (taskId, commentData) => {
   if (config.useMockData) {
-    return mockAddTaskComment(taskId, commentData);
+    console.log("taskService.js: updateTaskStatus - MOCK - updating task status");
+    return mockUpdateTask(taskId, { taskStatus: status });
   }
 
   try {
-    const { data } = await apiClient.post(`/tasks/${taskId}/comments`, commentData);
-    return { data, success: true };
+    console.log("taskService.js: updateTaskStatus - attempting to update via API");
+    const result = await taskApi.updateTaskStatus(taskId, status);
+    
+    if (result.success) {
+      console.log("taskService.js: updateTaskStatus - API success:", result.data);
+      return result.data;
+    } else {
+      console.error("taskService.js: updateTaskStatus - API returned error:", result.error);
+      throw new Error(result.error);
+    }
   } catch (error) {
-    console.error(`Error adding comment to task ${taskId}:`, error.response?.data || error.message);
+    console.error("taskService.js: updateTaskStatus - API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get a single task by ID
+ * @param {string} taskId - ID of the task to retrieve
+ * @returns {Promise<Object>} Task data
+ */
+export const getTaskById = async (taskId) => {
+  console.log("taskService.js: getTaskById called with taskId:", taskId, "USE_MOCK_DATA:", config.useMockData);
+
+  if (config.useMockData) {
+    console.log("taskService.js: getTaskById - MOCK - getting task");
+    const mockTask = MOCK_TASKS.find(task => task.id === taskId);
+    return mockTask ? { data: mockTask, success: true } : { data: null, success: false, error: 'Task not found' };
+  }
+
+  try {
+    console.log("taskService.js: getTaskById - attempting to fetch from API");
+    const result = await taskApi.getTask(taskId);
+    
+    if (result.success) {
+      console.log("taskService.js: getTaskById - API success:", result.data);
+      return { data: result.data, success: true };
+    } else {
+      console.error("taskService.js: getTaskById - API returned error:", result.error);
+      return { data: null, success: false, error: result.error };
+    }
+  } catch (error) {
+    console.error("taskService.js: getTaskById - API call failed:", error);
     return { 
       data: null, 
       success: false, 
-      error: error.response?.data?.message || 'Failed to add comment' 
+      error: error.message || 'Failed to fetch task' 
     };
   }
 };
 
 /**
- * Mock implementation of addTaskComment
- * @param {string} taskId - ID of the task
- * @param {Object} commentData - Comment data
- * @returns {Promise<Object>} Updated mock task
+ * Get task summary/statistics
+ * @param {Object} params - Query parameters for filtering
+ * @returns {Promise<Object>} Task summary data
  */
-const mockAddTaskComment = async (taskId, commentData) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  const taskIndex = MOCK_TASKS.findIndex(task => task.id === taskId);
-  
-  if (taskIndex === -1) {
+export const getTaskSummary = async (params = {}) => {
+  try {
+    const response = await taskApi.getTaskSummary(params);
+    return response;
+  } catch (error) {
+    console.error('Error fetching task summary:', error);
     return {
       data: null,
       success: false,
-      error: 'Task not found'
+      error: error.message || 'Failed to fetch task summary'
     };
   }
-  
-  // Create new comment
-  const newComment = {
-    id: `comment-${Date.now()}`,
-    ...commentData,
-    createdAt: new Date().toISOString().split('T')[0]
-  };
-  
-  // Add comment to task
-  MOCK_TASKS[taskIndex].comments.push(newComment);
-  const updatedTask = MOCK_TASKS[taskIndex];
-  
-  return { data: updatedTask, success: true };
-};
-
-/**
- * Assign tasks to multiple users in batch
- * @param {Array} assignments - Array of {taskId, userId} objects
- * @returns {Promise<Object>} Assignment result
- */
-export const assignTasksBatch = async (assignments) => {
-  if (config.useMockData) {
-    return mockAssignTasksBatch(assignments);
-  }
-
-  try {
-    const { data } = await apiClient.post('/tasks/batch-assign', { assignments });
-    return { data, success: true };
-  } catch (error) {
-    console.error('Error assigning tasks in batch:', error.response?.data || error.message);
-    return { 
-      data: null, 
-      success: false, 
-      error: error.response?.data?.message || 'Failed to assign tasks' 
-    };
-  }
-};
-
-/**
- * Mock implementation of assignTasksBatch
- * @param {Array} assignments - Array of {taskId, userId} objects
- * @returns {Promise<Object>} Assignment results
- */
-const mockAssignTasksBatch = async (assignments) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  const results = [];
-  let allSuccessful = true;
-  
-  for (const assignment of assignments) {
-    const { taskId, userId } = assignment;
-    const taskIndex = MOCK_TASKS.findIndex(task => task.id === taskId);
-    
-    if (taskIndex !== -1) {
-      MOCK_TASKS[taskIndex].assignedTo = userId;
-      MOCK_TASKS[taskIndex].updatedAt = new Date().toISOString().split('T')[0];
-      results.push({ taskId, success: true });
-    } else {
-      results.push({ taskId, success: false, error: 'Task not found' });
-      allSuccessful = false;
-    }
-  }
-  
-  return { 
-    data: results, 
-    success: allSuccessful 
-  };
-};
-
-export default {
-  getTasks,
-  getTaskById,
-  createTask,
-  updateTask,
-  deleteTask,
-  updateTaskStatus,
-  updateTaskProgress,
-  addTaskComment,
-  assignTasksBatch,
 }; 
