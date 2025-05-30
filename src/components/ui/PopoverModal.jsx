@@ -8,8 +8,8 @@ const PopoverModal = ({
   children, 
   className,
   triggerRef,
-  align = 'end', // 'start', 'center', 'end'
-  offset = 4 // gap between trigger and popover
+  align = 'end', 
+  offset = 4
 }) => {
   const modalRef = useRef(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -35,7 +35,6 @@ const PopoverModal = ({
         
         let left = 0;
         
-        // Calculate horizontal position based on alignment
         switch (align) {
           case 'start':
             left = triggerRect.left;
@@ -50,9 +49,8 @@ const PopoverModal = ({
             left = triggerRect.right - modalRect.width;
         }
 
-        // Ensure the popover doesn't go off-screen horizontally
-        const minLeft = 16; // minimum padding from left edge
-        const maxLeft = window.innerWidth - modalRect.width - 16; // minimum padding from right edge
+        const minLeft = 16; 
+        const maxLeft = window.innerWidth - modalRect.width - 16;
         left = Math.max(minLeft, Math.min(left, maxLeft));
 
         setPosition({
