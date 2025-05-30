@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,14 +17,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, List, LayoutGrid, AlertCircle } from "lucide-react";
-
-// Mock data
-const mockArchivedItems = [
-  { id: 1, name: 'Project Deadline', completionDate: '2025-03-24', remainingDays: 30 },
-  { id: 2, name: 'Team Meeting', completionDate: '2025-02-14', remainingDays: 28 },
-  { id: 3, name: 'Complete project for CT', completionDate: '2025-03-14', remainingDays: 25 },
-  { id: 4, name: 'Review Design Mockups', completionDate: '2025-01-10', remainingDays: 15 },
-];
+import { useTasks } from "@/hooks/useTasks";
+import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from 'react-router-dom';
 
 // Helper function to format date strings
 const formatDate = (dateString) => {
@@ -32,11 +27,39 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
-
 const Archive = () => {
-  const [archivedItems, setArchivedItems] = useState(mockArchivedItems);
-  const [sortBy, setSortBy] = useState('completionDateDesc'); // 'completionDateAsc', 'completionDateDesc', 'nameAsc', 'nameDesc'
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid' - Only list implemented for now
+  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const { 
+    filteredTasks, 
+    handleRestoreTask, 
+    handleDeleteTask 
+  } = useTasks(toast);
+
+  const [sortBy, setSortBy] = useState('completionDateDesc');
+  const [viewMode, setViewMode] = useState('list');
+
+  // Show welcome toast if coming from task archival
+  useEffect(() => {
+    const justArchived = searchParams.get('archived');
+    if (justArchived === 'true') {
+      toast({
+        title: "Task Archived",
+        description: "The task has been moved to archives successfully.",
+        variant: "success",
+      });
+    }
+  }, [searchParams, toast]);
+
+  // Filter only archived tasks
+  const archivedItems = useMemo(() => {
+    return filteredTasks.filter(task => task.isArchived).map(task => ({
+      id: task.id,
+      name: task.name,
+      completionDate: task.completedAt || task.updatedAt,
+      remainingDays: 30 // This should be calculated based on archive date
+    }));
+  }, [filteredTasks]);
 
   const sortedItems = useMemo(() => {
     let items = [...archivedItems];
@@ -69,18 +92,23 @@ const Archive = () => {
     }
   };
 
-  // Placeholder functions for actions
   const handleRestore = (id) => {
-    console.log(`Restore item ${id}`);
-    // Implement restore logic here (e.g., API call, update state)
+    handleRestoreTask(id);
+    toast({
+      title: "Task Restored",
+      description: "The task has been restored from archives.",
+      variant: "success",
+    });
   };
 
   const handleDeletePermanently = (id) => {
-    console.log(`Delete permanently item ${id}`);
-    // Implement permanent delete logic here (e.g., API call, update state)
-    setArchivedItems(prevItems => prevItems.filter(item => item.id !== id));
+    handleDeleteTask(id);
+    toast({
+      title: "Task Deleted",
+      description: "The task has been permanently deleted.",
+      variant: "default",
+    });
   };
-
 
   return (
     <div className="p-4 md:p-6 space-y-4">
