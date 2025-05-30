@@ -1,187 +1,482 @@
-import { createContext, useState, useEffect, useContext } from 'react';
-import PropTypes from 'prop-types'; // Added for PropTypes
-import apiClient from '../lib/api/client'; // Import apiClient
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { 
+  signInWithPopup, 
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  GoogleAuthProvider 
+} from 'firebase/auth';
+import { auth } from '@/config/firebase';
+import { authService } from '@/services/authService';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, queryKeys } from '@/lib/queryClient';
 
-// Create the context
-export const AuthContext = createContext(null);
+const AuthContext = createContext({});
 
-// Create the provider component
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // Store user data (id, name, role)
-  const [isLoading, setIsLoading] = useState(true); // Track initial loading state
-  const [token, setToken] = useState(() => localStorage.getItem('authToken')); // Initialize token from localStorage
-
-  // Function to fetch user data based on token
-  const fetchUserData = async () => { // Removed authToken parameter, apiClient will use stored token
-    setIsLoading(true);
-    try {
-      // Actual API call
-      const response = await apiClient.get('/auth/me'); // Assuming endpoint /api/auth/me
-      const userData = response.data; // Assuming API returns user data directly
-      if (userData) {
-        setUser(userData);
-        // Token is already set or will be set by login, ensure consistency if needed
-        // If /auth/me also returns a new token, update it here.
-      } else {
-        // No user data from /auth/me, treat as logged out
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('authToken');
-      }
-      return userData;
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem('authToken');
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Check for existing token on mount
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      const storedToken = localStorage.getItem('authToken');
-      if (storedToken) {
-        // If there's a token, apiClient's interceptor will use it.
-        // We still set it in state for the AuthContext to be aware and for potential direct use.
-        setToken(storedToken); 
-        await fetchUserData(); // fetchUserData will set user and handle loading
-      } else {
-        // No token, not loading user data, not setting mock user here anymore
-        setIsLoading(false); 
-      }
-    };
-
-    checkAuthStatus();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Removed fetchUserData from dependency array as it's stable
-
-  // Login function
-  const login = async (credentials) => {
-    setIsLoading(true);
-    
-    // --- MOCK LOGIN CREDENTIALS ---
-    const MOCK_LOGIN_ENABLED = true; // Set to false to use actual API
-    const ADMIN_EMAIL = 'admin@example.com';
-    const ADMIN_PASSWORD = 'password123';
-    const PIO_EMAIL = 'pio@example.com';
-    const PIO_PASSWORD = 'passwordPIO';
-    const STUDENT_EMAIL = 'student@example.com';
-    const STUDENT_PASSWORD = 'passwordStudent';
-
-    if (MOCK_LOGIN_ENABLED) {
-      const providedEmail = credentials.email || credentials.username;
-      let mockUserData = null;
-
-      if (providedEmail === ADMIN_EMAIL && credentials.password === ADMIN_PASSWORD) {
-        console.warn("AuthContext: Using MOCK ADMIN LOGIN. Credentials match.");
-        mockUserData = {
-          id: 'mock-admin-001',
-          name: 'Admin User',
-          email: ADMIN_EMAIL,
-          role: 'ADMIN',
-        };
-      } else if (providedEmail === PIO_EMAIL && credentials.password === PIO_PASSWORD) {
-        console.warn("AuthContext: Using MOCK PIO LOGIN. Credentials match.");
-        mockUserData = {
-          id: 'mock-pio-001',
-          name: 'PIO User',
-          email: PIO_EMAIL,
-          role: 'PIO',
-        };
-      } else if (providedEmail === STUDENT_EMAIL && credentials.password === STUDENT_PASSWORD) {
-        console.warn("AuthContext: Using MOCK STUDENT LOGIN. Credentials match.");
-        mockUserData = {
-          id: 'mock-student-001',
-          name: 'Student User',
-          email: STUDENT_EMAIL,
-          role: 'STUDENT',
-        };
-      }
-
-      if (mockUserData) {
-        setUser(mockUserData);
-        const mockAuthToken = `mock-valid-auth-token-${mockUserData.role.toLowerCase()}`;
-        setToken(mockAuthToken);
-        localStorage.setItem('authToken', mockAuthToken);
-        setIsLoading(false);
-        return true; // Indicate success
-      } else {
-        console.warn("AuthContext: MOCK LOGIN failed. Credentials do not match any mock user.");
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('authToken');
-        setIsLoading(false);
-        return false; // Indicate failure
-      }
-    }
-    // --- END MOCK LOGIN CREDENTIALS ---
-
-    // Actual API call (will only be reached if MOCK_LOGIN_ENABLED is false)
-    try {
-      const response = await apiClient.post('/auth/login', credentials);
-      const { user: userData, token: authToken } = response.data; 
-
-      if (userData && authToken) {
-        setUser(userData);
-        setToken(authToken);
-        localStorage.setItem('authToken', authToken);
-        setIsLoading(false);
-        return true; // Indicate success
-      } else {
-        console.error("Login failed: Invalid response from server", response);
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('authToken');
-        setIsLoading(false);
-        return false; // Indicate failure
-      }
-    } catch (error) {
-      console.error("Login API error:", error);
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem('authToken');
-      setIsLoading(false);
-      return false; // Indicate failure
-    }
-  };
-
-  // Logout function
-  const logout = () => {
-    console.log("Logging out");
-    setUser(null);
-    setToken(null);
-    // Replace with actual token removal
-    localStorage.removeItem('authToken');
-    // Optional: Redirect to login page or home page
-  };
-
-  // Value provided to consuming components
-  const value = {
-    user,
-    isLoading,
-    token,
-    login,
-    logout,
-    fetchUserData, // Expose fetchUserData if needed elsewhere, e.g., for manual refresh
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-// Add PropTypes validation for AuthProvider
-AuthProvider.propTypes = {
-  children: PropTypes.node.isRequired,
-};
-
-// Custom hook for easy context consumption
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { toast } = useToast();
+
+  // Check for existing authentication on mount
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        // Check for existing JWT token
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          const userData = await authService.getCurrentUser();
+          if (userData.success) {
+            setUser(userData.user);
+            setIsAuthenticated(true);
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem('authToken');
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        localStorage.removeItem('authToken');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Listen to Firebase auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setFirebaseUser(firebaseUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Login with email and password
+  const login = async (email, password) => {
+    try {
+      setLoading(true);
+      const result = await authService.login({ email, password });
+      
+      if (result.success) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('authToken', result.token);
+        
+        // Invalidate and refetch user-related queries
+        queryClient.invalidateQueries(queryKeys.auth);
+        queryClient.invalidateQueries(queryKeys.user(result.user.id));
+        
+        toast({
+          title: 'Welcome back!',
+          description: 'You have been successfully logged in.',
+        });
+        
+        return { success: true };
+      } else {
+        toast({
+          title: 'Login Failed',
+          description: result.error || 'Invalid credentials',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: 'Login Error',
+        description: 'An unexpected error occurred during login.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'Login failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Login with Google (Firebase + Backend)
+  const loginWithGoogle = async () => {
+    try {
+      setLoading(true);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        hd: 'student.laverdad.edu.ph' // Restrict to school domain
+      });
+      
+      const firebaseResult = await signInWithPopup(auth, provider);
+      const firebaseUser = firebaseResult.user;
+      
+      // Check domain restriction
+      if (!firebaseUser.email.endsWith('@student.laverdad.edu.ph')) {
+        await firebaseSignOut(auth);
+        toast({
+          title: 'Access Denied',
+          description: 'Please use your @student.laverdad.edu.ph email address.',
+          variant: 'destructive',
+        });
+        return { success: false, error: 'Invalid email domain' };
+      }
+      
+      // Get Firebase ID token
+      const idToken = await firebaseUser.getIdToken();
+      
+      // Authenticate with backend
+      const result = await authService.loginWithGoogle(idToken);
+      
+      if (result.success) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('authToken', result.token);
+        
+        // Invalidate and refetch user-related queries
+        queryClient.invalidateQueries(queryKeys.auth);
+        queryClient.invalidateQueries(queryKeys.user(result.user.id));
+        
+        toast({
+          title: 'Welcome!',
+          description: 'You have been successfully logged in with Google.',
+        });
+        
+        return { success: true };
+      } else {
+        // Sign out from Firebase if backend authentication failed
+        await firebaseSignOut(auth);
+        toast({
+          title: 'Authentication Failed',
+          description: result.error || 'Unable to complete Google sign-in.',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      await firebaseSignOut(auth);
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        return { success: false, error: 'Sign-in was cancelled' };
+      }
+      
+      toast({
+        title: 'Google Sign-in Error',
+        description: 'Unable to sign in with Google. Please try again.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'Google sign-in failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Two-step registration process
+  const initiateSignup = async (email, name) => {
+    try {
+      setLoading(true);
+      const result = await authService.initiateSignup({ email, name });
+      
+      if (result.success) {
+        toast({
+          title: 'Registration Initiated',
+          description: 'Please check your email for the verification code.',
+        });
+        return { success: true, registrationId: result.registrationId };
+      } else {
+        toast({
+          title: 'Registration Failed',
+          description: result.error || 'Unable to initiate registration.',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Registration initiation error:', error);
+      toast({
+        title: 'Registration Error',
+        description: 'An unexpected error occurred during registration.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'Registration failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completeSignup = async (registrationId, verificationCode, password, additionalData) => {
+    try {
+      setLoading(true);
+      const result = await authService.completeSignup({
+        registrationId,
+        verificationCode,
+        password,
+        ...additionalData
+      });
+      
+      if (result.success) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('authToken', result.token);
+        
+        // Invalidate and refetch user-related queries
+        queryClient.invalidateQueries(queryKeys.auth);
+        queryClient.invalidateQueries(queryKeys.user(result.user.id));
+        
+        toast({
+          title: 'Registration Complete',
+          description: 'Your account has been created successfully!',
+        });
+        
+        return { success: true };
+      } else {
+        toast({
+          title: 'Registration Failed',
+          description: result.error || 'Unable to complete registration.',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Registration completion error:', error);
+      toast({
+        title: 'Registration Error',
+        description: 'An unexpected error occurred during registration.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'Registration failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Password reset flow
+  const requestPasswordReset = async (email) => {
+    try {
+      setLoading(true);
+      const result = await authService.requestPasswordReset(email);
+      
+      if (result.success) {
+        toast({
+          title: 'Reset Email Sent',
+          description: 'Please check your email for the reset code.',
+        });
+      return { success: true };
+      } else {
+        toast({
+          title: 'Reset Failed',
+          description: result.error || 'Unable to send reset email.',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      toast({
+        title: 'Reset Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'Reset failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyResetCode = async (email, code) => {
+    try {
+      const result = await authService.verifyResetCode(email, code);
+      
+      if (result.success) {
+        return { success: true, resetToken: result.resetToken };
+      } else {
+        toast({
+          title: 'Verification Failed',
+          description: result.error || 'Invalid or expired code.',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Reset code verification error:', error);
+      toast({
+        title: 'Verification Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'Verification failed' };
+    }
+  };
+
+  const resetPassword = async (resetToken, newPassword) => {
+    try {
+      setLoading(true);
+      const result = await authService.resetPassword(resetToken, newPassword);
+      
+      if (result.success) {
+        toast({
+          title: 'Password Reset',
+          description: 'Your password has been reset successfully.',
+        });
+        return { success: true };
+      } else {
+        toast({
+          title: 'Reset Failed',
+          description: result.error || 'Unable to reset password.',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      toast({
+        title: 'Reset Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'Reset failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Logout
+  const logout = async () => {
+    try {
+      setLoading(true);
+      
+      // Logout from backend
+      await authService.logout();
+      
+      // Logout from Firebase if logged in
+      if (firebaseUser) {
+        await firebaseSignOut(auth);
+      }
+      
+      // Clear local state
+      setUser(null);
+      setFirebaseUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('authToken');
+      
+      // Clear React Query cache
+      queryClient.clear();
+      
+      toast({
+        title: 'Logged Out',
+        description: 'You have been successfully logged out.',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Clear local state even if logout request fails
+      setUser(null);
+      setFirebaseUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('authToken');
+      queryClient.clear();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check if user has specific role
+  const hasRole = (role) => {
+    return user?.role === role;
+  };
+
+  // Check if user has any of the specified roles
+  const hasAnyRole = (roles) => {
+    return roles.includes(user?.role);
+  };
+
+  // Get user permissions based on role
+  const getPermissions = () => {
+    if (!user) return [];
+    
+    switch (user.role) {
+      case 'ADMIN':
+        return ['*']; // Admin has all permissions
+      case 'PIO':
+        return [
+          'tasks:create',
+          'tasks:read',
+          'tasks:update',
+          'tasks:delete',
+          'users:read',
+          'users:update',
+          'events:create',
+          'events:read',
+          'events:update',
+          'events:delete',
+          'resources:create',
+          'resources:read',
+          'resources:update',
+          'resources:delete',
+          'announcements:create',
+          'announcements:read',
+          'announcements:update',
+          'announcements:delete',
+        ];
+      case 'STUDENT':
+        return [
+          'tasks:read',
+          'tasks:update', // Only own tasks
+          'events:read',
+          'resources:read',
+          'announcements:read',
+        ];
+      default:
+        return [];
+    }
+  };
+
+  // Check if user has specific permission
+  const hasPermission = (permission) => {
+    const permissions = getPermissions();
+    return permissions.includes('*') || permissions.includes(permission);
+  };
+
+  const value = {
+    // State
+    user,
+    firebaseUser,
+    loading,
+    isAuthenticated,
+    
+    // Authentication methods
+    login,
+    loginWithGoogle,
+    logout,
+    
+    // Registration methods
+    initiateSignup,
+    completeSignup,
+    
+    // Password reset methods
+    requestPasswordReset,
+    verifyResetCode,
+    resetPassword,
+    
+    // Permission methods
+    hasRole,
+    hasAnyRole,
+    hasPermission,
+    getPermissions,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export default AuthContext;
+export { AuthContext }; 
