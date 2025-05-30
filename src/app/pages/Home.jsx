@@ -5,25 +5,18 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { useTodayEvents } from "@/hooks/useEventsQuery";
 
 const Home = () => {
   const [date, setDate] = useState(new Date());
 
-  const todaysEvents = [
-    {
-      id: 1,
-      title: "Team Meeting",
-      time: "10:00 AM",
-      type: "meeting",
-    },
-    {
-      id: 2,
-      title: "Project Deadline",
-      time: "2:00 PM",
-      type: "deadline",
-    },
-  ];
+  // Get today's events from backend
+  const { 
+    data: todaysEvents = [], 
+    isLoading: eventsLoading, 
+    isError: eventsError 
+  } = useTodayEvents();
 
   const getEventTypeStyles = (type) => {
     switch (type) {
@@ -31,9 +24,30 @@ const Home = () => {
         return "bg-blue-50 text-blue-700 shadow-sm shadow-blue-100";
       case "deadline":
         return "bg-red-50 text-red-700 shadow-sm shadow-red-100";
+      case "workshop":
+        return "bg-green-50 text-green-700 shadow-sm shadow-green-100";
+      case "course":
+        return "bg-purple-50 text-purple-700 shadow-sm shadow-purple-100";
       default:
         return "bg-slate-50 text-slate-700 shadow-sm";
     }
+  };
+
+  // Format event for display
+  const formatEvent = (event) => {
+    const eventDate = new Date(event.scheduleDate);
+    const time = eventDate.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+    
+    return {
+      id: event._id,
+      title: event.title,
+      time,
+      type: event.label?.text?.toLowerCase() || 'event'
+    };
   };
 
   return (
@@ -80,34 +94,50 @@ const Home = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {todaysEvents.map((event) => (
-                    <Card
-                      key={event.id}
-                      className="shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-medium text-slate-900">
-                              {event.title}
-                            </h3>
-                            <p className="text-sm text-slate-500">
-                              {event.time}
-                            </p>
-                          </div>
-                          <span
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium ${getEventTypeStyles(
-                              event.type
-                            )}`}
-                          >
-                            {event.type}
-                          </span>
-                        </div>
+                  {eventsLoading ? (
+                    <Card className="shadow-lg bg-white/50 backdrop-blur-sm">
+                      <CardContent className="p-6 text-center">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                        <p className="text-slate-500">Loading events...</p>
                       </CardContent>
                     </Card>
-                  ))}
-
-                  {todaysEvents.length === 0 && (
+                  ) : eventsError ? (
+                    <Card className="shadow-lg bg-white/50 backdrop-blur-sm">
+                      <CardContent className="p-6 text-center text-red-500">
+                        <p>Failed to load events</p>
+                      </CardContent>
+                    </Card>
+                  ) : todaysEvents.length > 0 ? (
+                    todaysEvents.map((event) => {
+                      const formattedEvent = formatEvent(event);
+                      return (
+                        <Card
+                          key={formattedEvent.id}
+                          className="shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-medium text-slate-900">
+                                  {formattedEvent.title}
+                                </h3>
+                                <p className="text-sm text-slate-500">
+                                  {formattedEvent.time}
+                                </p>
+                              </div>
+                              <span
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium ${getEventTypeStyles(
+                                  formattedEvent.type
+                                )}`}
+                              >
+                                {formattedEvent.type}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  ) : (
                     <Card className="shadow-lg bg-white/50 backdrop-blur-sm">
                       <CardContent className="p-6 text-center text-slate-500">
                         <p>No events scheduled for today</p>
