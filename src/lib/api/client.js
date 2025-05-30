@@ -70,7 +70,7 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
     
-          // Token expired - 401 Unauthorized
+    // Token expired - 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
       // If refresh token functionality is implemented
       if (environment.ENABLE_TOKEN_REFRESH) {
