@@ -27,32 +27,20 @@ export const getTaskSummary = async () => {
 };
 
 /**
- * Get tasks with optional filters
- * @param {Object} filters - Optional filters (status, assigneeId, dueDate, etc.)
- * @returns {Promise<Object>} Tasks list with pagination
+ * Get all tasks
+ * @returns {Promise<Object>} Tasks list
  */
-export const getTasks = async (filters = {}) => {
+export const getTasks = async () => {
   try {
-    const params = new URLSearchParams();
-    
-    // Add filters to params
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params.append(key, value);
-      }
-    });
-    
-    const response = await apiClient.get(`/tasks?${params.toString()}`);
+    const response = await apiClient.get('/tasks');
     return {
-      data: response.data.data || response.data,
-      pagination: response.data.pagination || null,
+      data: response.data,
       success: true
     };
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return {
       data: [],
-      pagination: null,
       success: false,
       error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch tasks'
     };
@@ -121,39 +109,33 @@ export const createTask = async (taskData) => {
   try {
     const response = await apiClient.post('/tasks', taskData);
     return {
-      data: response.data.data || response.data,
+      data: response.data.task,
+      message: response.data.message,
       success: true
     };
   } catch (error) {
     console.error('Error creating task:', error);
-    return {
-      data: null,
-      success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to create task'
-    };
+    throw new Error(error.response?.data?.error?.message || error.response?.data?.message || 'Failed to create task');
   }
 };
 
 /**
  * Update an existing task
  * @param {string} taskId - Task ID
- * @param {Object} updates - Task updates
+ * @param {Object} taskData - Updated task data
  * @returns {Promise<Object>} Updated task
  */
-export const updateTask = async (taskId, updates) => {
+export const updateTask = async (taskId, taskData) => {
   try {
-    const response = await apiClient.put(`/tasks/${taskId}`, updates);
+    const response = await apiClient.put(`/tasks/${taskId}`, taskData);
     return {
-      data: response.data.data || response.data,
+      data: response.data.task,
+      message: response.data.message,
       success: true
     };
   } catch (error) {
     console.error('Error updating task:', error);
-    return {
-      data: null,
-      success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update task'
-    };
+    throw new Error(error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update task');
   }
 };
 
@@ -166,15 +148,12 @@ export const deleteTask = async (taskId) => {
   try {
     const response = await apiClient.delete(`/tasks/${taskId}`);
     return {
-      success: true,
-      message: response.data.message || 'Task deleted successfully'
+      message: response.data.message,
+      success: true
     };
   } catch (error) {
     console.error('Error deleting task:', error);
-    return {
-      success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to delete task'
-    };
+    throw new Error(error.response?.data?.error?.message || error.response?.data?.message || 'Failed to delete task');
   }
 };
 
