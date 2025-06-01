@@ -219,6 +219,7 @@ const SignUp = () => {
     studentNo: "",
     course: "",
     yearLevel: "",
+    gender: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -227,13 +228,13 @@ const SignUp = () => {
   const validateField = useCallback((name, value) => {
     switch (name) {
       case 'firstname':
-        return !value.trim() ? "First name is required" : "";
+        return !value.trim() ? "First name is required" : /^[A-Za-z]+$/.test(value) ? "" : "First name must contain only letters";
       case 'lastname':
-        return !value.trim() ? "Last name is required" : "";
+        return !value.trim() ? "Last name is required" : /^[A-Za-z]+$/.test(value) ? "" : "Last name must contain only letters";
       case 'email': {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[^\s@]+@student\.laverdad\.edu\.ph$/;
         if (!value) return "Email is required";
-        return !emailRegex.test(value) ? "Invalid email format" : "";
+        return !emailRegex.test(value) ? "Must use a valid school email (student.laverdad.edu.ph)" : "";
       }
       case 'password': {
         if (!value) return "Password is required";
@@ -255,6 +256,8 @@ const SignUp = () => {
         return !value ? "Course is required" : "";
       case 'yearLevel':
         return !value ? "Year level is required" : "";
+      case 'gender':
+        return !value ? "Gender is required" : "";
       default:
         return "";
     }
@@ -264,7 +267,7 @@ const SignUp = () => {
     const currentErrors = {};
     const fieldsToValidate = stepToValidate === 1
       ? ['firstname', 'lastname', 'email', 'password']
-      : ['studentNo', 'course', 'yearLevel'];
+      : ['studentNo', 'course', 'yearLevel', 'gender'];
 
     fieldsToValidate.forEach(field => {
       const error = validateField(field, formData[field]);
@@ -306,18 +309,11 @@ const SignUp = () => {
         email: formData.email,
         password: formData.password,
       };
-      console.log("Starting initial registration (Step 1) with data (before service call):", {
-        ...initialSignupData,
-        password: "***"
-      });
 
       const result = await authService.initiateSignup(initialSignupData);
-      console.log("Initial registration (Step 1) API result object:", result);
-
 
       if (result.success && result.tempToken) {
         localStorage.setItem('signupTempToken', result.tempToken);
-        console.log("Temp token stored in localStorage:", result.tempToken);
         setStep(2);
       } else {
         let formErrorMessage = result.error || 'Initial registration failed.';
@@ -332,7 +328,6 @@ const SignUp = () => {
         setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
       }
     } catch (error) {
-      console.error("Critical error during initial registration (Step 1):", error);
       setErrors({ form: "A critical error occurred during initial sign-up. Please try again." });
     } finally {
       setIsLoading(false);
@@ -362,16 +357,15 @@ const SignUp = () => {
       const completeData = {
         tempToken,
         studentNo: formData.studentNo,
-        course: formData.course, // Will be 'BSIS', 'ACT', etc.
-        yearLevel: formData.yearLevel // Will be '1', '2', etc.
+        course: formData.course,
+        yearLevel: formData.yearLevel,
+        gender: formData.gender,
       };
       console.log("Starting registration completion (Step 2) with data (before service call):", completeData);
 
       const result = await authService.completeSignup(completeData);
-      console.log("Registration completion (Step 2) API result object:", result);
 
       if (result.success) {
-        console.log("Registration successful, redirecting to dashboard");
         localStorage.removeItem('signupTempToken');
         navigate('/dashboard');
       } else {
@@ -379,7 +373,6 @@ const SignUp = () => {
         const fieldSpecificErrors = {};
 
         if (result.details && typeof result.details === 'object' && Object.keys(result.details).length > 0) {
-          console.log("Backend validation details for Step 2:", result.details);
           for (const field in result.details) {
             const message = Array.isArray(result.details[field]) ? result.details[field].join(', ') : String(result.details[field]);
             
@@ -406,7 +399,6 @@ const SignUp = () => {
         }
       }
     } catch (error) {
-      console.error("Critical error during registration completion (Step 2):", error);
       setErrors({ form: "A critical error occurred during account creation. Please try again later." });
     } finally {
       setIsLoading(false);
@@ -666,6 +658,20 @@ const SignUp = () => {
                       label="Select Year Level"
                       icon={Calendar}
                       error={errors.yearLevel}
+                    />
+
+                    <SelectInput
+                      id="gender"
+                      value={formData.gender}
+                      onChange={(e) => handleInputChange({ target: { id: 'gender', value: e.target.value } })}
+                      options={[
+                        { value: "", label: "Select Gender", disabled: true },
+                        { value: "male", label: "Male" },
+                        { value: "female", label: "Female" },
+                      ]}
+                      label="Select Gender"
+                      icon={User}
+                      error={errors.gender}
                     />
 
                     <div className="flex items-start space-x-2 pt-1">
