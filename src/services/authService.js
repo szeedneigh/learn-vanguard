@@ -1,44 +1,142 @@
 import apiClient from '@/lib/api/client';
-import { ROLES } from '@/lib/constants';
 import { jwtDecode } from 'jwt-decode';
-import { environment } from '@/config/environment';
 import { 
   signInWithGoogle, 
-  signOutGoogle, 
-  getCurrentUserToken,
   onAuthStateChanged 
 } from '@/config/firebase';
-
-/**
- * Environment configuration
- */
-const config = {
-  useMockAuth: environment.USE_MOCK_AUTH,
-  tokenExpiryDays: 7,
-};
+import { ROLES } from '@/lib/constants';
 
 // Utility to store token consistently
-const storeToken = (token) => localStorage.setItem('authToken', token);
+const storeToken = (token) => {
+  if (!token) {
+    console.warn('Attempted to store null/undefined token');
+    return false;
+  }
+  try {
+    localStorage.setItem('authToken', token);
+    return true;
+  } catch (error) {
+    console.error('Failed to store auth token:', error);
+    return false;
+  }
+};
+
+// Utility to remove token consistently
+const removeToken = () => {
+  try {
+    localStorage.removeItem('authToken');
+    return true;
+  } catch (error) {
+    console.error('Failed to remove auth token:', error);
+    return false;
+  }
+};
+
+// Normalize user data to ensure role names match our constants
+const normalizeUserData = (user) => {
+  if (!user) {
+    console.warn('Attempted to normalize null/undefined user');
+    return null;
+  }
+  
+  try {
+    // Create a mapping of lowercase roles to our constant roles
+    const roleMapping = {
+      'student': ROLES.STUDENT,
+      'pio': ROLES.PIO,
+      'admin': ROLES.ADMIN
+    };
+
+    const normalizedUser = {
+      ...user,
+      role: roleMapping[user.role?.toLowerCase()] || user.role
+    };
+
+    console.log('Normalized user data:', {
+      original: user,
+      normalized: normalizedUser
+    });
+
+    return normalizedUser;
+  } catch (error) {
+    console.error('Error normalizing user data:', error);
+    return user; // Return original user data if normalization fails
+  }
+};
 
 /**
  * Authenticate user with provided credentials
  */
 export const login = async (credentials) => {
   try {
-    console.log('Attempting login with email:', credentials.email);
+    console.log('Attempting login with credentials:', {
+      ...credentials,
+      password: '[REDACTED]'
+    });
+
     const response = await apiClient.post('/auth/login', credentials);
-    const { token } = response.data;
-    if (token) {
-      storeToken(token);
-      return { success: true, token };
+    console.log('Login response:', {
+      status: response.status,
+      hasToken: !!response.data?.token,
+      hasUser: !!response.data?.user
+    });
+
+    const { token, user } = response.data;
+
+    if (!token || !user) {
+      console.error('Invalid login response:', { hasToken: !!token, hasUser: !!user });
+      return { 
+        success: false, 
+        error: 'Invalid response from server' 
+      };
     }
-    return { success: false, error: 'Login failed' };
+
+    const tokenStored = storeToken(token);
+    if (!tokenStored) {
+      console.error('Failed to store authentication token');
+      return { 
+        success: false, 
+        error: 'Failed to establish session' 
+      };
+    }
+
+    const normalizedUser = normalizeUserData(user);
+    if (!normalizedUser) {
+      removeToken();
+      console.error('Failed to normalize user data');
+      return { 
+        success: false, 
+        error: 'Invalid user data received' 
+      };
+    }
+
+    return { 
+      success: true, 
+      token, 
+      user: normalizedUser 
+    };
   } catch (error) {
     console.error('Login failed:', error.response?.data || error);
+    
     if (error.response?.status === 401) {
-      return { success: false, error: error.response.data.message || 'Invalid credentials' };
+      return { 
+        success: false, 
+        error: error.response.data.message || 'Invalid credentials' 
+      };
     }
-    return { success: false, error: 'Login failed. Please try again later.' };
+
+    if (error.response?.status === 400) {
+      return { 
+        success: false, 
+        error: 'Invalid input data',
+        details: error.response.data.errors 
+      };
+    }
+
+    return { 
+      success: false, 
+      error: 'Login failed. Please try again later.' 
+    };
   }
 };
 
@@ -122,13 +220,20 @@ export const completeSignup = async (completeData) => {
         '3': 'Third Year',
         '4': 'Fourth Year',
       }[completeData.yearLevel] || completeData.yearLevel,
+      gender: completeData.gender,
     };
     console.log('Signup Complete:', formatted);
     const res = await apiClient.post('/auth/signup/complete', formatted);
-    const { message, token, user } = res.data;
-    if (!token || !user) throw new Error('No token or user received');
+    const { message, token } = res.data;
+    if (!token) throw new Error('No token received');
     storeToken(token);
-    return { success: true, token, user, message: message || 'Signup successful' };
+    const userData = await getCurrentUser();
+    if (!userData || !userData.user) {
+      throw new Error('Failed to fetch user data after signup');
+    }
+    const normalizedUser = normalizeUserData(userData.user);
+    console.log('Normalized user data after signup:', normalizedUser);
+    return { success: true, token, user: normalizedUser, message: message || 'Signup successful' };
   } catch (error) {
     console.error('Complete signup failed:', error.response?.data || error);
     return { success: false, error: error.response?.data?.message || 'Signup completion failed', details: error.response?.data?.error?.details || {} };
@@ -145,20 +250,63 @@ export const register = initiateSignup;
  */
 export const getCurrentUser = async () => {
   try {
+    console.log('Fetching current user data...');
+    const token = localStorage.getItem('authToken');
+    
+    if (!token) {
+      console.warn('No auth token found when fetching current user');
+      return { success: false, error: 'No authentication token found' };
+    }
+
     const res = await apiClient.get('/auth/me');
-    return res.data;
+    console.log('Current user response:', {
+      status: res.status,
+      hasUser: !!res.data?.user
+    });
+
+    if (!res.data?.user) {
+      console.error('Invalid user data in response');
+      removeToken();
+      return { success: false, error: 'Invalid user data received' };
+    }
+
+    const normalizedUser = normalizeUserData(res.data.user);
+    if (!normalizedUser) {
+      removeToken();
+      return { success: false, error: 'Failed to process user data' };
+    }
+
+    return { 
+      success: true, 
+      user: normalizedUser 
+    };
   } catch (error) {
     console.error('Get current user failed:', error);
-    return null;
+    
+    if (error.response?.status === 401) {
+      removeToken();
+      return { success: false, error: 'Session expired' };
+    }
+
+    return { success: false, error: 'Failed to fetch user data' };
   }
 };
 
 /**
  * Logout user
  */
-export const logout = () => {
-  localStorage.removeItem('authToken');
-  window.location.href = '/login';
+export const logout = async () => {
+  try {
+    console.log('Logging out user...');
+    await apiClient.post('/auth/logout');
+    removeToken();
+    return { success: true };
+  } catch (error) {
+    console.error('Logout failed:', error);
+    // Still remove token even if API call fails
+    removeToken();
+    return { success: true };
+  }
 };
 
 /**
@@ -197,28 +345,48 @@ export const resetPassword = async (data) => {
  */
 export const verifyToken = async () => {
   try {
+    console.log('Verifying authentication token...');
     const token = localStorage.getItem('authToken');
-    if (!token) return false;
-    const decoded = jwtDecode(token);
-    if (decoded.exp < Date.now() / 1000) {
-      localStorage.removeItem('authToken');
+    
+    if (!token) {
+      console.warn('No token found during verification');
       return false;
     }
-    await apiClient.get('/auth/verify');
+
+    const decoded = jwtDecode(token);
+    if (decoded.exp < Date.now() / 1000) {
+      console.warn('Token expired');
+      removeToken();
+      return false;
+    }
+
+    const response = await apiClient.get('/auth/verify');
+    console.log('Token verification response:', response.status);
     return true;
-  } catch {
-    localStorage.removeItem('authToken');
+  } catch (error) {
+    console.error('Token verification failed:', error);
+    removeToken();
     return false;
   }
 };
 
 export const isAuthenticated = () => {
-  const token = localStorage.getItem('authToken');
-  if (!token) return false;
   try {
+    const token = localStorage.getItem('authToken');
+    if (!token) return false;
+
     const decoded = jwtDecode(token);
-    return decoded.exp > Date.now() / 1000;
-  } catch {
+    const isValid = decoded.exp > Date.now() / 1000;
+    
+    if (!isValid) {
+      console.warn('Token expired during authentication check');
+      removeToken();
+    }
+
+    return isValid;
+  } catch (error) {
+    console.error('Authentication check failed:', error);
+    removeToken();
     return false;
   }
 };
