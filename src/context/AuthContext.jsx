@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { 
   signInWithPopup, 
   signOut as firebaseSignOut,
@@ -25,34 +25,56 @@ export const AuthProvider = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const initializationInProgress = useRef(false);
   const { toast } = useToast();
+
+  // Initialize auth state
+  const initializeAuth = useCallback(async () => {
+    // Prevent multiple simultaneous initializations
+    if (initializationInProgress.current) {
+      console.log('AuthContext: Initialization already in progress, skipping...');
+      return;
+    }
+
+    try {
+      console.log('AuthContext: Starting initialization...');
+      initializationInProgress.current = true;
+      setLoading(true);
+
+      // First check if we have a valid token
+      const isValid = await authService.verifyToken();
+      if (!isValid) {
+        console.log('AuthContext: No valid token found');
+        setUser(null);
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // If token is valid, fetch user data
+      const result = await authService.getCurrentUser();
+      if (result.success && result.user) {
+        console.log('AuthContext: Successfully loaded user:', result.user);
+        setUser(result.user);
+        setIsAuthenticated(true);
+      } else {
+        console.warn('AuthContext: Failed to load user data:', result.error);
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error('AuthContext: Auth initialization error:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+      initializationInProgress.current = false;
+    }
+  }, []);
 
   // Check for existing authentication on mount
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        // Check for existing JWT token
-        const token = localStorage.getItem('authToken');
-        if (token) {
-          const userData = await authService.getCurrentUser();
-          if (userData.success) {
-            setUser(userData.user);
-            setIsAuthenticated(true);
-          } else {
-            // Token is invalid, clear it
-            localStorage.removeItem('authToken');
-          }
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        localStorage.removeItem('authToken');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     initializeAuth();
-  }, []);
+  }, [initializeAuth]);
 
   // Listen to Firebase auth state changes
   useEffect(() => {
@@ -66,17 +88,21 @@ export const AuthProvider = ({ children }) => {
   // Login with email and password
   const login = async (email, password) => {
     try {
+      console.log('AuthContext: Starting login process...');
       setLoading(true);
+
       const result = await authService.login({ email, password });
+      console.log('AuthContext: Login result:', { success: result.success });
       
       if (result.success) {
         setUser(result.user);
         setIsAuthenticated(true);
-        localStorage.setItem('authToken', result.token);
-        
+
         // Invalidate and refetch user-related queries
         queryClient.invalidateQueries(queryKeys.auth);
-        queryClient.invalidateQueries(queryKeys.user(result.user.id));
+        if (result.user?.id) {
+          queryClient.invalidateQueries(queryKeys.user(result.user.id));
+        }
         
         toast({
           title: 'Welcome back!',
@@ -93,7 +119,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: result.error };
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('AuthContext: Login error:', error);
       toast({
         title: 'Login Error',
         description: 'An unexpected error occurred during login.',
@@ -102,6 +128,7 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: 'Login failed' };
     } finally {
       setLoading(false);
+      console.log('AuthContext: Login process finished. Current user:', user);
     }
   };
 
@@ -141,7 +168,9 @@ export const AuthProvider = ({ children }) => {
         
         // Invalidate and refetch user-related queries
         queryClient.invalidateQueries(queryKeys.auth);
-        queryClient.invalidateQueries(queryKeys.user(result.user.id));
+        if (result.user?.id) {
+          queryClient.invalidateQueries(queryKeys.user(result.user.id));
+        }
         
         toast({
           title: 'Welcome!',
@@ -222,23 +251,35 @@ export const AuthProvider = ({ children }) => {
       });
       
       if (result.success) {
-        setUser(result.user);
-        setIsAuthenticated(true);
         localStorage.setItem('authToken', result.token);
         
-        // Invalidate and refetch user-related queries
-        queryClient.invalidateQueries(queryKeys.auth);
-        queryClient.invalidateQueries(queryKeys.user(result.user.id));
+        // Fetch user data after token is set
+        const userDataResponse = await authService.getCurrentUser();
         
-        toast({
-          title: 'Registration Complete',
-          description: 'Your account has been created successfully!',
-        });
-        
-        return { success: true };
+        if (userDataResponse && userDataResponse.user) {
+          setUser(userDataResponse.user);
+          setIsAuthenticated(true);
+          console.log('AuthContext: Signup complete, user data loaded:', userDataResponse.user);
+          toast({
+            title: 'Account Created!',
+            description: 'You have successfully created your account.',
+          });
+          return { success: true };
+        } else {
+          console.error('AuthContext: Failed to fetch user data after signup completion.');
+          localStorage.removeItem('authToken');
+          setUser(null);
+          setIsAuthenticated(false);
+          toast({
+            title: 'Signup Completed, but failed to load user data',
+            description: 'Please try logging in.',
+            variant: 'destructive',
+          });
+          return { success: false, error: 'Failed to load user data' };
+        }
       } else {
         toast({
-          title: 'Registration Failed',
+          title: 'Signup Failed',
           description: result.error || 'Unable to complete registration.',
           variant: 'destructive',
         });
@@ -350,36 +391,37 @@ export const AuthProvider = ({ children }) => {
   // Logout
   const logout = async () => {
     try {
+      console.log('AuthContext: Starting logout process...');
       setLoading(true);
       
-      // Logout from backend
-      await authService.logout();
-      
-      // Logout from Firebase if logged in
-      if (firebaseUser) {
-        await firebaseSignOut(auth);
+      const result = await authService.logout();
+      if (result.success) {
+        // Clear local state
+        setUser(null);
+        setIsAuthenticated(false);
+        
+        // Clear React Query cache
+        queryClient.clear();
+        
+        toast({
+          title: 'Logged Out',
+          description: 'You have been successfully logged out.',
+        });
+
+        // Force re-initialization after logout
+        await initializeAuth();
+      } else {
+        toast({
+          title: 'Logout Error',
+          description: 'Failed to logout properly. Please try again.',
+          variant: 'destructive',
+        });
       }
-      
-      // Clear local state
-      setUser(null);
-      setFirebaseUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('authToken');
-      
-      // Clear React Query cache
-      queryClient.clear();
-      
-      toast({
-        title: 'Logged Out',
-        description: 'You have been successfully logged out.',
-      });
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('AuthContext: Logout error:', error);
       // Clear local state even if logout request fails
       setUser(null);
-      setFirebaseUser(null);
       setIsAuthenticated(false);
-      localStorage.removeItem('authToken');
       queryClient.clear();
     } finally {
       setLoading(false);
@@ -387,14 +429,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Check if user has specific role
-  const hasRole = (role) => {
+  const hasRole = useCallback((role) => {
     return user?.role === role;
-  };
+  }, [user?.role]);
 
   // Check if user has any of the specified roles
-  const hasAnyRole = (roles) => {
+  const hasAnyRole = useCallback((roles) => {
     return roles.includes(user?.role);
-  };
+  }, [user?.role]);
 
   // Get user permissions based on role
   const getPermissions = () => {
@@ -469,6 +511,7 @@ export const AuthProvider = ({ children }) => {
     hasAnyRole,
     hasPermission,
     getPermissions,
+    refreshAuth: initializeAuth // Expose refresh function
   };
 
   return (

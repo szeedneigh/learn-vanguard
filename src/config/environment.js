@@ -3,10 +3,33 @@
  * Centralized configuration for all environment variables
  */
 
+// Log when environment configuration is loaded
+console.log('Loading environment configuration');
+
+// Helper function to ensure URLs have proper format
+const ensureValidUrl = (url) => {
+  if (!url) return null;
+  
+  // Make sure URL has http:// or https:// prefix
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return `http://${url}`;
+  }
+  return url;
+};
+
+// Get API URLs with validation
+const apiBaseUrl = ensureValidUrl(import.meta.env.VITE_API_BASE_URL) || 'http://localhost:5000/api';
+const backendUrl = ensureValidUrl(import.meta.env.VITE_BACKEND_URL) || 'http://localhost:5000';
+
+console.log('Environment loaded with API URLs:', {
+  API_BASE_URL: apiBaseUrl,
+  BACKEND_URL: backendUrl
+});
+
 export const environment = {
   // API Configuration
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
-  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000',
+  API_BASE_URL: apiBaseUrl,
+  BACKEND_URL: backendUrl,
   
   // Firebase Configuration
   FIREBASE: {

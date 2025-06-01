@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { environment } from '@/config/environment';
 
+console.log('Initializing API client with base URL:', environment.API_BASE_URL);
+
 // Create custom axios instance
 const apiClient = axios.create({
   baseURL: environment.API_BASE_URL,
@@ -30,7 +32,12 @@ const retryRequest = async (config, retryCount = 0) => {
     return await apiClient(config);
   } catch (error) {
     if (retryCount < MAX_RETRIES && (error.code === 'ECONNABORTED' || !error.response)) {
-      await delay(RETRY_DELAY * (retryCount + 1)); // Exponential backoff
+      const nextRetryDelay = RETRY_DELAY * (retryCount + 1); // Exponential backoff
+      console.log(`API request failed, retrying in ${nextRetryDelay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`, {
+        url: config.url,
+        method: config.method
+      });
+      await delay(nextRetryDelay);
       return retryRequest(config, retryCount + 1);
     }
     throw error;
@@ -66,6 +73,8 @@ apiClient.interceptors.request.use(
     // If token exists, add to headers
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn('No auth token found for request:', config.url);
     }
     
     return config;
@@ -101,11 +110,17 @@ apiClient.interceptors.response.use(
       config: {
         headers: originalRequest?.headers,
         withCredentials: originalRequest?.withCredentials
-      }
+      },
+      // Log additional error details for debugging
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      stack: error.stack
     });
     
     // Handle unauthorized error (401)
     if (error.response?.status === 401) {
+      console.warn('Unauthorized API request - clearing auth tokens');
       // Clear tokens and trigger auth required event
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
@@ -159,5 +174,21 @@ export const createCancelableRequest = () => {
     cancel: () => controller.abort()
   };
 };
+
+// Test connection to API
+export const testApiConnection = async () => {
+  try {
+    console.log('Testing API connection to:', environment.API_BASE_URL);
+    const response = await apiClient.get('/health', { timeout: 5000 });
+    console.log('API connection test successful:', response.data);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('API connection test failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+// Run a connection test on module load
+testApiConnection();
 
 export default apiClient; 

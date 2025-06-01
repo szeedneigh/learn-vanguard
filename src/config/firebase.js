@@ -1,37 +1,53 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { environment } from './environment';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: environment.FIREBASE.apiKey,
-  authDomain: environment.FIREBASE.authDomain,
-  projectId: environment.FIREBASE.projectId,
-  storageBucket: environment.FIREBASE.storageBucket,
-  messagingSenderId: environment.FIREBASE.messagingSenderId,
-  appId: environment.FIREBASE.appId,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
 let app;
 let auth;
 let googleProvider;
 
 try {
-  // Only initialize if all required config is present
-  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    googleProvider = new GoogleAuthProvider();
-    
-    // Configure Google provider
-    googleProvider.setCustomParameters({
-      hd: 'student.laverdad.edu.ph', // Restrict to specific domain
-      prompt: 'select_account'
-    });
-  } else {
-    console.warn('Firebase configuration incomplete. Google Sign-in will not be available.');
+  // Validate required environment variables
+  const requiredEnvVars = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_STORAGE_BUCKET',
+    'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    'VITE_FIREBASE_APP_ID'
+  ];
+
+  const missingEnvVars = requiredEnvVars.filter(
+    varName => !import.meta.env[varName]
+  );
+
+  if (missingEnvVars.length > 0) {
+    throw new Error(
+      `Missing required environment variables: ${missingEnvVars.join(', ')}`
+    );
   }
+
+  // Initialize Firebase
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+  
+  // Configure Google provider
+  googleProvider.setCustomParameters({
+    hd: 'student.laverdad.edu.ph', // Restrict to school domain
+    prompt: 'select_account'
+  });
+  
+  console.log('Firebase initialized successfully');
 } catch (error) {
   console.error('Firebase initialization error:', error);
 }
@@ -42,32 +58,19 @@ try {
  */
 export const signInWithGoogle = async () => {
   if (!auth || !googleProvider) {
-    throw new Error('Firebase not properly configured');
+    throw new Error('Firebase authentication not initialized');
   }
-
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
     
-    // Get ID token for backend authentication
-    const idToken = await user.getIdToken();
-    
-    // Validate email domain
-    if (!user.email?.endsWith('@student.laverdad.edu.ph')) {
+    // Verify email domain
+    if (!result.user.email?.endsWith('@student.laverdad.edu.ph')) {
       await signOut(auth);
       throw new Error('Only @student.laverdad.edu.ph email addresses are allowed');
     }
     
-    return {
-      user: {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-      },
-      idToken,
-      success: true
-    };
+    const idToken = await result.user.getIdToken();
+    return { user: result.user, idToken };
   } catch (error) {
     console.error('Google sign-in error:', error);
     throw error;
@@ -78,15 +81,16 @@ export const signInWithGoogle = async () => {
  * Sign out current user
  * @returns {Promise<void>}
  */
-export const signOutGoogle = async () => {
+export const firebaseSignOut = async () => {
   if (!auth) {
-    throw new Error('Firebase not properly configured');
+    console.warn('Firebase auth not initialized, skipping sign out');
+    return;
   }
-  
   try {
     await signOut(auth);
+    console.log('Firebase sign out successful');
   } catch (error) {
-    console.error('Sign out error:', error);
+    console.error('Firebase sign out error:', error);
     throw error;
   }
 };
@@ -115,11 +119,10 @@ export const getCurrentUserToken = async () => {
  */
 export const onAuthStateChanged = (callback) => {
   if (!auth) {
+    console.warn('Firebase auth not initialized, skipping auth state listener');
     return () => {};
   }
-  
   return auth.onAuthStateChanged(callback);
 };
 
-export { auth, googleProvider };
-export default app; 
+export { auth, app }; 
