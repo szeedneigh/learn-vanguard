@@ -1,12 +1,4 @@
-import {
-  Home,
-  ListTodo,
-  BookOpen,
-  Calendar,
-  Archive,
-  Users
-} from "lucide-react";
-import { ROLES } from "./constants";
+import {  Home,  ListTodo,  BookOpen,  Calendar,  Archive,  Users} from "lucide-react";import { ROLES, PERMISSIONS, ROLE_PERMISSIONS } from "./constants";
 
 /**
  * Central navigation configuration for the application.
@@ -17,6 +9,7 @@ import { ROLES } from "./constants";
  * - href: Route path
  * - icon: Lucide icon component
  * - roles: Array of roles allowed to access this route
+ * - permissions: Array of permissions required to access this route
  * - description: Optional description for tooltips or accessibility
  */
 export const navigationConfig = [
@@ -32,6 +25,7 @@ export const navigationConfig = [
     href: "/dashboard/tasks", 
     icon: ListTodo, 
     roles: [ROLES.STUDENT, ROLES.PIO],
+    permissions: [PERMISSIONS.VIEW_TASKS],
     description: "Manage and view tasks"
   },
   { 
@@ -39,6 +33,7 @@ export const navigationConfig = [
     href: "/dashboard/resources", 
     icon: BookOpen, 
     roles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
+    permissions: [PERMISSIONS.VIEW_RESOURCES],
     description: "Access learning materials"
   },
   { 
@@ -46,6 +41,7 @@ export const navigationConfig = [
     href: "/dashboard/events", 
     icon: Calendar, 
     roles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
+    permissions: [PERMISSIONS.VIEW_EVENTS],
     description: "Calendar and upcoming events"
   },
   { 
@@ -53,6 +49,7 @@ export const navigationConfig = [
     href: "/dashboard/archive", 
     icon: Archive, 
     roles: [ROLES.STUDENT, ROLES.PIO],
+    permissions: [PERMISSIONS.VIEW_ARCHIVE],
     description: "Access archived resources"
   },
   { 
@@ -60,6 +57,7 @@ export const navigationConfig = [
     href: "/dashboard/students", 
     icon: Users, 
     roles: [ROLES.PIO],
+    permissions: [PERMISSIONS.VIEW_STUDENTS],
     description: "Manage student users"
   },
   { 
@@ -67,12 +65,13 @@ export const navigationConfig = [
     href: "/dashboard/users", 
     icon: Users, 
     roles: [ROLES.ADMIN],
+    permissions: [PERMISSIONS.VIEW_USERS],
     description: "Manage all system users"
   },
 ];
 
 /**
- * Get navigation items filtered by user role
+ * Get navigation items filtered by user role and permissions
  * @param {Object} user - User object with role property
  * @returns {Array} - Filtered navigation items
  */
@@ -81,7 +80,22 @@ export const getNavigationByRole = (user) => {
     return [];
   }
   
-  return navigationConfig.filter(item => item.roles.includes(user.role));
+  return navigationConfig.filter(item => {
+    // Check role access
+    const hasRoleAccess = item.roles.includes(user.role);
+    if (!hasRoleAccess) return false;
+    
+    // No permission check needed if permissions not specified
+    if (!item.permissions) return true;
+    
+    // Check for permissions using the ROLE_PERMISSIONS mapping
+    const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+    const hasRequiredPermissions = item.permissions.every(permission => 
+      userPermissions.includes(permission)
+    );
+    
+    return hasRequiredPermissions;
+  });
 };
 
 /**
@@ -91,31 +105,38 @@ export const getNavigationByRole = (user) => {
 export const dashboardRoutes = [
   { 
     path: "home", 
-    allowedRoles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN] 
+    allowedRoles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
+    requiredPermissions: []
   },
   { 
     path: "tasks", 
-    allowedRoles: [ROLES.STUDENT, ROLES.PIO] 
+    allowedRoles: [ROLES.STUDENT, ROLES.PIO],
+    requiredPermissions: [PERMISSIONS.VIEW_TASKS]
   },
   { 
     path: "resources", 
-    allowedRoles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN] 
+    allowedRoles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
+    requiredPermissions: [PERMISSIONS.VIEW_RESOURCES]
   },
   { 
     path: "events", 
-    allowedRoles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN] 
+    allowedRoles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
+    requiredPermissions: [PERMISSIONS.VIEW_EVENTS]
   },
   { 
     path: "archive", 
-    allowedRoles: [ROLES.STUDENT, ROLES.PIO] 
+    allowedRoles: [ROLES.STUDENT, ROLES.PIO],
+    requiredPermissions: [PERMISSIONS.VIEW_ARCHIVE]
   },
   { 
     path: "students", 
-    allowedRoles: [ROLES.PIO] 
+    allowedRoles: [ROLES.PIO],
+    requiredPermissions: [PERMISSIONS.VIEW_STUDENTS]
   },
   { 
     path: "users", 
-    allowedRoles: [ROLES.ADMIN] 
+    allowedRoles: [ROLES.ADMIN],
+    requiredPermissions: [PERMISSIONS.VIEW_USERS]
   },
 ];
 
@@ -135,5 +156,20 @@ export const hasRoutePermission = (user, path) => {
     return false;
   }
   
-  return route.allowedRoles.includes(user.role);
+  // First check role-based access
+  const hasRoleAccess = route.allowedRoles.includes(user.role);
+  if (!hasRoleAccess) {
+    return false;
+  }
+  
+  // If no required permissions, role access is sufficient
+  if (!route.requiredPermissions || route.requiredPermissions.length === 0) {
+    return true;
+  }
+  
+  // Check required permissions
+  const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+  return route.requiredPermissions.every(permission => 
+    userPermissions.includes(permission)
+  );
 }; 

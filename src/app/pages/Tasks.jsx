@@ -1,13 +1,15 @@
+import { useState } from "react";
 import {
-  PlusCircle,
-  Search,
-  CheckCircle2,
+  DragDropContext,
+  Droppable,
+  Draggable,
+} from "@hello-pangea/dnd";
+import {
   ArrowUpCircle,
-  Clock,
-  Edit,
-  Trash2,
-  Calendar as CalendarIcon,
+  CheckCircle,
+  CheckCircle2,
   Plus,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,40 +22,105 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import TaskModal from "@/components/modal/AddTaskModal";
-import { useTasks } from "@/hooks/useTasks";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import DeleteTaskModal from "@/components/modal/DeleteTaskModal";
+import TaskCard from "@/components/section/TaskCard";
+import StatCard from "@/components/section/StatCard";
+import { useTasksPage } from "@/hooks/useTasksQuery";
+import { usePermission } from "@/context/PermissionContext";
+import { PERMISSIONS } from "@/lib/constants";
 
 const Tasks = () => {
   const { toast } = useToast();
-  const {
-    searchQuery,
-    setSearchQuery,
-    statusFilter,
-    setStatusFilter,
-    // priorityFilter, // Removed from top bar display based on new design
-    // setPriorityFilter,
-    isModalOpen,
-    setIsModalOpen,
-    editingTask,
-    setEditingTask,
-    handleTaskSubmit,
-    handleDeleteTask,
-    handleStatusChange, // This function in useTasks is key for drag and drop persistence
-    filteredTasks,
-    stats,
-  } = useTasks(toast);
+  const { hasPermission } = usePermission();
+  
+  // Local state for UI
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showArchived, setShowArchived] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [taskToDelete, setTaskToDelete] = useState(null);
 
-  const taskStatusColumns = ["Not Started", "In Progress", "On Hold"];
+  // React Query hook for all task operations
+  const {
+    tasks,
+    summary: stats,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    createTask,
+    updateTask,
+    deleteTask: deleteTaskMutation,
+    updateTaskStatus,
+    archiveTask,
+    isCreating,
+    isUpdating,
+    isDeleting,
+    isUpdatingStatus,
+    isArchiving,
+    isMutating,
+  } = useTasksPage({ 
+    search: searchQuery,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    showArchived 
+  });
+
+  const taskStatusColumns = ["Not Started", "In Progress", "On Hold", "Completed"];
+
+  // Filter tasks for display based on search and status
+  const filteredTasks = tasks.filter(task => {
+    const searchMatch = !searchQuery || 
+      task.taskName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.taskDescription?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const statusMatch = statusFilter === 'all' || 
+      mapStatusForDisplay(task.taskStatus) === statusFilter;
+    
+    return searchMatch && statusMatch;
+  });
+
+  // Handler functions
+  const handleTaskSubmit = (taskData) => {
+    if (editingTask) {
+      updateTask({ taskId: editingTask.id, taskData });
+    } else {
+      createTask(taskData);
+    }
+    setIsModalOpen(false);
+    setEditingTask(null);
+  };
+
+  const handleDeleteTask = (taskId) => {
+    deleteTaskMutation(taskId);
+    setTaskToDelete(null);
+  };
+
+  const handleStatusChange = (taskId, newStatus, completedDate = null) => {
+    const updateData = { taskStatus: mapStatusForAPI(newStatus) };
+    if (newStatus === 'completed' && completedDate) {
+      updateData.dateCompleted = completedDate;
+    }
+    updateTaskStatus({ taskId, status: mapStatusForAPI(newStatus) });
+  };
+
+  const handleSetHighPriority = (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      updateTask({ 
+        taskId, 
+        taskData: { taskPriority: task.taskPriority === 'High' ? 'Medium' : 'High' }
+      });
+    }
+  };
 
   const handleDragEnd = (result) => {
     const { source, destination, draggableId } = result;
 
-    // Dropped outside a valid droppable area
     if (!destination) {
       return;
     }
 
-    // Dropped in the same column and same position
     if (
       source.droppableId === destination.droppableId &&
       source.index === destination.index
@@ -61,92 +128,70 @@ const Tasks = () => {
       return;
     }
 
-    // If dropped in a different column (status change)
     if (source.droppableId !== destination.droppableId) {
-      const taskId = draggableId; // draggableId is a string
-      const newApiStatus = destination.droppableId; // This is the API status string (e.g., "not-started")
+      const taskId = draggableId;
+      const newApiStatus = destination.droppableId;
       
-      // Call the function from useTasks to update the task's status.
-      // This function MUST update the underlying tasks array immutably
-      // for the change to persist visually.
-      handleStatusChange(taskId, newApiStatus);
-    } else {
-      // Dropped in the same column but different position (reordering)
-      // This requires specific logic in useTasks to reorder tasks within that status group.
-      // For now, we are primarily focused on status change.
-      // If reordering is needed, handleStatusChange or another function in useTasks
-      // would need to handle this.
-      console.log("Reordering within the same column. Ensure useTasks handles this if required.");
-      // Example of how you might call it if you had a reorder function:
-      // handleReorderTask(draggableId, source.droppableId, source.index, destination.index);
+      if (newApiStatus === "completed") {
+        const task = filteredTasks.find(t => String(t.id) === taskId);
+        if (task) {
+          toast({
+            title: "Complete Task?",
+            description: `Are you sure you want to mark "${task.taskName}" as completed?`,
+            action: (
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    handleStatusChange(taskId, newApiStatus, new Date().toISOString());
+                    toast({
+                      title: "🎉 Task Completed!",
+                      description: "Great job on completing this task!",
+                      variant: "success",
+                    });
+                  }}
+                >
+                  Yes
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    handleStatusChange(taskId, source.droppableId);
+                  }}
+                >
+                  No
+                </Button>
+              </div>
+            ),
+          });
+        }
+      } else {
+        handleStatusChange(taskId, newApiStatus);
+      }
     }
   };
 
-  const StatCard = ({ title, value, icon }) => {
-    return (
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-          </div>
-          <div className="p-1 rounded-full">{icon}</div>
-        </div>
-      </div>
-    );
+  const handleDeleteConfirm = () => {
+    if (taskToDelete) {
+      handleDeleteTask(taskToDelete.id);
+      toast({
+        title: "Task Deleted",
+        description: "The task has been permanently deleted.",
+        variant: "default",
+      });
+      setTaskToDelete(null);
+    }
   };
 
-  const TaskCard = ({ task, onEdit, onDelete }) => {
-    const priorityDisplay = {
-      "High": { text: "High Priority", color: "text-red-600", bg: "bg-red-100" },
-      "Medium": { text: "Medium Priority", color: "text-blue-600", bg: "bg-blue-100" },
-      "Low": { text: "Low Priority", color: "text-green-600", bg: "bg-green-100" },
-    };
-
-    const statusDisplayInfo = {
-        "Not Started": { text: "Not Started", bg: "bg-gray-500", textColor: "text-white" },
-        "In Progress": { text: "In Progress", bg: "bg-blue-500", textColor: "text-white" },
-        "On Hold": { text: "On Hold", bg: "bg-amber-500", textColor: "text-white" },
-        "Completed": { text: "Completed", bg: "bg-green-500", textColor: "text-white" },
-    };
-    
-    const currentPriority = priorityDisplay[task.priority] || { text: task.priority, color: "text-gray-700", bg: "bg-gray-100" };
-    // task.status here is already the display status passed from the mapping
-    const currentStatus = statusDisplayInfo[task.status] || { text: task.status, bg: "bg-gray-400", textColor: "text-white"};
-
-    return (
-      <div className="bg-white rounded-lg shadow mb-4 overflow-hidden">
-        <div className="p-4 space-y-3">
-          <div className="flex justify-between items-start">
-            <h3 className="font-semibold text-gray-800 text-md">{task.name}</h3>
-            <div className="flex gap-2">
-              <button onClick={onEdit} className="text-gray-400 hover:text-blue-600 transition-colors">
-                <Edit size={18} />
-              </button>
-              <button onClick={onDelete} className="text-gray-400 hover:text-red-600 transition-colors">
-                <Trash2 size={18} />
-              </button>
-            </div>
-          </div>
-
-          {task.priority && (
-             <div className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium ${currentPriority.bg} ${currentPriority.color}`}>
-                {currentPriority.text}
-            </div>
-          )}
-          
-          <p className="text-sm text-gray-600 line-clamp-3">{task.description}</p>
-          
-          <div className="flex items-center text-gray-500 text-xs mt-1">
-            <CalendarIcon size={14} className="mr-1.5 text-gray-400" />
-            <span>Due: {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}</span>
-          </div>
-        </div>
-        <div className={`w-full py-2 text-center text-xs font-semibold ${currentStatus.bg} ${currentStatus.textColor}`}>
-          {currentStatus.text}
-        </div>
-      </div>
-    );
+  const handleHighPriorityClick = (taskId) => {
+    handleSetHighPriority(taskId);
+    toast({
+      title: "Task Priority Updated",
+      description: "The task has been set to high priority.",
+      variant: "default",
+    });
   };
 
   const mapStatusForDisplay = (apiStatus) => {
@@ -173,7 +218,7 @@ const Tasks = () => {
 
   const getTasksForColumn = (columnDisplayStatus) => {
     return filteredTasks.filter(task => 
-      mapStatusForDisplay(task.status) === columnDisplayStatus
+      mapStatusForDisplay(task.taskStatus) === columnDisplayStatus
     );
   };
 
@@ -181,7 +226,6 @@ const Tasks = () => {
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="min-h-screen p-6 md:p-8 bg-gray-100">
         <div className="max-w-full mx-auto">
-          
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard
               title="Total Tasks"
@@ -196,12 +240,12 @@ const Tasks = () => {
             <StatCard
               title="Overdue"
               value={stats.overdue}
-              icon={<ArrowUpCircle size={24} className="text-red-500" />} 
+              icon={<ArrowUpCircle size={24} className="text-red-500" />}
             />
             <StatCard
-              title="High Priority"
-              value={stats.highPriority}
-              icon={<Clock size={24} className="text-yellow-500" />}
+              title="Archived"
+              value={stats.archived || 0}
+              icon={<CheckCircle size={24} className="text-amber-500" />}
             />
           </div>
 
@@ -228,34 +272,41 @@ const Tasks = () => {
                   <SelectItem value="on-hold">On Hold</SelectItem>
                 </SelectContent>
               </Select>
-              <Button 
-                onClick={() => {
-                  setEditingTask(null);
-                  setIsModalOpen(true);
-                }} 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm flex items-center"
-              >
-                <Plus size={18} className="mr-2" />
-                Add Task
-              </Button>
+              {hasPermission(PERMISSIONS.CREATE_TASK) && (
+                <Button 
+                  onClick={() => {
+                    setEditingTask(null);
+                    setIsModalOpen(true);
+                  }} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm flex items-center"
+                >
+                  <Plus size={18} className="mr-2" />
+                  Add Task
+                </Button>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {taskStatusColumns.map((statusColumnDisplay) => (
-              <Droppable droppableId={mapStatusForAPI(statusColumnDisplay)} key={statusColumnDisplay}>
+              <Droppable 
+                droppableId={mapStatusForAPI(statusColumnDisplay)} 
+                key={statusColumnDisplay}
+                isDropDisabled={showArchived}
+              >
                 {(provided, snapshot) => (
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
                     className={`bg-gray-200/70 rounded-lg p-4 min-h-[300px] transition-colors duration-200 ease-in-out
-                                ${snapshot.isDraggingOver ? "bg-blue-100" : ""}`}
+                                ${snapshot.isDraggingOver ? "bg-blue-100" : ""}
+                                ${statusColumnDisplay === "Completed" ? "bg-green-100/50" : ""}`}
                   >
                     <div className="flex items-center mb-5">
-                      <h2 className="text-base font-semibold text-gray-700">
+                      <h2 className={`text-base font-semibold ${statusColumnDisplay === "Completed" ? "text-green-700" : "text-gray-700"}`}>
                         {statusColumnDisplay}
                       </h2>
-                      <span className="ml-2 text-sm font-medium text-gray-500">
+                      <span className={`ml-2 text-sm font-medium ${statusColumnDisplay === "Completed" ? "text-green-600" : "text-gray-500"}`}>
                         {getTasksForColumn(statusColumnDisplay).length}
                       </span>
                     </div>
@@ -268,27 +319,26 @@ const Tasks = () => {
 
                     {getTasksForColumn(statusColumnDisplay).map((task, index) => (
                       <Draggable 
-                        key={String(task.id)} // Ensure key is unique and string
-                        draggableId={String(task.id)} // Ensure draggableId is a string
+                        key={String(task.id)}
+                        draggableId={String(task.id)}
                         index={index}
+                        isDragDisabled={showArchived || task.isArchived}
                       >
                         {(providedDraggable, snapshotDraggable) => (
                           <div
                             ref={providedDraggable.innerRef}
                             {...providedDraggable.draggableProps}
                             {...providedDraggable.dragHandleProps}
-                            style={{
-                              ...providedDraggable.draggableProps.style,
-                              boxShadow: snapshotDraggable.isDragging ? "0 4px 12px rgba(0,0,0,0.15)" : "none",
-                            }}
+                            className={`select-none ${snapshotDraggable.isDragging ? "opacity-75" : ""}`}
                           >
-                            <TaskCard
-                              task={{...task, status: mapStatusForDisplay(task.status)}}
+                            <TaskCard 
+                              task={{ ...task, status: mapStatusForDisplay(task.status) }}
                               onEdit={() => {
                                 setEditingTask(task);
                                 setIsModalOpen(true);
                               }}
-                              onDelete={() => handleDeleteTask(task.id)}
+                              onDelete={() => setTaskToDelete(task)}
+                              onSetHighPriority={() => handleHighPriorityClick(task.id)}
                             />
                           </div>
                         )}
@@ -309,8 +359,15 @@ const Tasks = () => {
             }}
             onSubmit={handleTaskSubmit}
             editTask={editingTask}
-            mapStatusForAPI={mapStatusForAPI} 
+            mapStatusForAPI={mapStatusForAPI}
             mapStatusForDisplay={mapStatusForDisplay}
+          />
+
+          <DeleteTaskModal
+            isOpen={!!taskToDelete}
+            onClose={() => setTaskToDelete(null)}
+            onConfirm={handleDeleteConfirm}
+            taskName={taskToDelete?.name}
           />
         </div>
       </div>

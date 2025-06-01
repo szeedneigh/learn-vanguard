@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import PropTypes from "prop-types";
 
 const VerificationCodeInput = ({ value, onChange, onComplete }) => {
   const inputRefs = useRef(Array(6).fill(null));
@@ -61,6 +62,12 @@ const VerificationCodeInput = ({ value, onChange, onComplete }) => {
       ))}
     </div>
   );
+};
+
+VerificationCodeInput.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  onComplete: PropTypes.func.isRequired,
 };
 
 export default VerificationCodeInput;

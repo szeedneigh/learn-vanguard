@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowRight } from "lucide-react";
+import { Calendar, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
 import PropTypes from "prop-types";
 
@@ -36,9 +36,9 @@ TaskPreviewCard.propTypes = {
 };
 
 const TaskList = () => {
-  const { filteredTasks } = useTasks();
+  const { filteredTasks, isLoading, isError, error } = useTasks();
 
-  const sortedTasks = [...filteredTasks].sort(
+  const sortedTasks = [...(filteredTasks || [])].sort(
     (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
   );
   const topTasks = sortedTasks.slice(0, 3);
@@ -55,14 +55,24 @@ const TaskList = () => {
           asChild
         >
           <Link to="/dashboard/tasks" className="flex items-center gap-1">
-            View all Task
+            View all Tasks
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
       </div>
 
       <div className="space-y-3">
-        {topTasks.length > 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-8 text-slate-500">
+            <Loader2 className="h-8 w-8 animate-spin mb-2" />
+            <p>Loading tasks...</p>
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-8 text-red-500">
+            <AlertCircle className="h-8 w-8 mb-2" />
+            <p>{error?.message || "Failed to load tasks"}</p>
+          </div>
+        ) : topTasks.length > 0 ? (
           topTasks.map((task) => <TaskPreviewCard key={task.id} task={task} />)
         ) : (
           <div className="text-center py-8 text-slate-500">

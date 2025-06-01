@@ -1,57 +1,82 @@
-import { useState, useCallback, useMemo, memo } from "react";
-import { Bell, Search, X } from "lucide-react";
+import { useState, useCallback, useMemo, memo, useRef, useEffect } from "react";
+import { Bell, Search, X, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfileModal from "../modal/ProfileModal";
 import NotificationPopup from "../modal/NotificationPopup";
+import { useAuth } from "@/context/AuthContext";
+import PropTypes from 'prop-types';
 
-const SearchInput = memo(
-  ({ searchValue, isSearchFocused, onSearchChange, onFocus, onBlur }) => (
-    <div
+const SearchInput = memo(({ searchValue, isSearchFocused, onSearchChange, onFocus, onBlur }) => (
+  <div
+    className={cn(
+      "relative flex items-center transition-all duration-300",
+      isSearchFocused ? "w-96" : "w-64"
+    )}
+  >
+    <Search
       className={cn(
-        "relative flex items-center transition-all duration-300",
-        isSearchFocused ? "w-96" : "w-64"
+        "absolute left-3 transition-colors duration-200",
+        isSearchFocused ? "text-blue-500" : "text-gray-400",
+        "h-4 w-4"
       )}
-    >
-      <Search
-        className={cn(
-          "absolute left-3 transition-colors duration-200",
-          isSearchFocused ? "text-blue-500" : "text-gray-400",
-          "h-4 w-4"
-        )}
-      />
-      <input
-        type="text"
-        value={searchValue}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search anything..."
-        className={cn(
-          "pl-10 pr-10 py-2.5 w-full",
-          "rounded-xl bg-gray-50",
-          "text-sm text-gray-900 placeholder:text-gray-400",
-          "transition-all duration-200",
-          "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white",
-          "hover:bg-gray-100 focus:hover:bg-white"
-        )}
-        onFocus={onFocus}
-        onBlur={onBlur}
-      />
-      {searchValue && (
-        <button
-          onClick={() => onSearchChange("")}
-          className="absolute right-3 p-1 hover:bg-gray-200 rounded-full transition-colors duration-200"
-        >
-          <X className="h-3 w-3 text-gray-400" />
-        </button>
+    />
+    <input
+      type="text"
+      value={searchValue}
+      onChange={(e) => onSearchChange(e.target.value)}
+      placeholder="Search anything..."
+      className={cn(
+        "pl-10 pr-10 py-2.5 w-full",
+        "rounded-xl bg-gray-50",
+        "text-sm text-gray-900 placeholder:text-gray-400",
+        "transition-all duration-200",
+        "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white",
+        "hover:bg-gray-100 focus:hover:bg-white"
       )}
-    </div>
-  )
-);
+      onFocus={onFocus}
+      onBlur={onBlur}
+    />
+    {searchValue && (
+      <button
+        onClick={() => onSearchChange("")}
+        className="absolute right-3 p-1 hover:bg-gray-200 rounded-full transition-colors duration-200"
+      >
+        <X className="h-3 w-3 text-gray-400" />
+      </button>
+    )}
+  </div>
+));
 
-const Topbar = memo(({ onSearch }) => {
+SearchInput.propTypes = {
+  searchValue: PropTypes.string.isRequired,
+  isSearchFocused: PropTypes.bool.isRequired,
+  onSearchChange: PropTypes.func.isRequired,
+  onFocus: PropTypes.func.isRequired,
+  onBlur: PropTypes.func.isRequired
+};
+
+const Topbar = memo(({ onSearch, onMenuClick }) => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const { user } = useAuth();
+  const notificationButtonRef = useRef(null);
+  const profileButtonRef = useRef(null);
+  
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
+    
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
+
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -125,13 +150,33 @@ const Topbar = memo(({ onSearch }) => {
   const closeProfile = useCallback(() => setShowProfile(false), []);
   const closeNotifications = useCallback(() => setShowNotifications(false), []);
 
-  return (
-    <div className="bg-white shadow-sm px-6 py-4 sticky top-0 z-50">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center"></div>
+  const getUserInitials = (name) => {
+    if (!name) return "?";
+    const parts = name.split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return parts[0].charAt(0).toUpperCase() + parts[parts.length - 1].charAt(0).toUpperCase();
+  };
 
-        <div className="flex items-center space-x-6">
-          <div className="relative">
+  return (
+    <div className="bg-white shadow-sm px-4 sm:px-6 py-4 sticky top-0 z-40">
+      <div className="flex justify-between items-center">
+        {/* Left side - Menu button on mobile */}
+        <div className="flex items-center">
+          {isMobile && (
+            <button
+              onClick={onMenuClick}
+              className="p-2 mr-2 rounded-xl transition-all duration-200 hover:bg-gray-100 active:bg-gray-200"
+              aria-label="Toggle menu"
+            >
+              <Menu className="h-5 w-5 text-gray-600" />
+            </button>
+          )}
+        </div>
+
+        {/* Right side - Search, notifications, profile */}
+        <div className="flex items-center space-x-3 sm:space-x-6">
+          {/* Hide search on small mobile screens */}
+          <div className={cn("relative", isMobile && "hidden sm:block")}>
             <SearchInput
               searchValue={searchValue}
               isSearchFocused={isSearchFocused}
@@ -143,6 +188,7 @@ const Topbar = memo(({ onSearch }) => {
 
           <div className="relative">
             <button
+              ref={notificationButtonRef}
               onClick={toggleNotifications}
               className={cn(
                 "p-2 rounded-xl transition-all duration-200",
@@ -163,11 +209,13 @@ const Topbar = memo(({ onSearch }) => {
               notifications={enhancedNotifications}
               isOpen={showNotifications}
               onClose={closeNotifications}
+              triggerRef={notificationButtonRef}
             />
           </div>
 
           <div className="relative">
             <button
+              ref={profileButtonRef}
               onClick={toggleProfile}
               className={cn(
                 "flex items-center space-x-2 p-1.5 rounded-xl transition-all duration-200",
@@ -175,10 +223,17 @@ const Topbar = memo(({ onSearch }) => {
               )}
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
-                <span className="text-white text-sm font-semibold">JD</span>
+                <span className="text-white text-sm font-semibold">
+                  {user ? getUserInitials(user.name) : ''}
+                </span>
               </div>
             </button>
-            <ProfileModal isOpen={showProfile} onClose={closeProfile} />
+            <ProfileModal 
+              isOpen={showProfile} 
+              onClose={closeProfile} 
+              user={user} 
+              triggerRef={profileButtonRef}
+            />
           </div>
         </div>
       </div>
@@ -188,5 +243,10 @@ const Topbar = memo(({ onSearch }) => {
 
 SearchInput.displayName = "SearchInput";
 Topbar.displayName = "Topbar";
+
+Topbar.propTypes = {
+  onSearch: PropTypes.func,
+  onMenuClick: PropTypes.func
+};
 
 export default Topbar;
