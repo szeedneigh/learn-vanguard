@@ -1,29 +1,22 @@
 import { QueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 
-// Global error handler for React Query
-const defaultQueryFn = async ({ queryKey }) => {
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/${queryKey[0]}`);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  return response.json();
-};
-
 // Create the query client with global configuration
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Global query function
-      queryFn: defaultQueryFn,
       // Stale time: 5 minutes
       staleTime: 1000 * 60 * 5,
       // Cache time: 10 minutes
       cacheTime: 1000 * 60 * 10,
       // Retry failed requests 3 times
-      retry: 3,
-      // Retry delay with exponential backoff
-      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors
+        if (error?.status >= 400 && error?.status < 500) {
+          return false;
+        }
+        return failureCount < 3;
+      },
       // Refetch on window focus only if data is stale
       refetchOnWindowFocus: false,
       // Don't refetch on reconnect by default
