@@ -13,7 +13,8 @@ import { usePermission } from '@/context/PermissionContext';
 const ProtectedRoute = ({ 
   allowedRoles = null, 
   requiredPermissions = null,
-  redirectPath = "/unauthorized"
+  redirectPath = "/unauthorized",
+  children
 }) => {
   const { user, isLoading } = useAuth();
   const { hasAllPermissions } = usePermission();
@@ -38,15 +39,15 @@ const ProtectedRoute = ({
   if ((allowedRoles && !hasRole) || (requiredPermissions && !hasPermissions)) {
     return <Navigate to={redirectPath} replace />;
   }
-
-  // User is authenticated and authorized - render child routes
-  return <Outlet />;
+  // User is authenticated and authorized - render children or outlet
+  return children || <Outlet />;
 };
 
 ProtectedRoute.propTypes = {
   allowedRoles: PropTypes.arrayOf(PropTypes.string),
   requiredPermissions: PropTypes.arrayOf(PropTypes.string),
   redirectPath: PropTypes.string,
+  children: PropTypes.node
 };
 
 export default ProtectedRoute;

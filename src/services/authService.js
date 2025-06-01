@@ -5,6 +5,7 @@ import {
   onAuthStateChanged 
 } from '@/config/firebase';
 import { ROLES } from '@/lib/constants';
+import { queryClient, queryKeys } from '@/lib/queryClient';
 
 // Utility to store token consistently
 const storeToken = (token) => {
@@ -192,13 +193,31 @@ export const initiateSignup = async (basicData) => {
     const { message, tempToken } = res.data;
     if (!tempToken) throw new Error('No temporary token received');
     localStorage.setItem('signupTempToken', tempToken);
-    return { success: true, tempToken, message: message || 'Step 1 complete' };
-  } catch (error) {
+    return { success: true, tempToken, message: message || 'Step 1 complete' };  } catch (error) {
     console.error('Initiate signup failed:', error.response?.data || error);
     const status = error.response?.status;
-    if (status === 400) return { success: false, error: 'Invalid input data.', details: error.response.data.error?.details || {} };
-    if (status === 409) return { success: false, error: 'Email already registered.', needsLogin: true };
-    return { success: false, error: error.response?.data?.message || 'Signup initiation failed' };
+    const message = error.response?.data?.message;
+    
+    // Handle specific error cases
+    if (status === 409 || message === 'Email already registered') {
+      return { 
+        success: false, 
+        error: 'This email is already registered. Please try logging in instead.',
+        needsLogin: true 
+      };
+    }
+    if (status === 400) {
+      return { 
+        success: false, 
+        error: message || 'Invalid input data.', 
+        details: error.response?.data?.errors || {} 
+      };
+    }
+    
+    return { 
+      success: false, 
+      error: message || 'Signup initiation failed. Please try again.' 
+    };
   }
 };
 
@@ -256,18 +275,18 @@ export const getCurrentUser = async () => {
     if (!token) {
       console.warn('No auth token found when fetching current user');
       return { success: false, error: 'No authentication token found' };
-    }
-
-    const res = await apiClient.get('/auth/me');
+    }    // Use verify endpoint which already returns user data
+    const res = await apiClient.get('/auth/verify');
     console.log('Current user response:', {
       status: res.status,
+      valid: res.data?.valid,
       hasUser: !!res.data?.user
     });
 
-    if (!res.data?.user) {
-      console.error('Invalid user data in response');
+    if (!res.data?.valid || !res.data?.user) {
+      console.error('Invalid response or missing user data');
       removeToken();
-      return { success: false, error: 'Invalid user data received' };
+      return { success: false, error: 'Could not retrieve user data' };
     }
 
     const normalizedUser = normalizeUserData(res.data.user);
@@ -350,23 +369,47 @@ export const verifyToken = async () => {
     
     if (!token) {
       console.warn('No token found during verification');
-      return false;
+      return null;
     }
-
+    
     const decoded = jwtDecode(token);
     if (decoded.exp < Date.now() / 1000) {
       console.warn('Token expired');
       removeToken();
-      return false;
+      return null;
     }
 
-    const response = await apiClient.get('/auth/verify');
-    console.log('Token verification response:', response.status);
-    return true;
+    try {
+      const response = await apiClient.get('/auth/verify');
+      console.log('Token verification response:', response.data);
+      
+      if (response.data?.valid && response.data?.user) {
+        const normalizedUser = normalizeUserData(response.data.user);
+        // Update cached user data
+        queryClient.setQueryData(['auth', 'user'], normalizedUser);
+        return {
+          valid: true,
+          user: normalizedUser
+        };
+      }
+      
+      console.warn('Token verification failed: invalid token or missing user data');
+      removeToken();
+      return null;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        console.warn('Token verification failed: unauthorized');
+        removeToken();
+        return null;
+      }
+      // For other errors (like network issues), keep the token
+      console.error('Token verification request failed:', error.message);
+      return null;
+    }
   } catch (error) {
     console.error('Token verification failed:', error);
     removeToken();
-    return false;
+    return null;
   }
 };
 

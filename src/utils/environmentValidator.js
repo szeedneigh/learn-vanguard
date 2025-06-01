@@ -102,8 +102,8 @@ export const displayValidationResults = () => {
  */
 export const testApiConnectivity = async () => {
   try {
-    const response = await fetch(`${environment.API_BASE_URL}/health`, {
-      method: 'GET',
+    const response = await fetch(environment.API_BASE_URL, {
+      method: 'HEAD',
       headers: {
         'Content-Type': 'application/json',
       },

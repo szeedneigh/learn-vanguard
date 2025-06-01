@@ -290,6 +290,51 @@ export const uploadUserAvatar = async (file, onProgress = null) => {
   }
 };
 
+/**
+ * Assign PIO role to a user
+ * @param {string} userId - User ID
+ * @param {string} assignedClass - Class to assign to PIO
+ * @returns {Promise<Object>} Updated user
+ */
+export const assignPIORole = async (userId, assignedClass) => {
+  try {
+    const response = await apiClient.post(`/users/pio/${userId}`, { assignedClass });
+    return {
+      data: response.data.data || response.data,
+      success: true
+    };
+  } catch (error) {
+    console.error('Error assigning PIO role:', error);
+    return {
+      data: null,
+      success: false,
+      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to assign PIO role'
+    };
+  }
+};
+
+/**
+ * Revert PIO role back to student
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} Updated user
+ */
+export const revertPIORole = async (userId) => {
+  try {
+    const response = await apiClient.post(`/users/pio/${userId}/revert`);
+    return {
+      data: response.data.data || response.data,
+      success: true
+    };
+  } catch (error) {
+    console.error('Error reverting PIO role:', error);
+    return {
+      data: null,
+      success: false,
+      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to revert PIO role'
+    };
+  }
+};
+
 export default {
   getUsers,
   getUser,
@@ -302,4 +347,6 @@ export default {
   updateUserStatus,
   getUserStatistics,
   uploadUserAvatar,
-}; 
+  assignPIORole,
+  revertPIORole,
+};

@@ -50,42 +50,39 @@ export const checkApiConnection = async (baseUrl) => {
   const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
   
   try {
-    // First try the health endpoint
-    const healthEndpoint = `${baseUrl}/health`;
-    console.log('Attempting to connect to health endpoint:', healthEndpoint);
+    // Try the health check endpoint first
+    const healthUrl = baseUrl.endsWith('/api') 
+      ? baseUrl.replace(/\/api$/, '/health')
+      : baseUrl + '/health';
+      
+    const response = await fetch(healthUrl, { 
+      signal: controller.signal,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
     
-    try {
-      const response = await fetch(healthEndpoint, { 
-        signal: controller.signal,
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        console.log('API health check successful:', response.status);
-        return true;
-      } else {
-        console.warn('API health check failed with status:', response.status);
-        // Try without the /health endpoint as fallback
-        return await fallbackConnectionCheck(baseUrl);
-      }
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      console.warn('Health endpoint fetch failed:', fetchError.message);
-      
-      if (fetchError.name === 'AbortError') {
-        console.error('API health check timed out after 5 seconds');
-      }
-      
-      // Try a fallback check
-      return await fallbackConnectionCheck(baseUrl);
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      console.log('API health check successful');
+      return true;
     }
+    
+    // If health check fails, try a fallback HEAD request to the base URL
+    console.log('Health check failed, attempting fallback check');
+    return await fallbackConnectionCheck(baseUrl);
   } catch (error) {
     clearTimeout(timeoutId);
     console.error('API connection check failed:', error);
-    return false;
+    
+    if (error.name === 'AbortError') {
+      console.error('API health check timed out after 5 seconds');
+    }
+    
+    // Try fallback method if the first attempt fails
+    return await fallbackConnectionCheck(baseUrl);
   }
 };
 
@@ -97,20 +94,27 @@ export const fallbackConnectionCheck = async (baseUrl) => {
   const timeoutId = setTimeout(() => controller.abort(), 5000);
   
   try {
-    // Try a basic OPTIONS request which most servers will accept
+    // Try a basic HEAD request which most servers accept
     const response = await fetch(baseUrl, {
       signal: controller.signal,
-      method: 'OPTIONS'
+      method: 'HEAD',
+      headers: {
+        'Accept': 'application/json'
+      }
     });
     
     clearTimeout(timeoutId);
-    console.log('Fallback connection check result:', response.status);
     
-    // Any response means the server is reachable
-    return true;
+    if (response.ok || response.status === 404) { // 404 is acceptable, means server is running
+      console.log('Fallback connection check successful');
+      return true;
+    }
+    
+    console.warn('Fallback connection check failed:', response.status);
+    return false;
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('Fallback connection check failed:', error.message);
+    console.error('Fallback connection check failed:', error);
     return false;
   }
 };

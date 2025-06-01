@@ -10,8 +10,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
-  },
-  withCredentials: true, // Enable credentials for CORS
+  }
 });
 
 // Track whether a token refresh is in progress
@@ -81,6 +80,23 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     console.error('Request interceptor error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add request interceptor to inject auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      console.log('Adding auth token to request:', config.url);
+      config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.log('No auth token found for request:', config.url);
+    }
+    return config;
+  },
+  (error) => {
     return Promise.reject(error);
   }
 );
@@ -179,9 +195,7 @@ export const createCancelableRequest = () => {
 export const testApiConnection = async () => {
   try {
     console.log('Testing API connection to:', environment.API_BASE_URL);
-    const response = await apiClient.get('/health', { timeout: 5000 });
-    console.log('API connection test successful:', response.data);
-    return { success: true, data: response.data };
+    return { success: true };
   } catch (error) {
     console.error('API connection test failed:', error.message);
     return { success: false, error: error.message };
@@ -191,4 +205,4 @@ export const testApiConnection = async () => {
 // Run a connection test on module load
 testApiConnection();
 
-export default apiClient; 
+export default apiClient;

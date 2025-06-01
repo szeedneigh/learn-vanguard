@@ -27,12 +27,12 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const initializationInProgress = useRef(false);
   const { toast } = useToast();
-
   // Initialize auth state
   const initializeAuth = useCallback(async () => {
-    // Prevent multiple simultaneous initializations
-    if (initializationInProgress.current) {
-      console.log('AuthContext: Initialization already in progress, skipping...');
+    // Skip if already initialized or no token exists
+    if (initializationInProgress.current || !localStorage.getItem('authToken')) {
+      console.log('AuthContext: Skipping initialization - already in progress or no token');
+      setLoading(false);
       return;
     }
 
@@ -41,26 +41,19 @@ export const AuthProvider = ({ children }) => {
       initializationInProgress.current = true;
       setLoading(true);
 
-      // First check if we have a valid token
-      const isValid = await authService.verifyToken();
-      if (!isValid) {
-        console.log('AuthContext: No valid token found');
+      // Use verify endpoint directly as it returns both validity and user data
+      const response = await authService.verifyToken();
+      console.log('AuthContext: Token verification result:', { response });
+      
+      if (!response) {
         setUser(null);
         setIsAuthenticated(false);
         return;
       }
 
-      // If token is valid, fetch user data
-      const result = await authService.getCurrentUser();
-      if (result.success && result.user) {
-        console.log('AuthContext: Successfully loaded user:', result.user);
-        setUser(result.user);
-        setIsAuthenticated(true);
-      } else {
-        console.warn('AuthContext: Failed to load user data:', result.error);
-        setUser(null);
-        setIsAuthenticated(false);
-      }
+      // Set user state from verification response
+      setUser(response.user);
+      setIsAuthenticated(true);
     } catch (error) {
       console.error('AuthContext: Auth initialization error:', error);
       setUser(null);
@@ -70,10 +63,15 @@ export const AuthProvider = ({ children }) => {
       initializationInProgress.current = false;
     }
   }, []);
-
   // Check for existing authentication on mount
   useEffect(() => {
-    initializeAuth();
+    // Only initialize auth if there's a token - don't check on public pages
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      initializeAuth();
+    } else {
+      setLoading(false); // No need to keep loading if there's no token
+    }
   }, [initializeAuth]);
 
   // Listen to Firebase auth state changes
@@ -84,7 +82,6 @@ export const AuthProvider = ({ children }) => {
 
     return () => unsubscribe();
   }, []);
-
   // Login with email and password
   const login = async (email, password) => {
     try {
@@ -92,24 +89,27 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
 
       const result = await authService.login({ email, password });
-      console.log('AuthContext: Login result:', { success: result.success });
+      console.log('AuthContext: Login result:', { success: result.success, hasUser: !!result.user });
       
-      if (result.success) {
-        setUser(result.user);
-        setIsAuthenticated(true);
-
-        // Invalidate and refetch user-related queries
-        queryClient.invalidateQueries(queryKeys.auth);
-        if (result.user?.id) {
-          queryClient.invalidateQueries(queryKeys.user(result.user.id));
-        }
+      if (result.success && result.user) {
+        // Important: Set user state before returning
+        await Promise.all([
+          (async () => {
+            setUser(result.user);
+            setIsAuthenticated(true);
+            localStorage.setItem('authToken', result.token);
+          })(),
+          // Invalidate and refetch user-related queries
+          queryClient.invalidateQueries(queryKeys.auth),
+          result.user?.id ? queryClient.invalidateQueries(queryKeys.user(result.user.id)) : Promise.resolve()
+        ]);
         
         toast({
           title: 'Welcome back!',
           description: 'You have been successfully logged in.',
         });
         
-        return { success: true };
+        return { success: true, user: result.user };
       } else {
         toast({
           title: 'Login Failed',
@@ -128,7 +128,8 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: 'Login failed' };
     } finally {
       setLoading(false);
-      console.log('AuthContext: Login process finished. Current user:', user);
+      // Use the latest user state from result instead of the state variable
+      console.log('AuthContext: Login process finished. User state updated.');
     }
   };
 

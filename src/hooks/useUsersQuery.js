@@ -9,9 +9,63 @@ import {
   getCurrentUserProfile, 
   updateCurrentUserProfile,
   updateUserRole,
-  updateUserStatus
+  updateUserStatus,
+  assignPIORole,
+  revertPIORole
 } from '@/lib/api/userApi';
 import { useToast } from '@/hooks/use-toast';
+
+/**
+ * Hook for assigning PIO role
+ */
+export const useAssignPIORole = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ userId, assignedClass }) => assignPIORole(userId, assignedClass),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users });
+      toast({
+        title: "Success",
+        description: "PIO role assigned successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.error || "Failed to assign PIO role",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+/**
+ * Hook for reverting PIO role
+ */
+export const useRevertPIORole = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (userId) => revertPIORole(userId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users });
+      toast({
+        title: "Success",
+        description: "PIO role reverted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.error || "Failed to revert PIO role",
+        variant: "destructive",
+      });
+    },
+  });
+};
 
 /**
  * Hook for fetching users with filters
@@ -229,4 +283,4 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
     // Any mutation loading
     isMutating: assignPIOMutation.isPending || revertPIOMutation.isPending || removeUserMutation.isPending,
   };
-}; 
+};
