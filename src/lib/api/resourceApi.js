@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from "./client";
 
 /**
  * Resource Management API Service
@@ -13,27 +13,30 @@ import apiClient from './client';
 export const getResources = async (filters = {}) => {
   try {
     const params = new URLSearchParams();
-    
+
     // Add filters to params
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         params.append(key, value);
       }
     });
-    
+
     const response = await apiClient.get(`/resources?${params.toString()}`);
     return {
       data: response.data.data || response.data,
       pagination: response.data.pagination || null,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching resources:', error);
+    console.error("Error fetching resources:", error);
     return {
       data: [],
       pagination: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch resources'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch resources",
     };
   }
 };
@@ -48,14 +51,17 @@ export const getResource = async (resourceId) => {
     const response = await apiClient.get(`/resources/${resourceId}`);
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching resource:', error);
+    console.error("Error fetching resource:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch resource'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch resource",
     };
   }
 };
@@ -69,66 +75,67 @@ export const getResource = async (resourceId) => {
 export const searchResources = async (query, filters = {}) => {
   try {
     const params = new URLSearchParams();
-    params.append('q', query);
-    
+    params.append("q", query);
+
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         params.append(key, value);
       }
     });
-    
-    const response = await apiClient.get(`/resources/search?${params.toString()}`);
+
+    const response = await apiClient.get(
+      `/resources/search?${params.toString()}`
+    );
     return {
       data: response.data.data || response.data,
       pagination: response.data.pagination || null,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error searching resources:', error);
+    console.error("Error searching resources:", error);
     return {
       data: [],
       pagination: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to search resources'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to search resources",
     };
   }
 };
 
 /**
- * Upload a new resource
- * @param {FormData} formData - FormData containing file and metadata
- * @param {Function} onProgress - Progress callback function
- * @returns {Promise<Object>} Upload result
+ * Upload a resource file with FormData
+ * @param {FormData} formData - The form data containing file and resource metadata
+ * @returns {Promise<Object>} Upload result with created resource
  */
-export const uploadResource = async (formData, onProgress = null) => {
+export const uploadResource = async (formData) => {
   try {
-    const config = {
+    // Add a flag to make files public
+    formData.append("isPublic", "true");
+
+    const response = await apiClient.post("/resources", formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
-    };
+      // Progress tracking removed
+    });
 
-    // Add progress tracking if callback provided
-    if (onProgress) {
-      config.onUploadProgress = (progressEvent) => {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        onProgress(percentCompleted);
-      };
-    }
-
-    const response = await apiClient.post('/resources', formData, config);
     return {
-      data: response.data.data || response.data,
-      success: true
+      data: response.data,
+      success: true,
     };
   } catch (error) {
-    console.error('Error uploading resource:', error);
+    console.error("Error uploading resource:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to upload resource'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to upload resource",
+      details: error.response?.data?.error?.details || {},
     };
   }
 };
@@ -140,17 +147,20 @@ export const uploadResource = async (formData, onProgress = null) => {
  */
 export const createResource = async (resourceData) => {
   try {
-    const response = await apiClient.post('/resources', resourceData);
+    const response = await apiClient.post("/resources", resourceData);
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error creating resource:', error);
+    console.error("Error creating resource:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to create resource'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to create resource",
     };
   }
 };
@@ -166,14 +176,17 @@ export const updateResource = async (resourceId, updates) => {
     const response = await apiClient.put(`/resources/${resourceId}`, updates);
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error updating resource:', error);
+    console.error("Error updating resource:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update resource'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update resource",
     };
   }
 };
@@ -188,13 +201,16 @@ export const deleteResource = async (resourceId) => {
     const response = await apiClient.delete(`/resources/${resourceId}`);
     return {
       success: true,
-      message: response.data.message || 'Resource deleted successfully'
+      message: response.data.message || "Resource deleted successfully",
     };
   } catch (error) {
-    console.error('Error deleting resource:', error);
+    console.error("Error deleting resource:", error);
     return {
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to delete resource'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to delete resource",
     };
   }
 };
@@ -207,17 +223,23 @@ export const deleteResource = async (resourceId) => {
  */
 export const shareResource = async (resourceId, shareData) => {
   try {
-    const response = await apiClient.post(`/resources/${resourceId}/share`, shareData);
+    const response = await apiClient.post(
+      `/resources/${resourceId}/share`,
+      shareData
+    );
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error sharing resource:', error);
+    console.error("Error sharing resource:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to share resource'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to share resource",
     };
   }
 };
@@ -232,14 +254,17 @@ export const getResourceDownloadUrl = async (resourceId) => {
     const response = await apiClient.get(`/resources/${resourceId}/download`);
     return {
       url: response.data.downloadUrl || response.data.url,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error getting download URL:', error);
+    console.error("Error getting download URL:", error);
     return {
       url: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to get download URL'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to get download URL",
     };
   }
 };
@@ -251,16 +276,21 @@ export const getResourceDownloadUrl = async (resourceId) => {
  */
 export const trackResourceDownload = async (resourceId) => {
   try {
-    const response = await apiClient.post(`/resources/${resourceId}/track-download`);
+    const response = await apiClient.post(
+      `/resources/${resourceId}/track-download`
+    );
     return {
       success: true,
-      data: response.data
+      data: response.data,
     };
   } catch (error) {
-    console.error('Error tracking download:', error);
+    console.error("Error tracking download:", error);
     return {
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to track download'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to track download",
     };
   }
 };
@@ -276,4 +306,4 @@ export default {
   shareResource,
   getResourceDownloadUrl,
   trackResourceDownload,
-}; 
+};

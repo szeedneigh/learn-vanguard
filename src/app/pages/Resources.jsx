@@ -3,9 +3,9 @@ import { Loader2 } from "lucide-react";
 import { UploadModal } from "@/components/modal/UploadModal";
 import { AddSubjectModal } from "@/components/modal/AddSubjectModal";
 import { AddEditAnnouncementModal } from "@/components/modal/AddEditAnnouncementModal";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useResourcesPage } from "@/hooks/useResourcesQuery";
-import { 
+import {
   getPrograms,
   getSubjects,
   createSubject,
@@ -17,6 +17,11 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
 } from "@/services/announcementService.js";
+import {
+  getTopicsBySubject,
+  createTopic,
+  addActivity,
+} from "@/services/topicService.js";
 import { AuthContext } from "@/context/AuthContext";
 import { ROLES } from "@/lib/constants";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -70,7 +75,6 @@ export default function Resources() {
   const [currentSubject, setCurrentSubject] = useState(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
-  const queryClient = useQueryClient();
   const { user } = useContext(AuthContext);
 
   // Programs query
@@ -91,7 +95,7 @@ export default function Resources() {
     return undefined;
   }, [programsData, currentProgramName]);
 
-  // Subjects query  
+  // Subjects query
   const {
     data: subjectsData,
     isLoading: subjectsLoading,
@@ -126,12 +130,9 @@ export default function Resources() {
     isError: resourcesIsError,
     error: resourcesError,
     refetch: refetchResources,
-    createResource,
     deleteResource,
     uploadFile,
     isCreating: isCreatingResource,
-    isDeleting: isDeletingResource,
-    isUploading,
   } = useResourcesPage(currentSubjectId);
 
   // Announcements query
@@ -151,12 +152,41 @@ export default function Resources() {
     staleTime: 1000 * 60 * 1,
   });
 
+  // Topics query
+  const {
+    data: topicsData,
+    isLoading: topicsLoading,
+    isError: topicsIsError,
+    error: topicsError,
+    refetch: refetchTopics,
+  } = useQuery({
+    queryKey: ["topics", currentSubjectId],
+    queryFn: () => {
+      if (!currentSubjectId) return Promise.resolve([]);
+      return getTopicsBySubject(currentSubjectId);
+    },
+    enabled: !!currentSubjectId,
+    staleTime: 1000 * 60 * 5,
+  });
+
   // Subject mutations
   const createSubjectMutation = useMutation({
     mutationFn: createSubject,
     onSuccess: () => {
+      // Immediately refetch subjects to show the new subject
       refetchSubjects();
-      toast.success("Subject added successfully!");
+
+      // Add multiple delayed refetches to ensure data is up-to-date
+      const refetchDelays = [500, 1500, 3000];
+
+      refetchDelays.forEach((delay) => {
+        setTimeout(() => {
+          console.log(`Delayed refetch after subject creation (${delay}ms)`);
+          refetchSubjects();
+        }, delay);
+      });
+
+      // Remove toast notification from here as it's already shown in handleAddSubject
     },
     onError: (error) => {
       toast.error(error.message || "Failed to add subject");
@@ -166,7 +196,20 @@ export default function Resources() {
   const deleteSubjectMutation = useMutation({
     mutationFn: deleteSubject,
     onSuccess: () => {
+      // Immediately refetch subjects
       refetchSubjects();
+
+      // Add delayed refetches to ensure UI is updated
+      setTimeout(() => {
+        console.log("Delayed refetch after subject deletion (500ms)");
+        refetchSubjects();
+      }, 500);
+
+      setTimeout(() => {
+        console.log("Delayed refetch after subject deletion (1500ms)");
+        refetchSubjects();
+      }, 1500);
+
       toast.success("Subject deleted successfully!");
     },
     onError: (error) => {
@@ -207,6 +250,32 @@ export default function Resources() {
       toast.error(error.message || "Failed to delete announcement");
     },
   });
+
+  // Topic mutations
+  useMutation({
+    mutationFn: createTopic,
+    onSuccess: () => {
+      refetchTopics();
+      toast.success("Topic created successfully!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create topic");
+    },
+  });
+
+  useMutation({
+    mutationFn: ({ topicId, ...data }) => addActivity(topicId, data),
+    onSuccess: () => {
+      refetchTopics();
+      toast.success("Activity added successfully!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to add activity");
+    },
+  });
+
+  // Add state for tracking the selected topic for upload
+  const [selectedTopicForUpload, setSelectedTopicForUpload] = useState(null);
 
   useEffect(() => {
     console.log(
@@ -253,13 +322,22 @@ export default function Resources() {
     if (currentSubjectId) {
       refetchResources();
       if (refetchAnnouncements) refetchAnnouncements();
+      if (refetchTopics) refetchTopics();
+      console.log("Refetching data for subject:", currentSubjectId);
     }
-  }, [currentSubjectId, refetchResources, refetchAnnouncements]);
+  }, [currentSubjectId, refetchResources, refetchAnnouncements, refetchTopics]);
 
   const handleUpload = useCallback(
-    (file, subjectForUpload) => {
+    (
+      file,
+      subjectForUpload,
+      topic = null,
+      onSuccess = null,
+      onError = null
+    ) => {
       if (!file || !subjectForUpload || !subjectForUpload.id) {
         toast.error("Cannot upload: File or Subject not specified.");
+        if (onError) onError();
         return;
       }
 
@@ -269,28 +347,74 @@ export default function Resources() {
           ? file.name.split(".").pop()
           : "application/octet-stream");
 
+      const topicId = topic ? topic.id || topic._id : null;
+
       console.log(
         "Uploading:",
         file.name,
         "for subject:",
         subjectForUpload.name,
+        "subjectId:",
+        subjectForUpload.id,
+        topic ? `and topic: ${topic.name} (id: ${topicId})` : "",
         "Type:",
         fileType
       );
-      
+
       uploadFile({
         file: file,
         resourceData: {
           subjectId: subjectForUpload.id,
+          topicId: topicId,
           name: file.name,
           type: fileType,
+          isPublic: true, // Ensure files are publicly accessible
         },
-        onProgress: (percentCompleted) => {
-          console.log(`Upload progress: ${percentCompleted}%`);
+        onSuccess: () => {
+          // Refetch resources and topics after successful upload
+          console.log("Upload successful - refetching data...");
+
+          // Always refetch resources
+          refetchResources();
+
+          // Always refetch topics after upload, as it may affect topic content
+          if (refetchTopics) {
+            console.log("Refetching topics after upload");
+            refetchTopics();
+          }
+
+          // Add a single delayed refetch to ensure data is up-to-date
+          setTimeout(() => {
+            console.log("Final delayed refetch after upload...");
+            refetchResources();
+            if (refetchTopics) refetchTopics();
+
+            // Force the component to re-render with updated data
+            if (currentSubject) {
+              console.log("Forcing ViewSubject to update with new data...");
+              // This will cause the component to re-render with fresh data
+              const updatedSubject = { ...currentSubject };
+              setCurrentSubject(null);
+              setTimeout(() => {
+                setCurrentSubject(updatedSubject);
+              }, 100);
+            }
+
+            toast.success(`File "${file.name}" uploaded successfully!`);
+            if (onSuccess) onSuccess();
+          }, 1500);
+        },
+        onError: (error) => {
+          const errorMsg = `Error uploading file: ${
+            error?.message || "Unknown error"
+          }`;
+          console.error(errorMsg);
+          toast.error(errorMsg);
+          if (onError) onError();
         },
       });
     },
-    [uploadFile]
+    [uploadFile, refetchResources, refetchTopics]
   );
 
   const handleProgramChange = useCallback(
@@ -329,12 +453,54 @@ export default function Resources() {
       );
       return;
     }
-    createSubjectMutation.mutate({
-      name: subjectName,
-      programId: selectedProgramId,
-      yearName: currentYear,
-      semesterName: currentSemester,
-    });
+
+    // If subjectName is an object (from the modal's onSuccess), extract the name
+    const name =
+      typeof subjectName === "object" ? subjectName.name : subjectName;
+
+    console.log(
+      `Creating subject "${name}" for program ${selectedProgramId}, year ${currentYear}, semester ${currentSemester}`
+    );
+
+    // Ensure yearName is passed as a string to match the backend's expected format
+    const yearLevelString = String(currentYear);
+
+    createSubjectMutation.mutate(
+      {
+        name: name,
+        programId: selectedProgramId,
+        yearLevel: yearLevelString, // Use yearLevel instead of yearName to match backend
+        semester: currentSemester, // Use semester instead of semesterName to match backend
+      },
+      {
+        onSuccess: () => {
+          console.log("Subject created successfully, triggering refetch");
+
+          // Immediately refetch subjects to show the new subject
+          refetchSubjects();
+
+          // Add multiple delayed refetches to ensure data is up-to-date
+          const refetchDelays = [500, 1500, 3000];
+
+          refetchDelays.forEach((delay) => {
+            setTimeout(() => {
+              console.log(
+                `Delayed refetch after subject creation (${delay}ms)`
+              );
+              refetchSubjects();
+            }, delay);
+          });
+
+          toast.success(`Subject "${name}" added successfully!`);
+        },
+        onError: (error) => {
+          console.error("Error creating subject:", error);
+          toast.error(
+            `Failed to add subject: ${error.message || "Unknown error"}`
+          );
+        },
+      }
+    );
   };
 
   const handleDeleteSubject = (subjectId) => {
@@ -344,6 +510,15 @@ export default function Resources() {
       );
       return;
     }
+
+    // Ensure we have a valid ID
+    if (!subjectId) {
+      toast.error("Cannot delete subject: Invalid subject ID");
+      return;
+    }
+
+    console.log(`Deleting subject with ID: ${JSON.stringify(subjectId)}`);
+
     deleteSubjectMutation.mutate({
       subjectId,
       programId: selectedProgramId,
@@ -390,6 +565,16 @@ export default function Resources() {
         subjectId: currentSubjectId,
       });
     }
+  };
+
+  // Add topic handler
+  const handleTopicAdded = () => {
+    refetchTopics();
+  };
+
+  // Add activity handler
+  const handleActivityAdded = () => {
+    refetchTopics();
   };
 
   if (programsLoading) {
@@ -459,10 +644,10 @@ export default function Resources() {
             resources={resourcesData?.data || []}
             resourcesLoading={resourcesLoading}
             resourcesError={resourcesIsError ? resourcesError : null}
-            handleDeleteResource={(resourceId) =>
-              deleteResourceMutation.mutate(resourceId)
+            handleDeleteResource={(resourceId) => deleteResource(resourceId)}
+            announcements={
+              Array.isArray(announcementsData) ? announcementsData : []
             }
-            announcements={Array.isArray(announcementsData) ? announcementsData : []}
             announcementsLoading={announcementsLoading}
             announcementsError={
               announcementsIsError ? announcementsError : null
@@ -471,6 +656,25 @@ export default function Resources() {
             onEditAnnouncement={handleEditAnnouncementClick}
             onDeleteAnnouncement={handleDeleteAnnouncement}
             userRole={user?.role}
+            topics={topicsData?.data || []}
+            topicsLoading={topicsLoading}
+            topicsError={topicsIsError ? topicsError : null}
+            onTopicAdded={handleTopicAdded}
+            onActivityAdded={handleActivityAdded}
+            setIsModalOpen={(topic) => {
+              if (topic && typeof topic === "object" && topic.id) {
+                setSelectedTopicForUpload(topic);
+              } else {
+                setSelectedTopicForUpload(null);
+              }
+              setIsModalOpen(true);
+            }}
+            refetchAll={() => {
+              console.log("ViewSubject: Triggering refetchAll");
+              refetchResources();
+              refetchTopics();
+              refetchAnnouncements();
+            }}
           />
         ) : selectedProgramData ? (
           <CourseView
@@ -493,7 +697,6 @@ export default function Resources() {
             userRole={user?.role}
             onDeleteSubject={handleDeleteSubject}
             SubjectListComponent={SubjectList}
-            setIsModalOpen={setIsModalOpen}
           />
         ) : (
           <div className="flex items-center justify-center h-64">
@@ -507,10 +710,44 @@ export default function Resources() {
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
+            setSelectedTopicForUpload(null);
           }}
-          onUpload={handleUpload}
+          onUpload={(file, subject, topic, onSuccess) => {
+            handleUpload(file, subject, topic, () => {
+              console.log(
+                "Upload success callback triggered, refreshing resources..."
+              );
+
+              // Immediately refetch resources
+              refetchResources();
+
+              // Also refetch topics as they might contain resources
+              if (refetchTopics) refetchTopics();
+
+              // Add a single delayed refetch to ensure data is up-to-date
+              setTimeout(() => {
+                console.log("Final delayed refetch after upload...");
+                refetchResources();
+                if (refetchTopics) refetchTopics();
+
+                // Force the component to re-render with updated data
+                if (currentSubject) {
+                  console.log("Forcing ViewSubject to update with new data...");
+                  // This will cause the component to re-render with fresh data
+                  const updatedSubject = { ...currentSubject };
+                  setCurrentSubject(null);
+                  setTimeout(() => {
+                    setCurrentSubject(updatedSubject);
+                  }, 100);
+                }
+
+                if (onSuccess) onSuccess();
+              }, 1500);
+            });
+          }}
           subject={currentSubject}
           isLoading={isCreatingResource}
+          selectedTopic={selectedTopicForUpload}
         />
 
         {currentSubject &&
@@ -521,7 +758,7 @@ export default function Resources() {
         <AddSubjectModal
           isOpen={isAddSubjectModalOpen}
           onClose={() => setIsAddSubjectModalOpen(false)}
-          onSubmit={handleAddSubject}
+          onSuccess={handleAddSubject}
           isLoading={createSubjectMutation.isPending}
           programName={currentProgramName}
           yearName={currentYear}
