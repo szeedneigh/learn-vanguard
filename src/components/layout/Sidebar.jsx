@@ -4,7 +4,6 @@ import PropTypes from 'prop-types';
 import {
   ChevronLeft,
   ChevronRight
-  // Removed X import since we won't need it anymore
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -220,7 +219,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             {(!isCollapsed || isMobile) && (
               <div className="w-32">
                 <span className="font-semibold text-white text-lg whitespace-nowrap">
-                  Student <br /> Resource Hub
+                  Learn <br /> Vanguard
                 </span>
               </div>
             )}
