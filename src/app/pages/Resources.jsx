@@ -510,7 +510,7 @@ export default function Resources() {
           }}
           onUpload={handleUpload}
           subject={currentSubject}
-          isLoading={createResourceMutation.isPending}
+          isLoading={isCreatingResource}
         />
 
         {currentSubject &&
