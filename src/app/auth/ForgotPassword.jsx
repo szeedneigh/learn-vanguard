@@ -1,9 +1,21 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, ChevronLeft, Lock, EyeIcon, EyeOffIcon, AlertCircle } from "lucide-react";
+import {
+  Mail,
+  ChevronLeft,
+  Lock,
+  EyeIcon,
+  EyeOffIcon,
+  AlertCircle,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from "react-router-dom";
 import VerificationCodeInput from "./VerificationCodeInput";
+import {
+  requestPasswordReset,
+  verifyResetCode,
+  resetPassword,
+} from "@/services/authService";
 
 const smoothTransition = {
   type: "spring",
@@ -57,7 +69,9 @@ export default function ForgotPassword() {
       length: formData.newPassword.length >= 8,
       upper: /[A-Z]/.test(formData.newPassword),
       lower: /[a-z]/.test(formData.newPassword),
-      numberSpecial: /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.newPassword),
+      numberSpecial: /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(
+        formData.newPassword
+      ),
     };
 
     if (!Object.values(requirements).every(Boolean)) {
@@ -90,17 +104,22 @@ export default function ForgotPassword() {
     const totalConditions = Object.keys(conditions).length;
     const strengthPercentage = (metConditions / totalConditions) * 100;
 
-    if (metConditions === totalConditions) return { strength: "Strong", percentage: 100 };
+    if (metConditions === totalConditions)
+      return { strength: "Strong", percentage: 100 };
     if (strengthPercentage >= 50) return { strength: "Medium", percentage: 66 };
     return { strength: "Weak", percentage: 33 };
   };
 
   const getStrengthColor = (strength) => {
     switch (strength) {
-      case "Weak": return "text-red-500";
-      case "Medium": return "text-yellow-500";
-      case "Strong": return "text-green-500";
-      default: return "text-gray-500";
+      case "Weak":
+        return "text-red-500";
+      case "Medium":
+        return "text-yellow-500";
+      case "Strong":
+        return "text-green-500";
+      default:
+        return "text-gray-500";
     }
   };
 
@@ -115,62 +134,104 @@ export default function ForgotPassword() {
   }, [resendTimer, canResend]);
 
   // Form submission handlers
-  const handleResend = () => {
+  const handleResend = async () => {
     if (canResend) {
       setError(null);
       setCanResend(false);
       setResendTimer(30);
+
+      try {
+        const result = await requestPasswordReset({ email: formData.email });
+        if (!result.success) {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError("Failed to resend verification code");
+      }
     }
   };
 
-  const handleEmailSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!validateEmail()) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setStep(2);
-    } catch (err) {
-      setError("Failed to send verification code");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formData.email]);
-
-  const handleCodeSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (formData.code.length !== 6) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      if (formData.code === "123456") {
-        setStep(3);
-      } else {
-        setError("Invalid verification code");
+  const handleEmailSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!validateEmail()) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await requestPasswordReset({ email: formData.email });
+        if (result.success) {
+          setStep(2);
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError("Failed to send verification code");
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      setError("Verification failed");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formData.code]);
+    },
+    [formData.email]
+  );
 
-  const handlePasswordSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!validatePassword() || !validateConfirmPassword()) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      navigate("/login");
-    } catch {
-      setError("Failed to reset password");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formData.newPassword, formData.confirmPassword, navigate]);
+  const handleCodeSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (formData.code.length !== 6) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await verifyResetCode({
+          email: formData.email,
+          code: formData.code,
+        });
+
+        if (result.success) {
+          // Store the resetToken in formData for the password reset step
+          setFormData((prev) => ({ ...prev, resetToken: result.resetToken }));
+          setStep(3);
+        } else {
+          setError(result.error || "Invalid verification code");
+        }
+      } catch (err) {
+        setError("Verification failed");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [formData.email, formData.code]
+  );
+
+  const handlePasswordSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!validatePassword() || !validateConfirmPassword()) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await resetPassword({
+          resetToken: formData.resetToken,
+          password: formData.newPassword,
+          confirmPassword: formData.confirmPassword,
+        });
+
+        if (result.success) {
+          navigate("/login");
+        } else {
+          setError(result.error || "Failed to reset password");
+        }
+      } catch (err) {
+        setError("Failed to reset password");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      formData.resetToken,
+      formData.newPassword,
+      formData.confirmPassword,
+      navigate,
+    ]
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/95 via-indigo-50/95 to-violet-50/95 backdrop-blur-sm">
@@ -195,14 +256,18 @@ export default function ForgotPassword() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <motion.button
-                      onClick={() => step === 1 ? navigate(-1) : setStep(1)}
+                      onClick={() => (step === 1 ? navigate(-1) : setStep(1))}
                       whileHover={{ scale: 1.05 }}
                       className="text-blue-600 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
                     >
                       <ChevronLeft className="h-6 w-6" />
                     </motion.button>
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-600 bg-clip-text text-transparent">
-                      {step === 1 ? "Reset Password" : step === 2 ? "Verify Email" : "New Password"}
+                      {step === 1
+                        ? "Reset Password"
+                        : step === 2
+                        ? "Verify Email"
+                        : "New Password"}
                     </h1>
                   </div>
                   <div className="flex gap-1">
@@ -225,12 +290,14 @@ export default function ForgotPassword() {
                 )}
                 {step === 2 && (
                   <p className="text-sm text-gray-600 mb-6 px-4 text-center">
-                    We've sent a 6-digit code to <span className="font-medium">{formData.email}</span>
+                    We've sent a 6-digit code to{" "}
+                    <span className="font-medium">{formData.email}</span>
                   </p>
                 )}
                 {step === 3 && (
                   <p className="text-sm text-gray-600 mb-6 px-4 text-center">
-                    Create a new password. Make sure it's secure and easy to remember.
+                    Create a new password. Make sure it's secure and easy to
+                    remember.
                   </p>
                 )}
 
@@ -250,7 +317,13 @@ export default function ForgotPassword() {
 
                 {/* Form Sections */}
                 <form
-                  onSubmit={step === 1 ? handleEmailSubmit : step === 2 ? handleCodeSubmit : handlePasswordSubmit}
+                  onSubmit={
+                    step === 1
+                      ? handleEmailSubmit
+                      : step === 2
+                      ? handleCodeSubmit
+                      : handlePasswordSubmit
+                  }
                   className="space-y-6"
                 >
                   {/* Step 1 - Email Input */}
@@ -284,21 +357,33 @@ export default function ForgotPassword() {
                     >
                       <VerificationCodeInput
                         value={formData.code}
-                        onChange={(newCode) => setFormData((prev) => ({ ...prev, code: newCode }))}
+                        onChange={(newCode) =>
+                          setFormData((prev) => ({ ...prev, code: newCode }))
+                        }
                         onComplete={handleCodeSubmit}
                       />
                       <div className="text-center text-sm">
                         <motion.button
                           type="button"
                           className={`flex items-center justify-center gap-2 w-full ${
-                            canResend ? "text-blue-600 hover:text-blue-700" : "text-gray-400 cursor-not-allowed"
+                            canResend
+                              ? "text-blue-600 hover:text-blue-700"
+                              : "text-gray-400 cursor-not-allowed"
                           }`}
                           whileHover={canResend ? { scale: 1.02 } : {}}
                           onClick={handleResend}
                           disabled={!canResend}
                         >
-                          <span>{canResend ? "Didn't receive code?" : `Resend available in ${resendTimer}s`}</span>
-                          {canResend && <span className="font-medium underline underline-offset-2">Resend Code</span>}
+                          <span>
+                            {canResend
+                              ? "Didn't receive code?"
+                              : `Resend available in ${resendTimer}s`}
+                          </span>
+                          {canResend && (
+                            <span className="font-medium underline underline-offset-2">
+                              Resend Code
+                            </span>
+                          )}
                         </motion.button>
                       </div>
                     </motion.div>
@@ -327,10 +412,16 @@ export default function ForgotPassword() {
                             <motion.button
                               type="button"
                               className="p-1.5 text-gray-500 hover:text-gray-700"
-                              onClick={() => setShowNewPassword(!showNewPassword)}
+                              onClick={() =>
+                                setShowNewPassword(!showNewPassword)
+                              }
                               whileHover={{ scale: 1.1 }}
                             >
-                              {showNewPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                              {showNewPassword ? (
+                                <EyeOffIcon className="h-5 w-5" />
+                              ) : (
+                                <EyeIcon className="h-5 w-5" />
+                              )}
                             </motion.button>
                           }
                         />
@@ -343,18 +434,38 @@ export default function ForgotPassword() {
                                     Weak: "bg-red-500",
                                     Medium: "bg-yellow-500",
                                     Strong: "bg-green-500",
-                                  }[getPasswordStrength(formData.newPassword).strength]
+                                  }[
+                                    getPasswordStrength(formData.newPassword)
+                                      .strength
+                                  ]
                                 }`}
                                 initial={{ width: 0 }}
-                                animate={{ width: `${getPasswordStrength(formData.newPassword).percentage}%` }}
+                                animate={{
+                                  width: `${
+                                    getPasswordStrength(formData.newPassword)
+                                      .percentage
+                                  }%`,
+                                }}
                                 transition={{ duration: 0.3 }}
                               />
                             </div>
-                            <p className={`text-sm ${getStrengthColor(getPasswordStrength(formData.newPassword).strength)}`}>
-                              {getPasswordStrength(formData.newPassword).strength} Password
-                              {getPasswordStrength(formData.newPassword).strength !== "Strong" && (
+                            <p
+                              className={`text-sm ${getStrengthColor(
+                                getPasswordStrength(formData.newPassword)
+                                  .strength
+                              )}`}
+                            >
+                              {
+                                getPasswordStrength(formData.newPassword)
+                                  .strength
+                              }{" "}
+                              Password
+                              {getPasswordStrength(formData.newPassword)
+                                .strength !== "Strong" && (
                                 <span className="text-xs text-gray-500 ml-2">
-                                  (Requires 8+ characters, uppercase letters, lowercase letters, number or special characters)
+                                  (Requires 8+ characters, uppercase letters,
+                                  lowercase letters, number or special
+                                  characters)
                                 </span>
                               )}
                             </p>
@@ -377,10 +488,16 @@ export default function ForgotPassword() {
                             <motion.button
                               type="button"
                               className="p-1.5 text-gray-500 hover:text-gray-700"
-                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              onClick={() =>
+                                setShowConfirmPassword(!showConfirmPassword)
+                              }
                               whileHover={{ scale: 1.1 }}
                             >
-                              {showConfirmPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                              {showConfirmPassword ? (
+                                <EyeOffIcon className="h-5 w-5" />
+                              ) : (
+                                <EyeIcon className="h-5 w-5" />
+                              )}
                             </motion.button>
                           }
                         />
@@ -416,7 +533,11 @@ export default function ForgotPassword() {
                       <motion.div
                         className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                         animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
                       />
                     ) : (
                       <>
@@ -471,61 +592,65 @@ export default function ForgotPassword() {
 }
 
 // Floating Label Input Component
-const FloatingLabelInput = React.memo(({ id, label, error, rightIcon, ...props }) => {
-  const [isFocused, setIsFocused] = useState(false);
+const FloatingLabelInput = React.memo(
+  ({ id, label, error, rightIcon, ...props }) => {
+    const [isFocused, setIsFocused] = useState(false);
 
-  return (
-    <div className="relative w-full group">
-      <div className="relative flex items-center">
-        {props.icon && (
-          <motion.div
-            className={`absolute left-3.5 ${error ? "text-red-500" : "text-gray-400"} group-focus-within:text-blue-500 transition-colors`}
-            animate={{ scale: isFocused ? 1.1 : 1 }}
+    return (
+      <div className="relative w-full group">
+        <div className="relative flex items-center">
+          {props.icon && (
+            <motion.div
+              className={`absolute left-3.5 ${
+                error ? "text-red-500" : "text-gray-400"
+              } group-focus-within:text-blue-500 transition-colors`}
+              animate={{ scale: isFocused ? 1.1 : 1 }}
+            >
+              <props.icon className="h-5 w-5" />
+            </motion.div>
+          )}
+          <input
+            id={id}
+            {...props}
+            className={`w-full h-12 ${props.icon ? "pl-11" : "pl-4"} ${
+              rightIcon ? "pr-11" : "pr-4"
+            } pt-4 pb-2 rounded-xl bg-white ring-1 ${
+              error ? "ring-red-500" : "ring-gray-200"
+            } focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm transition-all duration-200 outline-none peer placeholder-transparent shadow-sm`}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => {
+              setIsFocused(false);
+              props.onBlur?.();
+            }}
+          />
+          <label
+            htmlFor={id}
+            className={`absolute left-0 ${
+              props.icon ? "ml-11" : "ml-4"
+            } transition-all duration-200 transform -translate-y-2.5 scale-75 top-3 z-10 origin-[0] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-2.5 ${
+              error ? "text-red-500" : "text-gray-500"
+            } peer-focus:text-blue-500 text-sm font-medium`}
           >
-            <props.icon className="h-5 w-5" />
+            {label}
+            {props.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          {rightIcon && (
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+              {rightIcon}
+            </div>
+          )}
+        </div>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-1 mt-1.5 ml-1 text-red-500 text-sm"
+          >
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
           </motion.div>
         )}
-        <input
-          id={id}
-          {...props}
-          className={`w-full h-12 ${props.icon ? "pl-11" : "pl-4"} ${
-            rightIcon ? "pr-11" : "pr-4"
-          } pt-4 pb-2 rounded-xl bg-white ring-1 ${
-            error ? "ring-red-500" : "ring-gray-200"
-          } focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm transition-all duration-200 outline-none peer placeholder-transparent shadow-sm`}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => {
-            setIsFocused(false);
-            props.onBlur?.();
-          }}
-        />
-        <label
-          htmlFor={id}
-          className={`absolute left-0 ${
-            props.icon ? "ml-11" : "ml-4"
-          } transition-all duration-200 transform -translate-y-2.5 scale-75 top-3 z-10 origin-[0] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-2.5 ${
-            error ? "text-red-500" : "text-gray-500"
-          } peer-focus:text-blue-500 text-sm font-medium`}
-        >
-          {label}
-          {props.required && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
-        {rightIcon && (
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-            {rightIcon}
-          </div>
-        )}
       </div>
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-1 mt-1.5 ml-1 text-red-500 text-sm"
-        >
-          <AlertCircle className="h-4 w-4" />
-          <span>{error}</span>
-        </motion.div>
-      )}
-    </div>
-  );
-});
+    );
+  }
+);

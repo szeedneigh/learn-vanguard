@@ -1,111 +1,154 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryClient';
+import { getTasks, createTask, updateTask, deleteTask } from '@/lib/api/taskApi';
 
 export const useTasks = (toast) => {
-  const [tasks, setTasks] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
 
-  useEffect(() => {
-    const savedTasks = localStorage.getItem('tasks');
-    if (savedTasks) {
-        try {
-            const parsedTasks = JSON.parse(savedTasks);
-            // Ensure IDs are numbers if they were stringified from numbers originally
-            // Date.now() produces numbers, so ensure they are parsed back as such if needed
-            // However, for comparison with draggableId, string IDs are fine internally in the hook
-            setTasks(parsedTasks.map(task => ({...task, id: task.id}))); // Keep as is if IDs are stored consistently
-        } catch (error) {
-            console.error("Failed to parse tasks from localStorage", error);
-            setTasks([]); // Fallback to empty array on error
-        }
+  const queryClient = useQueryClient();
+
+  // Fetch tasks
+  const { data: tasks = [], isLoading, isError, error } = useQuery({
+    queryKey: queryKeys.tasks,
+    queryFn: getTasks,
+    select: (data) => data?.data || [],
+  });
+
+  // Create task mutation
+  const createTaskMutation = useMutation({
+    mutationFn: createTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+      toast({ title: "Task Created", description: "New task added successfully!" });
+      setIsModalOpen(false);
+      setEditingTask(null);
+    },
+    onError: (err) => {
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to create task",
+        variant: "destructive"
+      });
     }
-  }, []);
+  });
 
-  useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
+  // Update task mutation
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ taskId, taskData }) => updateTask(taskId, taskData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+      toast({ title: "Task Updated", description: "Task updated successfully!" });
+      setIsModalOpen(false);
+      setEditingTask(null);
+    },
+    onError: (err) => {
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to update task",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: deleteTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+      toast({ title: "Task Deleted", description: "Task removed successfully!" });
+    },
+    onError: (err) => {
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to delete task",
+        variant: "destructive"
+      });
+    }
+  });
 
   const handleTaskSubmit = useCallback((taskData) => {
     if (taskData.id) {
-      setTasks(prev => prev.map(task =>
-        // Ensure consistent ID comparison here as well if taskData.id might be string
-        String(task.id) === String(taskData.id) ? { ...taskData } : task
-      ));
-      toast({ title: "Task Updated", description: "Task updated successfully!" });
+      updateTaskMutation.mutate({ taskId: taskData.id, taskData });
     } else {
-      const newTask = {
-        ...taskData,
-        id: Date.now(), // Generates a number
-        createdAt: new Date().toISOString(),
-      };
-      setTasks(prev => [...prev, newTask]);
-      toast({ title: "Task Created", description: "New task added successfully!" });
+      createTaskMutation.mutate(taskData);
     }
-    setIsModalOpen(false);
-    setEditingTask(null);
-  }, [toast]); // Added toast to dependency array
+  }, [createTaskMutation, updateTaskMutation]);
 
   const handleDeleteTask = useCallback((taskId) => {
-    setTasks(prev => prev.filter(task => 
-        String(task.id) !== String(taskId) // Consistent comparison
-    ));
-    toast({ title: "Task Deleted", description: "Task removed successfully!" });
-  }, [toast]); // Added toast to dependency array
+    deleteTaskMutation.mutate(taskId);
+  }, [deleteTaskMutation]);
 
   const handleStatusChange = useCallback((taskId, newStatus) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        // *** THE FIX IS HERE ***
-        // Compare task.id (number or string) with taskId (string from draggableId)
-        String(task.id) === String(taskId)
-          ? { ...task, status: newStatus }
-          : task
-      )
-    );
-    // Optional: Add toast notification for status change
-    toast({ 
-        title: "Task Status Updated", 
-        description: `Task moved successfully.` // You can make this more specific if needed
+    updateTaskMutation.mutate({
+      taskId,
+      taskData: {
+        status: newStatus,
+        completedAt: newStatus === 'completed' ? new Date().toISOString() : null
+      }
     });
-  }, [toast]); // Added toast to dependency array
+  }, [updateTaskMutation]);
+
+  const handleArchiveTask = useCallback((taskId) => {
+    updateTaskMutation.mutate({
+      taskId,
+      taskData: {
+        isArchived: true,
+        archivedAt: new Date().toISOString()
+      }
+    });
+  }, [updateTaskMutation]);
+
+  const handleRestoreTask = useCallback((taskId) => {
+    updateTaskMutation.mutate({
+      taskId,
+      taskData: {
+        isArchived: false,
+        archivedAt: null
+      }
+    });
+  }, [updateTaskMutation]);
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
     const searchMatch = task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase())); // Added check for task.description
+      (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
     const statusMatch = statusFilter === 'all' || task.status === statusFilter;
     const priorityMatch = priorityFilter === 'all' || task.priority === priorityFilter;
-    return searchMatch && statusMatch && priorityMatch;
-  }), [tasks, searchQuery, statusFilter, priorityFilter]);
+    const archiveMatch = showArchived ? task.isArchived : !task.isArchived;
+    return searchMatch && statusMatch && priorityMatch && archiveMatch;
+  }), [tasks, searchQuery, statusFilter, priorityFilter, showArchived]);
 
-  // Updated stats to handle potential undefined dueDate and ensure overdue calculation is correct
   const stats = useMemo(() => {
     const now = new Date();
     return {
       total: tasks.length,
       completed: tasks.filter(t => t.status === 'completed').length,
-      inProgress: tasks.filter(t => t.status === 'in-progress').length, // If you need this stat
-      notStarted: tasks.filter(t => t.status === 'not-started').length, // If you need this
-      onHold: tasks.filter(t => t.status === 'on-hold').length, // If you need this
-      // Ensure dueDate exists and is valid before comparing
+      inProgress: tasks.filter(t => t.status === 'in-progress').length,
+      notStarted: tasks.filter(t => t.status === 'not-started').length,
+      onHold: tasks.filter(t => t.status === 'on-hold').length,
       overdue: tasks.filter(t => {
-        if (!t.dueDate || t.status === 'completed') {
-          return false;
-        }
+        if (!t.dueDate || t.status === 'completed') return false;
         try {
           return new Date(t.dueDate) < now;
         } catch (e) {
-          return false; // Invalid date format
+          return false;
         }
       }).length,
-      highPriority: tasks.filter(t => t.priority === 'High' && t.status !== 'completed').length, // Example for high priority
+      archived: tasks.filter(t => t.isArchived).length,
+      highPriority: tasks.filter(t => t.priority === 'High' && t.status !== 'completed').length,
     };
   }, [tasks]);
 
   return {
-    tasks, // Expose tasks if needed directly, though filteredTasks is primary
+    tasks,
+    isLoading,
+    isError,
+    error,
     searchQuery,
     setSearchQuery,
     statusFilter,
@@ -119,6 +162,10 @@ export const useTasks = (toast) => {
     handleTaskSubmit,
     handleDeleteTask,
     handleStatusChange,
+    handleArchiveTask,
+    handleRestoreTask,
+    showArchived,
+    setShowArchived,
     filteredTasks,
     stats
   };
