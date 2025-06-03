@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from "./client";
 
 /**
  * User Management API Service
@@ -13,27 +13,30 @@ import apiClient from './client';
 export const getUsers = async (filters = {}) => {
   try {
     const params = new URLSearchParams();
-    
+
     // Add filters to params
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         params.append(key, value);
       }
     });
-    
+
     const response = await apiClient.get(`/users?${params.toString()}`);
     return {
       data: response.data.data || response.data,
       pagination: response.data.pagination || null,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error("Error fetching users:", error);
     return {
       data: [],
       pagination: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch users'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch users",
     };
   }
 };
@@ -48,14 +51,17 @@ export const getUser = async (userId) => {
     const response = await apiClient.get(`/users/${userId}`);
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching user:', error);
+    console.error("Error fetching user:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch user'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch user",
     };
   }
 };
@@ -66,17 +72,20 @@ export const getUser = async (userId) => {
  */
 export const getCurrentUserProfile = async () => {
   try {
-    const response = await apiClient.get('/users/profile');
+    const response = await apiClient.get("/users/profile");
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    console.error("Error fetching user profile:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch profile'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch profile",
     };
   }
 };
@@ -88,17 +97,20 @@ export const getCurrentUserProfile = async () => {
  */
 export const updateCurrentUserProfile = async (profileData) => {
   try {
-    const response = await apiClient.put('/users/profile', profileData);
+    const response = await apiClient.put("/users/profile", profileData);
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    console.error("Error updating user profile:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update profile'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update profile",
     };
   }
 };
@@ -114,14 +126,17 @@ export const updateUser = async (userId, updates) => {
     const response = await apiClient.put(`/users/${userId}`, updates);
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error updating user:', error);
+    console.error("Error updating user:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update user'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update user",
     };
   }
 };
@@ -136,13 +151,16 @@ export const deleteUser = async (userId) => {
     const response = await apiClient.delete(`/users/${userId}`);
     return {
       success: true,
-      message: response.data.message || 'User deleted successfully'
+      message: response.data.message || "User deleted successfully",
     };
   } catch (error) {
-    console.error('Error deleting user:', error);
+    console.error("Error deleting user:", error);
     return {
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to delete user'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to delete user",
     };
   }
 };
@@ -156,27 +174,30 @@ export const deleteUser = async (userId) => {
 export const searchUsers = async (query, filters = {}) => {
   try {
     const params = new URLSearchParams();
-    params.append('q', query);
-    
+    params.append("q", query);
+
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         params.append(key, value);
       }
     });
-    
+
     const response = await apiClient.get(`/users/search?${params.toString()}`);
     return {
       data: response.data.data || response.data,
       pagination: response.data.pagination || null,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error searching users:', error);
+    console.error("Error searching users:", error);
     return {
       data: [],
       pagination: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to search users'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to search users",
     };
   }
 };
@@ -192,14 +213,17 @@ export const updateUserRole = async (userId, role) => {
     const response = await apiClient.patch(`/users/${userId}/role`, { role });
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error updating user role:', error);
+    console.error("Error updating user role:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update user role'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update user role",
     };
   }
 };
@@ -212,17 +236,22 @@ export const updateUserRole = async (userId, role) => {
  */
 export const updateUserStatus = async (userId, status) => {
   try {
-    const response = await apiClient.patch(`/users/${userId}/status`, { status });
+    const response = await apiClient.patch(`/users/${userId}/status`, {
+      status,
+    });
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error updating user status:', error);
+    console.error("Error updating user status:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update user status'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update user status",
     };
   }
 };
@@ -233,17 +262,20 @@ export const updateUserStatus = async (userId, status) => {
  */
 export const getUserStatistics = async () => {
   try {
-    const response = await apiClient.get('/users/statistics');
+    const response = await apiClient.get("/users/statistics");
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching user statistics:', error);
+    console.error("Error fetching user statistics:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch user statistics'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch user statistics",
     };
   }
 };
@@ -257,11 +289,11 @@ export const getUserStatistics = async () => {
 export const uploadUserAvatar = async (file, onProgress = null) => {
   try {
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append("avatar", file);
 
     const config = {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
     };
 
@@ -275,17 +307,24 @@ export const uploadUserAvatar = async (file, onProgress = null) => {
       };
     }
 
-    const response = await apiClient.post('/users/profile/avatar', formData, config);
+    const response = await apiClient.post(
+      "/users/profile/avatar",
+      formData,
+      config
+    );
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error uploading avatar:', error);
+    console.error("Error uploading avatar:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to upload avatar'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to upload avatar",
     };
   }
 };
@@ -298,17 +337,40 @@ export const uploadUserAvatar = async (file, onProgress = null) => {
  */
 export const assignPIORole = async (userId, assignedClass) => {
   try {
-    const response = await apiClient.post(`/users/pio/${userId}`, { assignedClass });
+    if (!userId) {
+      throw new Error("User ID is required to assign PIO role");
+    }
+
+    if (!assignedClass) {
+      throw new Error("Assigned class is required");
+    }
+
+    console.log(
+      `API: Assigning PIO role to user ${userId} with class ${assignedClass}`
+    );
+
+    const response = await apiClient.post(`/users/pio/${userId}`, {
+      assignedClass,
+    });
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error assigning PIO role:', error);
+    console.error("Error assigning PIO role:", error);
+
+    // Extract the most useful error message
+    let errorMessage = "Failed to assign PIO role";
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to assign PIO role'
+      error: errorMessage,
     };
   }
 };
@@ -323,14 +385,17 @@ export const revertPIORole = async (userId) => {
     const response = await apiClient.post(`/users/pio/${userId}/revert`);
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error reverting PIO role:', error);
+    console.error("Error reverting PIO role:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to revert PIO role'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to revert PIO role",
     };
   }
 };

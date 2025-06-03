@@ -14,9 +14,10 @@ import {
   Calendar,
   X,
 } from "lucide-react";
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 import { Alert, AlertDescription } from "@/components/ui/alert"; // Adjust path if necessary
 import * as authService from "@/services/authService"; // Adjust path if necessary
+import { useAuth } from "@/context/AuthContext"; // Add this import
 
 const smoothTransition = {
   type: "spring",
@@ -25,7 +26,16 @@ const smoothTransition = {
 };
 
 const FloatingLabelInput = React.memo(
-  ({ id, label, type = "text", value, onChange, required = false, icon: Icon, error }) => {
+  ({
+    id,
+    label,
+    type = "text",
+    value,
+    onChange,
+    required = false,
+    icon: Icon,
+    error,
+  }) => {
     const [isFocused, setIsFocused] = useState(false);
 
     return (
@@ -46,8 +56,12 @@ const FloatingLabelInput = React.memo(
             value={value}
             onChange={onChange}
             required={required}
-            className={`w-full h-12 ${Icon ? "pl-10" : "pl-3.5"} pr-3.5 pt-3 pb-1 rounded-lg
-                    bg-white ring-1 ${error ? "ring-red-500" : "ring-gray-200"} focus:ring-2 focus:ring-blue-500
+            className={`w-full h-12 ${
+              Icon ? "pl-10" : "pl-3.5"
+            } pr-3.5 pt-3 pb-1 rounded-lg
+                    bg-white ring-1 ${
+                      error ? "ring-red-500" : "ring-gray-200"
+                    } focus:ring-2 focus:ring-blue-500
                     text-gray-900 text-sm transition-all duration-200 outline-none
                     peer placeholder-transparent`}
             placeholder={label}
@@ -65,7 +79,9 @@ const FloatingLabelInput = React.memo(
                     transform -translate-y-2 scale-75 top-2 z-10 origin-[0]
                     peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0
                     peer-focus:scale-75 peer-focus:-translate-y-2
-                    ${error ? "text-red-500" : "text-gray-500"} peer-focus:text-blue-500 text-sm`}
+                    ${
+                      error ? "text-red-500" : "text-gray-500"
+                    } peer-focus:text-blue-500 text-sm`}
           >
             {label}
             {required && <span className="text-red-500 ml-0.5">*</span>}
@@ -91,7 +107,7 @@ FloatingLabelInput.propTypes = {
   icon: PropTypes.elementType,
   error: PropTypes.string,
 };
-FloatingLabelInput.displayName = 'FloatingLabelInput';
+FloatingLabelInput.displayName = "FloatingLabelInput";
 
 const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -153,62 +169,70 @@ PasswordInput.propTypes = {
   onChange: PropTypes.func.isRequired,
   error: PropTypes.string,
 };
-PasswordInput.displayName = 'PasswordInput';
+PasswordInput.displayName = "PasswordInput";
 
-const SelectInput = React.memo(({ id, value, onChange, options, label, icon: Icon, error }) => (
-  <div className="relative w-full group">
-    <div className="relative flex items-center">
-      {Icon && (
-        <motion.div
-          className="absolute left-3.5 text-gray-400 group-focus-within:text-blue-500"
-          transition={smoothTransition}
-        >
-          <Icon className="h-4 w-4" />
-        </motion.div>
-      )}
-      <select
-        id={id} // Added id here
-        value={value}
-        onChange={onChange}
-        className={`w-full h-12 ${Icon ? "pl-10" : "pl-3.5"} pr-3.5 rounded-lg
-                bg-white ring-1 ${error ? "ring-red-500" : "ring-gray-200"} focus:ring-2 focus:ring-blue-500
+const SelectInput = React.memo(
+  ({ id, value, onChange, options, label, icon: Icon, error }) => (
+    <div className="relative w-full group">
+      <div className="relative flex items-center">
+        {Icon && (
+          <motion.div
+            className="absolute left-3.5 text-gray-400 group-focus-within:text-blue-500"
+            transition={smoothTransition}
+          >
+            <Icon className="h-4 w-4" />
+          </motion.div>
+        )}
+        <select
+          id={id} // Added id here
+          value={value}
+          onChange={onChange}
+          className={`w-full h-12 ${Icon ? "pl-10" : "pl-3.5"} pr-3.5 rounded-lg
+                bg-white ring-1 ${
+                  error ? "ring-red-500" : "ring-gray-200"
+                } focus:ring-2 focus:ring-blue-500
                 text-gray-900 text-sm transition-all duration-200 outline-none appearance-none`}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${id}-error` : undefined} // Use id for describedby
-      >
-        <option value="">{label}</option> {/* This acts as a placeholder */}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined} // Use id for describedby
+        >
+          <option value="">{label}</option> {/* This acts as a placeholder */}
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {error && (
+        <p id={`${id}-error`} className="text-red-500 text-sm mt-1 pl-3.5">
+          {error}
+        </p>
+      )}
     </div>
-    {error && (
-      <p id={`${id}-error`} className="text-red-500 text-sm mt-1 pl-3.5">
-        {error}
-      </p>
-    )}
-  </div>
-));
+  )
+);
 
 SelectInput.propTypes = {
   id: PropTypes.string.isRequired, // Added id prop
   value: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
-  options: PropTypes.arrayOf(PropTypes.shape({
-    value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-    label: PropTypes.string.isRequired,
-    disabled: PropTypes.bool,
-  })).isRequired,
+  options: PropTypes.arrayOf(
+    PropTypes.shape({
+      value: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+        .isRequired,
+      label: PropTypes.string.isRequired,
+      disabled: PropTypes.bool,
+    })
+  ).isRequired,
   label: PropTypes.string.isRequired, // This is for the placeholder option
   icon: PropTypes.elementType,
   error: PropTypes.string,
 };
-SelectInput.displayName = 'SelectInput';
+SelectInput.displayName = "SelectInput";
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const { loginWithGoogle } = useAuth(); // Add this line
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -219,191 +243,292 @@ const SignUp = () => {
     studentNo: "",
     course: "",
     yearLevel: "",
-    gender: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false); // Add this line
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [googleSignupData, setGoogleSignupData] = useState(null); // Add this line
 
   const validateField = useCallback((name, value) => {
     switch (name) {
-      case 'firstname':
-        return !value.trim() ? "First name is required" : /^[A-Za-z]+$/.test(value) ? "" : "First name must contain only letters";
-      case 'lastname':
-        return !value.trim() ? "Last name is required" : /^[A-Za-z]+$/.test(value) ? "" : "Last name must contain only letters";
-      case 'email': {
+      case "firstname":
+        return !value.trim()
+          ? "First name is required"
+          : /^[A-Za-z]+$/.test(value)
+          ? ""
+          : "First name must contain only letters";
+      case "lastname":
+        return !value.trim()
+          ? "Last name is required"
+          : /^[A-Za-z]+$/.test(value)
+          ? ""
+          : "Last name must contain only letters";
+      case "email": {
         const emailRegex = /^[^\s@]+@student\.laverdad\.edu\.ph$/;
         if (!value) return "Email is required";
-        return !emailRegex.test(value) ? "Must use a valid school email (student.laverdad.edu.ph)" : "";
+        return !emailRegex.test(value)
+          ? "Must use a valid school email (student.laverdad.edu.ph)"
+          : "";
       }
-      case 'password': {
+      case "password": {
         if (!value) return "Password is required";
         const minLength = 8;
         const hasUpperCase = /[A-Z]/.test(value);
         const hasLowerCase = /[a-z]/.test(value);
         const hasNumber = /[0-9]/.test(value);
         const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(value);
-        if (value.length < minLength) return `Password must be at least ${minLength} characters`;
+        if (value.length < minLength)
+          return `Password must be at least ${minLength} characters`;
         if (!hasUpperCase) return "Password must include an uppercase letter";
         if (!hasLowerCase) return "Password must include a lowercase letter";
         if (!hasNumber) return "Password must include a number";
         if (!hasSpecialChar) return "Password must include a special character";
         return "";
       }
-      case 'studentNo':
+      case "studentNo":
         return !value.trim() ? "Student number is required" : "";
-      case 'course':
+      case "course":
         return !value ? "Course is required" : "";
-      case 'yearLevel':
+      case "yearLevel":
         return !value ? "Year level is required" : "";
-      case 'gender':
-        return !value ? "Gender is required" : "";
       default:
         return "";
     }
   }, []);
 
-  const validateStep = useCallback((stepToValidate) => {
-    const currentErrors = {};
-    const fieldsToValidate = stepToValidate === 1
-      ? ['firstname', 'lastname', 'email', 'password']
-      : ['studentNo', 'course', 'yearLevel', 'gender'];
+  const validateStep = useCallback(
+    (stepToValidate) => {
+      const currentErrors = {};
+      const fieldsToValidate =
+        stepToValidate === 1
+          ? ["firstname", "lastname", "email", "password"]
+          : ["studentNo", "course", "yearLevel"];
 
-    fieldsToValidate.forEach(field => {
-      const error = validateField(field, formData[field]);
-      if (error) currentErrors[field] = error;
-    });
+      fieldsToValidate.forEach((field) => {
+        const error = validateField(field, formData[field]);
+        if (error) currentErrors[field] = error;
+      });
 
-    if (stepToValidate === 2 && !acceptedTerms) {
-      currentErrors.terms = "You must accept the terms and conditions";
-    }
-    return currentErrors;
-  }, [formData, acceptedTerms, validateField]);
+      if (stepToValidate === 2 && !acceptedTerms) {
+        currentErrors.terms = "You must accept the terms and conditions";
+      }
+      return currentErrors;
+    },
+    [formData, acceptedTerms, validateField]
+  );
 
-  const handleInputChange = useCallback((e) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
-    const error = validateField(id, value);
-    setErrors(prev => ({ ...prev, [id]: error, form: "" }));
-  }, [validateField]);
+  const handleInputChange = useCallback(
+    (e) => {
+      const { id, value } = e.target;
+      setFormData((prev) => ({ ...prev, [id]: value }));
+      const error = validateField(id, value);
+      setErrors((prev) => ({ ...prev, [id]: error, form: "" }));
+    },
+    [validateField]
+  );
 
   const clearError = useCallback((field) => {
-    setErrors(prev => ({ ...prev, [field]: "", form: "" }));
+    setErrors((prev) => ({ ...prev, [field]: "", form: "" }));
   }, []);
 
-  const handleSubmitStep1 = useCallback(async (e) => {
-    e.preventDefault();
-    const stepErrors = validateStep(1);
-    if (Object.keys(stepErrors).length > 0) {
-      setErrors(stepErrors);
-      return;
-    }
-
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      const initialSignupData = {
-        firstname: formData.firstname,
-        lastname: formData.lastname,
-        email: formData.email,
-        password: formData.password,
-      };
-
-      const result = await authService.initiateSignup(initialSignupData);
-
-      if (result.success && result.tempToken) {
-        localStorage.setItem('signupTempToken', result.tempToken);
-        setStep(2);
-      } else {
-        let formErrorMessage = result.error || 'Initial registration failed.';
-        const fieldSpecificErrors = {};
-         if (result.details && Object.keys(result.details).length > 0) {
-          let detailedMessages = [];
-          for (const field in result.details) {
-            const message = Array.isArray(result.details[field]) ? result.details[field].join(', ') : result.details[field];
-            fieldSpecificErrors[field] = message; // Assuming backend field names match frontend
-          }
-        }
-        setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
-      }
-    } catch (error) {
-      setErrors({ form: "A critical error occurred during initial sign-up. Please try again." });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formData, validateStep]);
-
-  const handleSubmitStep2 = useCallback(async (e) => {
-    e.preventDefault();
-    const stepErrors = validateStep(2);
-    if (Object.keys(stepErrors).length > 0) {
-      setErrors(stepErrors);
-      return;
-    }
-
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      const tempToken = localStorage.getItem('signupTempToken');
-      if (!tempToken) {
-        setErrors({ form: 'Registration session expired or initial step incomplete. Please start over.' });
-        setStep(1);
-        setIsLoading(false);
+  const handleSubmitStep1 = useCallback(
+    async (e) => {
+      e.preventDefault();
+      const stepErrors = validateStep(1);
+      if (Object.keys(stepErrors).length > 0) {
+        setErrors(stepErrors);
         return;
       }
 
-      const completeData = {
-        tempToken,
-        studentNo: formData.studentNo,
-        course: formData.course,
-        yearLevel: formData.yearLevel,
-        gender: formData.gender,
-      };
-      console.log("Starting registration completion (Step 2) with data (before service call):", completeData);
+      setIsLoading(true);
+      setErrors({});
 
-      const result = await authService.completeSignup(completeData);
+      try {
+        const initialSignupData = {
+          firstname: formData.firstname,
+          lastname: formData.lastname,
+          email: formData.email,
+          password: formData.password,
+        };
 
-      if (result.success) {
-        localStorage.removeItem('signupTempToken');
-        navigate('/dashboard');
-      } else {
-        let formErrorMessage = result.error || 'Registration failed. Please check your details and try again.';
-        const fieldSpecificErrors = {};
+        const result = await authService.initiateSignup(initialSignupData);
 
-        if (result.details && typeof result.details === 'object' && Object.keys(result.details).length > 0) {
-          for (const field in result.details) {
-            const message = Array.isArray(result.details[field]) ? result.details[field].join(', ') : String(result.details[field]);
-            
-            // Map backend field names to frontend state keys if they differ
-            let frontendFieldKey = field;
-            if (field === 'studentNumber') frontendFieldKey = 'studentNo';
-            // Add more specific mappings if backend uses different keys than formData
-            // e.g., if backend returns 'academicCourse' for 'course'
-            // if (field === 'academicCourse') frontendFieldKey = 'course';
-
-            if (Object.prototype.hasOwnProperty.call(formData, frontendFieldKey) || ['terms', 'tempToken', 'general', 'form'].includes(frontendFieldKey)) {
-              fieldSpecificErrors[frontendFieldKey] = message;
-            } else {
-               // If the error field isn't directly a form field, append to general form error.
-              formErrorMessage += ` (${field}: ${message})`;
+        if (result.success && result.tempToken) {
+          localStorage.setItem("signupTempToken", result.tempToken);
+          setStep(2);
+        } else {
+          let formErrorMessage = result.error || "Initial registration failed.";
+          const fieldSpecificErrors = {};
+          if (result.details && Object.keys(result.details).length > 0) {
+            let detailedMessages = [];
+            for (const field in result.details) {
+              const message = Array.isArray(result.details[field])
+                ? result.details[field].join(", ")
+                : result.details[field];
+              fieldSpecificErrors[field] = message; // Assuming backend field names match frontend
             }
           }
+          setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
         }
-        
-        setErrors(prev => ({ ...prev, ...fieldSpecificErrors, form: formErrorMessage }));
+      } catch (error) {
+        setErrors({
+          form: "A critical error occurred during initial sign-up. Please try again.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [formData, validateStep]
+  );
 
-        if (result.error && (result.error.toLowerCase().includes('token') || result.error.toLowerCase().includes('session'))) {
-            setStep(1);
+  const handleSubmitStep2 = useCallback(
+    async (e) => {
+      e.preventDefault();
+      const stepErrors = validateStep(2);
+      if (Object.keys(stepErrors).length > 0) {
+        setErrors(stepErrors);
+        return;
+      }
+
+      setIsLoading(true);
+      setErrors({});
+
+      try {
+        const tempToken = localStorage.getItem("signupTempToken");
+        if (!tempToken) {
+          setErrors({
+            form: "Registration session expired or initial step incomplete. Please start over.",
+          });
+          setStep(1);
+          setIsLoading(false);
+          return;
         }
+
+        const completeData = {
+          tempToken,
+          studentNo: formData.studentNo,
+          course: formData.course,
+          yearLevel: formData.yearLevel,
+        };
+        console.log(
+          "Starting registration completion (Step 2) with data (before service call):",
+          completeData
+        );
+
+        const result = await authService.completeSignup(completeData);
+
+        if (result.success) {
+          localStorage.removeItem("signupTempToken");
+          navigate("/dashboard");
+        } else {
+          let formErrorMessage =
+            result.error ||
+            "Registration failed. Please check your details and try again.";
+          const fieldSpecificErrors = {};
+
+          if (
+            result.details &&
+            typeof result.details === "object" &&
+            Object.keys(result.details).length > 0
+          ) {
+            for (const field in result.details) {
+              const message = Array.isArray(result.details[field])
+                ? result.details[field].join(", ")
+                : String(result.details[field]);
+
+              // Map backend field names to frontend state keys if they differ
+              let frontendFieldKey = field;
+              if (field === "studentNumber") frontendFieldKey = "studentNo";
+              // Add more specific mappings if backend uses different keys than formData
+              // e.g., if backend returns 'academicCourse' for 'course'
+              // if (field === 'academicCourse') frontendFieldKey = 'course';
+
+              if (
+                Object.prototype.hasOwnProperty.call(
+                  formData,
+                  frontendFieldKey
+                ) ||
+                ["terms", "tempToken", "general", "form"].includes(
+                  frontendFieldKey
+                )
+              ) {
+                fieldSpecificErrors[frontendFieldKey] = message;
+              } else {
+                // If the error field isn't directly a form field, append to general form error.
+                formErrorMessage += ` (${field}: ${message})`;
+              }
+            }
+          }
+
+          setErrors((prev) => ({
+            ...prev,
+            ...fieldSpecificErrors,
+            form: formErrorMessage,
+          }));
+
+          if (
+            result.error &&
+            (result.error.toLowerCase().includes("token") ||
+              result.error.toLowerCase().includes("session"))
+          ) {
+            setStep(1);
+          }
+        }
+      } catch (error) {
+        setErrors({
+          form: "A critical error occurred during account creation. Please try again later.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [formData, validateStep, navigate, acceptedTerms]
+  );
+
+  // Add Google sign-up handler
+  const handleGoogleSignUp = async (e) => {
+    e.preventDefault();
+    setErrors({});
+    setIsGoogleLoading(true);
+
+    try {
+      const result = await loginWithGoogle();
+
+      if (result?.success) {
+        // Successfully logged in with Google
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 500);
+      } else if (result?.needsRegistration) {
+        // User needs to complete registration with additional info
+        setGoogleSignupData({
+          email: result.email,
+          // Any other data returned from Google that might be useful
+        });
+        setStep(2); // Move to step 2 to collect additional info
+
+        // Pre-fill email field if available
+        if (result.email) {
+          setFormData((prev) => ({
+            ...prev,
+            email: result.email,
+          }));
+        }
+      } else {
+        setErrors({
+          form: result?.error || "Google sign-up failed. Please try again.",
+        });
       }
     } catch (error) {
-      setErrors({ form: "A critical error occurred during account creation. Please try again later." });
+      console.error("Google sign-up error:", error);
+      setErrors({
+        form: "An unexpected error occurred during Google sign-up.",
+      });
     } finally {
-      setIsLoading(false);
+      setIsGoogleLoading(false);
     }
-  }, [formData, validateStep, navigate, acceptedTerms]);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 backdrop-blur-sm">
@@ -441,7 +566,12 @@ const SignUp = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <Alert variant="destructive" className="shadow-lg" role="alert" aria-live="assertive">
+                  <Alert
+                    variant="destructive"
+                    className="shadow-lg"
+                    role="alert"
+                    aria-live="assertive"
+                  >
                     <AlertDescription>{errors.form}</AlertDescription>
                   </Alert>
                 </motion.div>
@@ -461,7 +591,10 @@ const SignUp = () => {
                     </h1>
                     <p className="text-gray-600 text-sm">
                       Already have an account?{" "}
-                      <Link to="/login" className="text-blue-600 font-medium hover:text-blue-700 relative group">
+                      <Link
+                        to="/login"
+                        className="text-blue-600 font-medium hover:text-blue-700 relative group"
+                      >
                         <motion.span
                           whileHover={{ scale: 1.05 }}
                           transition={smoothTransition}
@@ -474,7 +607,11 @@ const SignUp = () => {
                     </p>
                   </div>
 
-                  <form onSubmit={handleSubmitStep1} className="space-y-5" noValidate>
+                  <form
+                    onSubmit={handleSubmitStep1}
+                    className="space-y-5"
+                    noValidate
+                  >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FloatingLabelInput
                         id="firstname"
@@ -529,7 +666,9 @@ const SignUp = () => {
                                flex items-center justify-center gap-2 group relative overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed"
                       whileHover={{
                         scale: !isLoading ? 1.01 : 1,
-                        background: !isLoading ? "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)" : undefined
+                        background: !isLoading
+                          ? "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)"
+                          : undefined,
                       }}
                       whileTap={{ scale: !isLoading ? 0.98 : 1 }}
                       transition={smoothTransition}
@@ -564,13 +703,13 @@ const SignUp = () => {
                       </div>
                     </div>
 
-                    <motion.a
-                      href="https://accounts.google.com" // Replace with your actual Google OAuth endpoint/handler
-                      rel="noopener noreferrer"
+                    <motion.button
+                      onClick={handleGoogleSignUp}
+                      disabled={isGoogleLoading || isLoading}
                       className="w-full h-12 border border-gray-300 text-gray-700 rounded-lg
-                               font-medium flex items-center justify-center gap-2 shadow-sm
-                               hover:border-gray-400 hover:shadow-md bg-white relative
-                               transition-all duration-300"
+                                 font-medium flex items-center justify-center gap-2 shadow-sm
+                                 hover:border-gray-400 hover:shadow-md bg-white relative
+                                 transition-all duration-300"
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}
                       transition={smoothTransition}
@@ -580,26 +719,30 @@ const SignUp = () => {
                         viewBox="0 0 24 24"
                         className="h-5 w-5"
                       >
-                         <path
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        fill="#4285F4"
-                      />
-                      <path
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        fill="#34A853"
-                      />
-                      <path
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                        fill="#FBBC05"
-                      />
-                      <path
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                        fill="#EA4335"
-                      />
+                        <path
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                          fill="#4285F4"
+                        />
+                        <path
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                          fill="#34A853"
+                        />
+                        <path
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                          fill="#FBBC05"
+                        />
+                        <path
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                          fill="#EA4335"
+                        />
                       </svg>
-                      <span>Sign up with Google</span>
+                      <span>
+                        {isGoogleLoading
+                          ? "Processing..."
+                          : "Sign up with Google"}
+                      </span>
                       <div className="absolute inset-0 bg-black/5 opacity-0 hover:opacity-100 transition-opacity rounded-lg" />
-                    </motion.a>
+                    </motion.button>
                   </form>
                 </motion.div>
               ) : (
@@ -619,25 +762,39 @@ const SignUp = () => {
                     </p>
                   </div>
 
-                  <form onSubmit={handleSubmitStep2} className="space-y-5" noValidate>
-                      <FloatingLabelInput
-                        id="studentNo"
-                        label="Student Number"
-                        value={formData.studentNo}
-                        onChange={handleInputChange}
-                        error={errors.studentNo}
-                        required
-                        icon={GraduationCap}
-                      />
+                  <form
+                    onSubmit={handleSubmitStep2}
+                    className="space-y-5"
+                    noValidate
+                  >
+                    <FloatingLabelInput
+                      id="studentNo"
+                      label="Student Number"
+                      value={formData.studentNo}
+                      onChange={handleInputChange}
+                      error={errors.studentNo}
+                      required
+                      icon={GraduationCap}
+                    />
 
                     <SelectInput
                       id="course"
                       value={formData.course}
-                      onChange={(e) => handleInputChange({ target: { id: 'course', value: e.target.value } })}
+                      onChange={(e) =>
+                        handleInputChange({
+                          target: { id: "course", value: e.target.value },
+                        })
+                      }
                       options={[
                         { value: "", label: "Select Course", disabled: true },
-                        { value: "BSIS", label: "Bachelor of Science in Information Systems" },
-                        { value: "ACT", label: "Associate in Computer Technology" },
+                        {
+                          value: "BSIS",
+                          label: "Bachelor of Science in Information Systems",
+                        },
+                        {
+                          value: "ACT",
+                          label: "Associate in Computer Technology",
+                        },
                       ]}
                       label="Select Course"
                       icon={BookOpen}
@@ -647,9 +804,17 @@ const SignUp = () => {
                     <SelectInput
                       id="yearLevel"
                       value={formData.yearLevel}
-                      onChange={(e) => handleInputChange({ target: { id: 'yearLevel', value: e.target.value } })}
+                      onChange={(e) =>
+                        handleInputChange({
+                          target: { id: "yearLevel", value: e.target.value },
+                        })
+                      }
                       options={[
-                        { value: "", label: "Select Year Level", disabled: true },
+                        {
+                          value: "",
+                          label: "Select Year Level",
+                          disabled: true,
+                        },
                         { value: "1", label: "First Year" },
                         { value: "2", label: "Second Year" },
                         { value: "3", label: "Third Year" },
@@ -660,20 +825,6 @@ const SignUp = () => {
                       error={errors.yearLevel}
                     />
 
-                    <SelectInput
-                      id="gender"
-                      value={formData.gender}
-                      onChange={(e) => handleInputChange({ target: { id: 'gender', value: e.target.value } })}
-                      options={[
-                        { value: "", label: "Select Gender", disabled: true },
-                        { value: "male", label: "Male" },
-                        { value: "female", label: "Female" },
-                      ]}
-                      label="Select Gender"
-                      icon={User}
-                      error={errors.gender}
-                    />
-
                     <div className="flex items-start space-x-2 pt-1">
                       <motion.input
                         type="checkbox"
@@ -682,16 +833,21 @@ const SignUp = () => {
                         onChange={(e) => {
                           setAcceptedTerms(e.target.checked);
                           if (e.target.checked) {
-                             clearError('terms');
+                            clearError("terms");
                           } else {
-                             setErrors(prev => ({ ...prev, terms: "You must accept the terms and conditions" }));
+                            setErrors((prev) => ({
+                              ...prev,
+                              terms: "You must accept the terms and conditions",
+                            }));
                           }
                         }}
                         className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600
                                   focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        aria-describedby={errors.terms ? "terms-error-message" : undefined}
+                        aria-describedby={
+                          errors.terms ? "terms-error-message" : undefined
+                        }
                       />
                       <label htmlFor="terms" className="text-sm text-gray-600">
                         I accept the{" "}
@@ -708,7 +864,10 @@ const SignUp = () => {
                       </label>
                     </div>
                     {errors.terms && (
-                      <p id="terms-error-message" className="text-red-500 text-sm mt-1 pl-3.5">
+                      <p
+                        id="terms-error-message"
+                        className="text-red-500 text-sm mt-1 pl-3.5"
+                      >
                         {errors.terms}
                       </p>
                     )}
@@ -717,8 +876,8 @@ const SignUp = () => {
                       <motion.button
                         type="button"
                         onClick={() => {
-                            setStep(1);
-                            setErrors({}); // Clear errors when going back
+                          setStep(1);
+                          setErrors({}); // Clear errors when going back
                         }}
                         className="w-1/3 h-12 bg-white ring-1 ring-gray-200
                                   text-gray-700 rounded-lg font-medium
@@ -739,12 +898,18 @@ const SignUp = () => {
                                   disabled:opacity-70 disabled:cursor-not-allowed"
                         whileHover={{
                           scale: !(!acceptedTerms || isLoading) ? 1.01 : 1,
-                          background: !(!acceptedTerms || isLoading) ? "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)" : undefined
+                          background: !(!acceptedTerms || isLoading)
+                            ? "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)"
+                            : undefined,
                         }}
-                        whileTap={{ scale: !(!acceptedTerms || isLoading) ? 0.98 : 1 }}
+                        whileTap={{
+                          scale: !(!acceptedTerms || isLoading) ? 0.98 : 1,
+                        }}
                         transition={smoothTransition}
                         disabled={!acceptedTerms || isLoading}
-                        aria-label={isLoading ? "Creating account..." : "Create Account"}
+                        aria-label={
+                          isLoading ? "Creating account..." : "Create Account"
+                        }
                       >
                         {isLoading ? (
                           <motion.div
@@ -785,7 +950,11 @@ const SignUp = () => {
               animate={{
                 opacity: [0.8, 1],
               }}
-              transition={{ duration: 8, repeat: Infinity, repeatType: "reverse" }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                repeatType: "reverse",
+              }}
             />
             <motion.img
               src="/images/headLogo.png" // Ensure this path is correct from public folder
@@ -797,7 +966,7 @@ const SignUp = () => {
               transition={{
                 duration: 2,
                 repeat: Infinity,
-                repeatType: "mirror"
+                repeatType: "mirror",
               }}
             />
           </div>
@@ -832,7 +1001,10 @@ const SignUp = () => {
             >
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 id="terms-modal-title" className="text-xl font-bold text-gray-900">
+                  <h2
+                    id="terms-modal-title"
+                    className="text-xl font-bold text-gray-900"
+                  >
                     Terms and Conditions & Privacy Policy
                   </h2>
                   <motion.button
@@ -848,19 +1020,52 @@ const SignUp = () => {
                 <div className="prose prose-sm max-h-96 overflow-y-auto pr-2">
                   <div className="space-y-4 text-gray-600">
                     {/* ... (Your Terms and Conditions content) ... */}
-                    <h3 className="font-semibold text-gray-900">Terms of Service</h3>
+                    <h3 className="font-semibold text-gray-900">
+                      Terms of Service
+                    </h3>
                     <section aria-labelledby="acceptance-of-terms">
-                      <h4 id="acceptance-of-terms" className="font-medium">1. Acceptance of Terms</h4>
-                      <p>By accessing or using the LearnVanguard platform, you agree to be bound by these Terms of Service. If you do not agree to all terms, do not use our services.</p>
+                      <h4 id="acceptance-of-terms" className="font-medium">
+                        1. Acceptance of Terms
+                      </h4>
+                      <p>
+                        By accessing or using the LearnVanguard platform, you
+                        agree to be bound by these Terms of Service. If you do
+                        not agree to all terms, do not use our services.
+                      </p>
                     </section>
                     <section aria-labelledby="user-responsibilities">
-                      <h4 id="user-responsibilities" className="font-medium">2. User Responsibilities</h4>
-                      <ul className="list-disc pl-6 space-y-2"><li>Provide accurate and complete registration information</li><li>Maintain confidentiality of your account credentials</li><li>Use the platform only for lawful educational purposes</li><li>Do not share copyrighted materials without authorization</li></ul>
+                      <h4 id="user-responsibilities" className="font-medium">
+                        2. User Responsibilities
+                      </h4>
+                      <ul className="list-disc pl-6 space-y-2">
+                        <li>
+                          Provide accurate and complete registration information
+                        </li>
+                        <li>
+                          Maintain confidentiality of your account credentials
+                        </li>
+                        <li>
+                          Use the platform only for lawful educational purposes
+                        </li>
+                        <li>
+                          Do not share copyrighted materials without
+                          authorization
+                        </li>
+                      </ul>
                     </section>
-                    <h3 className="font-semibold text-gray-900 mt-6">Privacy Policy</h3>
+                    <h3 className="font-semibold text-gray-900 mt-6">
+                      Privacy Policy
+                    </h3>
                     <section aria-labelledby="data-collection">
-                      <h4 id="data-collection" className="font-medium">1. Information We Collect</h4>
-                      <ul className="list-disc pl-6 space-y-2"><li>Personal identification (Name, Student Number, Email)</li><li>Academic information (Course, Year Level)</li></ul>
+                      <h4 id="data-collection" className="font-medium">
+                        1. Information We Collect
+                      </h4>
+                      <ul className="list-disc pl-6 space-y-2">
+                        <li>
+                          Personal identification (Name, Student Number, Email)
+                        </li>
+                        <li>Academic information (Course, Year Level)</li>
+                      </ul>
                     </section>
                     {/* ... (Rest of your T&C and Privacy Policy) ... */}
                   </div>
@@ -870,7 +1075,7 @@ const SignUp = () => {
                     onClick={() => {
                       setIsModalOpen(false);
                       setAcceptedTerms(true);
-                      clearError('terms');
+                      clearError("terms");
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg"
                     whileHover={{ scale: 1.05 }}

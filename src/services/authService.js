@@ -1,6 +1,10 @@
 import apiClient from "@/lib/api/client";
 import { jwtDecode } from "jwt-decode";
-import { signInWithGoogle, onAuthStateChanged } from "@/config/firebase";
+import {
+  signInWithGoogle,
+  checkRedirectResult,
+  onAuthStateChanged,
+} from "@/config/firebase";
 import { ROLES } from "@/lib/constants";
 import { queryClient } from "@/lib/queryClient";
 
@@ -143,10 +147,22 @@ export const login = async (credentials) => {
 
 /**
  * Google Sign-in authentication with Firebase
+ * @param {boolean} useRedirect - Whether to force using redirect method
  */
-export const loginWithGoogle = async () => {
+export const loginWithGoogle = async (useRedirect = false) => {
   try {
-    const { user: googleUser, idToken } = await signInWithGoogle();
+    const result = await signInWithGoogle(useRedirect);
+
+    // If redirect is in progress, return early
+    if (result.inProgress) {
+      return {
+        success: false,
+        inProgress: true,
+        message: "Google sign-in redirect in progress...",
+      };
+    }
+
+    const { user: googleUser, idToken } = result;
     const response = await apiClient.post("/auth/firebase", { idToken });
     const { message, token, user, needsRegistration } = response.data;
 
@@ -168,6 +184,16 @@ export const loginWithGoogle = async () => {
     };
   } catch (error) {
     console.error("Google sign-in failed:", error);
+
+    // Handle popup blocked error by automatically retrying with redirect
+    if (
+      error.code === "auth/popup-blocked" ||
+      error.code === "auth/popup-closed-by-user"
+    ) {
+      console.log("Popup was blocked, retrying with redirect...");
+      return loginWithGoogle(true); // Retry with redirect
+    }
+
     return {
       user: null,
       success: false,
@@ -175,6 +201,56 @@ export const loginWithGoogle = async () => {
         error.response?.data?.message ||
         error.message ||
         "Google sign-in failed",
+    };
+  }
+};
+
+/**
+ * Check for Google sign-in redirect result
+ * This should be called on app initialization to handle redirect results
+ */
+export const checkGoogleRedirectResult = async () => {
+  try {
+    const result = await checkRedirectResult();
+
+    if (!result) {
+      // No redirect result found
+      return null;
+    }
+
+    if (result.error) {
+      console.error("Google redirect error:", result.error);
+      return {
+        success: false,
+        error: result.error.message || "Google sign-in failed after redirect",
+      };
+    }
+
+    const { user: googleUser, idToken } = result;
+    const response = await apiClient.post("/auth/firebase", { idToken });
+    const { message, token, user, needsRegistration } = response.data;
+
+    if (needsRegistration) {
+      return {
+        success: false,
+        needsRegistration: true,
+        email: googleUser.email,
+        message: "Additional information required",
+      };
+    }
+
+    if (token) storeToken(token);
+    return {
+      user,
+      token,
+      success: true,
+      message: message || "Google sign-in successful after redirect",
+    };
+  } catch (error) {
+    console.error("Failed to process Google redirect result:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to process Google sign-in",
     };
   }
 };
@@ -272,7 +348,6 @@ export const completeSignup = async (completeData) => {
           3: "Third Year",
           4: "Fourth Year",
         }[completeData.yearLevel] || completeData.yearLevel,
-      gender: completeData.gender,
     };
     console.log("Signup Complete:", formatted);
     const res = await apiClient.post("/auth/signup/complete", formatted);
@@ -512,4 +587,5 @@ export const authService = {
   initiateSignup,
   completeSignup,
   register,
+  checkGoogleRedirectResult,
 };
