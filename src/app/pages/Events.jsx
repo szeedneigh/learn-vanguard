@@ -2,7 +2,11 @@ import { useMemo, useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useEventsPage } from "@/hooks/useEventsQuery";
-import { toLocaleDateStringISO, generateCalendarGrid } from "@/lib/calendarHelpers";
+import { useTasks } from "@/hooks/useTasksQuery";
+import {
+  toLocaleDateStringISO,
+  generateCalendarGrid,
+} from "@/lib/calendarHelpers";
 import CalendarHeader from "@/components/calendar/CalendarHeader";
 import CalendarGrid from "@/components/calendar/CalendarGrid";
 import UpcomingDeadlines from "@/components/calendar/UpcomingDeadlines";
@@ -20,7 +24,9 @@ export default function Events() {
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isEventFormOpen, setIsEventFormOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(toLocaleDateStringISO(new Date()));
+  const [selectedDate, setSelectedDate] = useState(
+    toLocaleDateStringISO(new Date())
+  );
 
   // Keep selectedDate in sync with currentDate
   useEffect(() => {
@@ -30,16 +36,19 @@ export default function Events() {
   // React Query hook for events
   const {
     events,
-    isLoading: tasksLoading,
-    isError: tasksIsError,
-    error: tasksError,
+    isLoading: eventsLoading,
+    isError: eventsIsError,
+    error: eventsError,
     createEvent,
     updateEvent,
     deleteEvent,
-    isCreating: createTaskLoading,
-    isUpdating: updateTaskLoading,
-    isDeleting: deleteTaskLoading,
+    isCreating: createEventLoading,
+    isUpdating: updateEventLoading,
+    isDeleting: deleteEventLoading,
   } = useEventsPage();
+
+  // Get tasks for upcoming deadlines
+  const { data: tasksList, isLoading: tasksLoading } = useTasks();
 
   // Calendar navigation handlers
   const handlePrevious = () => {
@@ -74,9 +83,9 @@ export default function Events() {
 
   const handleDateClick = (dateString) => {
     setSelectedDate(dateString);
-    const newDate = new Date(dateString + 'T00:00:00');
+    const newDate = new Date(dateString + "T00:00:00");
     setCurrentDate(newDate);
-    
+
     // If we're in month view, switch to day view when a date is clicked
     if (currentView === "month") {
       setCurrentView("day");
@@ -115,18 +124,18 @@ export default function Events() {
     // Format data to ensure it contains the date property that the calendar expects
     const formattedData = {
       ...eventData,
-      date: eventData.scheduleDate.substring(0, 10) // Extract YYYY-MM-DD from the ISO string
+      date: eventData.scheduleDate.substring(0, 10), // Extract YYYY-MM-DD from the ISO string
     };
-    
+
     // Call the API function
     createEvent(formattedData)
       .then(() => {
         // Close the form after successful event creation
         setIsEventFormOpen(false);
       })
-      .catch(error => {
+      .catch((error) => {
         // Show error message
-        console.error('Failed to create event:', error);
+        console.error("Failed to create event:", error);
       });
   };
 
@@ -151,46 +160,80 @@ export default function Events() {
   // Upcoming tasks calculation
   const upcomingTasks = useMemo(() => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const nextWeek = new Date(today);
     nextWeek.setDate(today.getDate() + 7);
-    
-    return events
-      .filter(task => {
-        // Handle both date and scheduleDate properties
-        let taskDate;
-        if (task.date) {
-          taskDate = new Date(task.date + 'T00:00:00');
-        } else if (task.scheduleDate) {
-          taskDate = new Date(task.scheduleDate);
-        } else {
-          return false;
-        }
-        
-        return taskDate >= today && taskDate <= nextWeek && task.status !== 'completed';
+
+    // Use actual tasks data from the tasks API
+    if (!tasksList || tasksList.length === 0) {
+      return [];
+    }
+
+    return tasksList
+      .filter((task) => {
+        // Filter tasks with upcoming deadlines
+        if (!task.taskDeadline) return false;
+
+        const taskDate = new Date(task.taskDeadline);
+
+        // Include tasks that are due within the next 7 days
+        // and exclude completed tasks
+        return (
+          taskDate >= today &&
+          taskDate <= nextWeek &&
+          task.taskStatus !== "Completed"
+        );
       })
       .sort((a, b) => {
-        const dateA = a.date ? new Date(a.date) : new Date(a.scheduleDate);
-        const dateB = b.date ? new Date(b.date) : new Date(b.scheduleDate);
-        return dateA - dateB;
+        // Sort by date (closest first)
+        return new Date(a.taskDeadline) - new Date(b.taskDeadline);
+      })
+      .map((task) => {
+        // Map task data to the format expected by UpcomingDeadlines
+        return {
+          id: task._id,
+          taskName: task.taskName,
+          title: task.taskName,
+          description: task.taskDescription,
+          taskDeadline: task.taskDeadline,
+          status:
+            task.taskStatus === "Not yet started"
+              ? "not-started"
+              : task.taskStatus === "In progress"
+              ? "in-progress"
+              : task.taskStatus === "Completed"
+              ? "completed"
+              : "on-hold",
+          priority:
+            task.taskPriority === "High Priority"
+              ? "high"
+              : task.taskPriority === "Medium Priority"
+              ? "medium"
+              : "low",
+          type: "task",
+        };
       });
-  }, [events]);
+  }, [tasksList]);
 
-  if (tasksLoading) {
+  if (eventsLoading || tasksLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-theme(space.24))]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-3 text-lg font-medium text-muted-foreground">Loading Events...</p>
+        <p className="ml-3 text-lg font-medium text-muted-foreground">
+          Loading Events...
+        </p>
       </div>
     );
   }
 
-  if (tasksIsError) {
+  if (eventsIsError) {
     return (
       <div className="container mx-auto p-4">
         <Alert variant="destructive">
           <AlertTitle>Error Loading Events</AlertTitle>
           <AlertDescription>
-            {tasksError?.message || "An unexpected error occurred. Please try again later."}
+            {eventsError?.message ||
+              "An unexpected error occurred. Please try again later."}
           </AlertDescription>
         </Alert>
       </div>
@@ -202,17 +245,17 @@ export default function Events() {
     switch (currentView) {
       case "day":
         return (
-          <DayView 
-            date={currentDate} 
-            events={events} 
-            onEventClick={handleTaskClick} 
+          <DayView
+            date={currentDate}
+            events={events}
+            onEventClick={handleTaskClick}
           />
         );
       case "week":
         return (
-          <WeekView 
-            startDate={getWeekStart(currentDate)} 
-            events={events} 
+          <WeekView
+            startDate={getWeekStart(currentDate)}
+            events={events}
             onEventClick={handleTaskClick}
             onDateClick={handleDateClick}
           />
@@ -241,11 +284,12 @@ export default function Events() {
         onAddEvent={openAddEventForm}
       />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {renderCalendarView()}
-        </div>
+        <div className="lg:col-span-2">{renderCalendarView()}</div>
         <div className="lg:col-span-1">
-          <UpcomingDeadlines tasks={upcomingTasks} onTaskClick={handleTaskClick} />
+          <UpcomingDeadlines
+            tasks={upcomingTasks}
+            onTaskClick={handleTaskClick}
+          />
         </div>
       </div>
       <TaskDetailDialog
@@ -254,7 +298,7 @@ export default function Events() {
         onOpenChange={setIsTaskDetailOpen}
         onEdit={openEditTaskForm}
         onDelete={handleDeleteTask}
-        isDeleting={deleteTaskLoading}
+        isDeleting={deleteEventLoading}
       />
       <TaskFormDialog
         open={isTaskFormOpen}
@@ -262,14 +306,14 @@ export default function Events() {
         task={selectedTask}
         onSave={handleSaveTask}
         onCancel={closeTaskForm}
-        isLoading={selectedTask ? updateTaskLoading : createTaskLoading}
+        isLoading={selectedTask ? updateEventLoading : createEventLoading}
       />
       <EventFormDialog
         open={isEventFormOpen}
         onOpenChange={setIsEventFormOpen}
         onSave={handleSaveEvent}
         onCancel={closeEventForm}
-        isLoading={createTaskLoading}
+        isLoading={createEventLoading}
       />
     </div>
   );

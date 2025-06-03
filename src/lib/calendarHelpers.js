@@ -6,29 +6,33 @@
  * Map of course names to color classes
  */
 export const courseColors = {
+  ALL: "bg-blue-500",
+  "Associate in Computer Technology": "bg-green-500",
+  "Bachelor of Science in Information Systems": "bg-purple-500",
   "Computer Science": "bg-blue-500",
-  "Mathematics": "bg-green-500",
-  "Physics": "bg-amber-500",
-  "Chemistry": "bg-red-500",
-  "Biology": "bg-emerald-500",
-  "English": "bg-indigo-500",
-  "History": "bg-purple-500",
-  "Economics": "bg-pink-500",
-  "General": "bg-blue-500",
+  Mathematics: "bg-green-500",
+  Physics: "bg-amber-500",
+  Chemistry: "bg-red-500",
+  Biology: "bg-emerald-500",
+  English: "bg-indigo-500",
+  History: "bg-purple-500",
+  Economics: "bg-pink-500",
+  General: "bg-blue-500",
   // Default color for unknown courses
-  "default": "bg-gray-500"
+  default: "bg-gray-500",
 };
 
 /**
  * Map of task status to CSS classes
  */
 export const statusClasses = {
-  "completed": "bg-green-100 text-green-800 border-green-300",
+  completed: "bg-green-100 text-green-800 border-green-300",
   "in-progress": "bg-blue-100 text-blue-800 border-blue-300",
   "not-started": "bg-gray-100 text-gray-800 border-gray-300",
-  "cancelled": "bg-red-100 text-red-800 border-red-300",
-  "pending": "bg-amber-100 text-amber-800 border-amber-300",
-  "default": "bg-slate-100 border-slate-200 hover:bg-slate-200"
+  cancelled: "bg-red-100 text-red-800 border-red-300",
+  pending: "bg-amber-100 text-amber-800 border-amber-300",
+  upcoming: "bg-blue-100 text-blue-800 border-blue-300",
+  default: "bg-slate-100 border-slate-200 hover:bg-slate-200",
 };
 
 /**
@@ -38,10 +42,10 @@ export const statusClasses = {
  */
 export function capitalize(str) {
   if (!str) return "";
-  
+
   return str
     .split("-")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
 
@@ -54,11 +58,11 @@ export function toLocaleDateStringISO(date) {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
     return "";
   }
-  
+
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  
+
   return `${year}-${month}-${day}`;
 }
 
@@ -127,46 +131,69 @@ export function isSameDay(date1, date2) {
 export function generateCalendarGrid(date, events) {
   const year = date.getFullYear();
   const month = date.getMonth();
-  
+
   const firstDay = new Date(year, month, 1);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
-  
+
   const grid = [];
   let week = [];
-  
+
   for (let i = 0; i < 42; i++) {
     const currentDate = new Date(startDate);
     currentDate.setDate(startDate.getDate() + i);
-    
+
     const dateString = toLocaleDateStringISO(currentDate);
-    
+
     // Filter events for this day
-    const dayEvents = events.filter(event => {
+    const dayEvents = events.filter((event) => {
+      // Try to get the event date from various possible properties
       let eventDate;
+
       if (event.date) {
-        eventDate = new Date(event.date + 'T00:00:00');
+        // Handle YYYY-MM-DD format
+        eventDate = new Date(event.date + "T00:00:00");
       } else if (event.scheduleDate) {
+        // Handle ISO date string or date object
         eventDate = new Date(event.scheduleDate);
+      } else if (event.startDate) {
+        // Some events might use startDate instead
+        eventDate = new Date(event.startDate);
       } else {
         return false;
       }
-      
+
+      // Check if the event is on this day
       return toLocaleDateStringISO(eventDate) === dateString;
     });
-    
+
     week.push({
       day: currentDate.getDate(),
       dateString,
       isCurrentMonth: currentDate.getMonth() === month,
-      tasks: dayEvents
+      tasks: dayEvents.map((event) => {
+        // Normalize event properties to ensure consistent interface
+        return {
+          ...event,
+          id: event.id || event._id,
+          title: event.title,
+          status: event.status || "upcoming",
+          date: dateString,
+          // Ensure we have a consistent date property for display
+          displayDate:
+            event.date ||
+            (event.scheduleDate
+              ? toLocaleDateStringISO(new Date(event.scheduleDate))
+              : dateString),
+        };
+      }),
     });
-    
+
     if (week.length === 7) {
       grid.push(week);
       week = [];
     }
   }
-  
+
   return grid;
-} 
+}

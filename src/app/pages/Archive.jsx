@@ -1,5 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -19,30 +25,54 @@ import {
 import { MoreHorizontal, List, LayoutGrid, AlertCircle } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Helper function to format date strings
 const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  if (!dateString) return "Unknown";
+  const options = { year: "numeric", month: "short", day: "numeric" };
   return new Date(dateString).toLocaleDateString(undefined, options);
+};
+
+// Calculate days remaining until deletion (30 days from archive date)
+const calculateRemainingDays = (archivedAt) => {
+  if (!archivedAt) return 30; // Default if no archive date
+
+  const archiveDate = new Date(archivedAt);
+  const deleteDate = new Date(archiveDate);
+  deleteDate.setDate(deleteDate.getDate() + 30);
+
+  const now = new Date();
+  const diffTime = deleteDate - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return Math.max(0, diffDays); // Don't show negative days
 };
 
 const Archive = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const { 
-    filteredTasks, 
-    handleRestoreTask, 
-    handleDeleteTask 
-  } = useTasks(toast);
+  const { tasks, handleRestoreTask, handleDeleteTask } = useTasks(toast);
 
-  const [sortBy, setSortBy] = useState('completionDateDesc');
-  const [viewMode, setViewMode] = useState('list');
+  const [sortBy, setSortBy] = useState("completionDateDesc");
+  const [viewMode, setViewMode] = useState("list");
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Show welcome toast if coming from task archival
   useEffect(() => {
-    const justArchived = searchParams.get('archived');
-    if (justArchived === 'true') {
+    const justArchived = searchParams.get("archived");
+    if (justArchived === "true") {
       toast({
         title: "Task Archived",
         description: "The task has been moved to archives successfully.",
@@ -53,27 +83,37 @@ const Archive = () => {
 
   // Filter only archived tasks
   const archivedItems = useMemo(() => {
-    return filteredTasks.filter(task => task.isArchived).map(task => ({
-      id: task.id,
-      name: task.name,
-      completionDate: task.completedAt || task.updatedAt,
-      remainingDays: 30 // This should be calculated based on archive date
-    }));
-  }, [filteredTasks]);
+    return tasks
+      .filter((task) => task.isArchived || task.archived)
+      .map((task) => ({
+        id: task._id || task.id,
+        name: task.taskName || task.name,
+        completionDate:
+          task.dateCompleted || task.completedAt || task.updatedAt,
+        archivedAt: task.archivedAt || task.updatedAt,
+        remainingDays: calculateRemainingDays(
+          task.archivedAt || task.updatedAt
+        ),
+      }));
+  }, [tasks]);
 
   const sortedItems = useMemo(() => {
     let items = [...archivedItems];
     switch (sortBy) {
-      case 'completionDateAsc':
-        items.sort((a, b) => new Date(a.completionDate) - new Date(b.completionDate));
+      case "completionDateAsc":
+        items.sort(
+          (a, b) => new Date(a.completionDate) - new Date(b.completionDate)
+        );
         break;
-      case 'completionDateDesc':
-        items.sort((a, b) => new Date(b.completionDate) - new Date(a.completionDate));
+      case "completionDateDesc":
+        items.sort(
+          (a, b) => new Date(b.completionDate) - new Date(a.completionDate)
+        );
         break;
-      case 'nameAsc':
+      case "nameAsc":
         items.sort((a, b) => a.name.localeCompare(b.name));
         break;
-      case 'nameDesc':
+      case "nameDesc":
         items.sort((a, b) => b.name.localeCompare(a.name));
         break;
       default:
@@ -84,11 +124,16 @@ const Archive = () => {
 
   const getSortLabel = () => {
     switch (sortBy) {
-      case 'completionDateAsc': return 'Oldest First';
-      case 'completionDateDesc': return 'Newest First';
-      case 'nameAsc': return 'Name (A-Z)';
-      case 'nameDesc': return 'Name (Z-A)';
-      default: return 'Sort by date';
+      case "completionDateAsc":
+        return "Oldest First";
+      case "completionDateDesc":
+        return "Newest First";
+      case "nameAsc":
+        return "Name (A-Z)";
+      case "nameDesc":
+        return "Name (Z-A)";
+      default:
+        return "Sort by date";
     }
   };
 
@@ -101,13 +146,22 @@ const Archive = () => {
     });
   };
 
-  const handleDeletePermanently = (id) => {
-    handleDeleteTask(id);
-    toast({
-      title: "Task Deleted",
-      description: "The task has been permanently deleted.",
-      variant: "default",
-    });
+  const handleDeleteConfirm = () => {
+    if (taskToDelete) {
+      handleDeleteTask(taskToDelete);
+      setTaskToDelete(null);
+      setDeleteDialogOpen(false);
+      toast({
+        title: "Task Deleted",
+        description: "The task has been permanently deleted.",
+        variant: "default",
+      });
+    }
+  };
+
+  const openDeleteDialog = (id) => {
+    setTaskToDelete(id);
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -120,58 +174,60 @@ const Archive = () => {
               <Button variant="outline">{getSortLabel()}</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setSortBy('completionDateDesc')}>
+              <DropdownMenuItem
+                onSelect={() => setSortBy("completionDateDesc")}
+              >
                 Newest First
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setSortBy('completionDateAsc')}>
+              <DropdownMenuItem onSelect={() => setSortBy("completionDateAsc")}>
                 Oldest First
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setSortBy('nameAsc')}>
+              <DropdownMenuItem onSelect={() => setSortBy("nameAsc")}>
                 Name (A-Z)
               </DropdownMenuItem>
-               <DropdownMenuItem onSelect={() => setSortBy('nameDesc')}>
+              <DropdownMenuItem onSelect={() => setSortBy("nameDesc")}>
                 Name (Z-A)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {/* View Toggle Buttons - Only List view implemented */}
-           <div className="flex items-center border rounded-md">
-             <Button
-               variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-               size="icon"
-               onClick={() => setViewMode('list')}
-               className="rounded-r-none"
-             >
-               <List className="h-4 w-4" />
-             </Button>
-             <Button
-               variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-               size="icon"
-               onClick={() => setViewMode('grid')}
-               className="rounded-l-none border-l"
-               // disabled // Grid view not implemented - Enabling it now
-             >
-               <LayoutGrid className="h-4 w-4" />
-             </Button>
-           </div>
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("list")}
+              className="rounded-r-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              className="rounded-l-none border-l"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
       <Alert className="bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300">
-         <AlertCircle className="h-4 w-4 !text-blue-800 dark:!text-blue-300" />
+        <AlertCircle className="h-4 w-4 !text-blue-800 dark:!text-blue-300" />
         <AlertDescription>
           Items in the archive will be deleted forever after 30 days.
         </AlertDescription>
       </Alert>
 
-      {viewMode === 'list' && (
+      {viewMode === "list" && (
         <Card>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Completion Date</TableHead>
-                <TableHead className="text-right">Remaining Days until Deletion</TableHead>
+                <TableHead className="text-right">
+                  Remaining Days until Deletion
+                </TableHead>
                 <TableHead className="w-[50px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -181,21 +237,29 @@ const Archive = () => {
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>{formatDate(item.completionDate)}</TableCell>
-                    <TableCell className="text-right">{item.remainingDays} days</TableCell>
+                    <TableCell className="text-right">
+                      {item.remainingDays} days
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">More actions</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => handleRestore(item.id)}>
+                          <DropdownMenuItem
+                            onSelect={() => handleRestore(item.id)}
+                          >
                             Restore
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onSelect={() => handleDeletePermanently(item.id)}
+                            onSelect={() => openDeleteDialog(item.id)}
                             className="text-red-600 focus:text-red-600 focus:bg-red-100/50"
                           >
                             Delete Permanently
@@ -218,13 +282,15 @@ const Archive = () => {
       )}
 
       {/* Grid View Implementation */}
-      {viewMode === 'grid' && (
+      {viewMode === "grid" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {sortedItems.length > 0 ? (
             sortedItems.map((item) => (
               <Card key={item.id} className="flex flex-col">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium truncate">{item.name}</CardTitle>
+                  <CardTitle className="text-sm font-medium truncate">
+                    {item.name}
+                  </CardTitle>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -237,7 +303,7 @@ const Archive = () => {
                         Restore
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onSelect={() => handleDeletePermanently(item.id)}
+                        onSelect={() => openDeleteDialog(item.id)}
                         className="text-red-600 focus:text-red-600 focus:bg-red-100/50"
                       >
                         Delete Permanently
@@ -249,19 +315,41 @@ const Archive = () => {
                   <CardDescription>
                     Completed: {formatDate(item.completionDate)}
                   </CardDescription>
-                  <div className="text-xs text-muted-foreground pt-1">
-                    Deletes in {item.remainingDays} days
-                  </div>
+                  <CardDescription className="mt-2">
+                    Deletion in: {item.remainingDays} days
+                  </CardDescription>
                 </CardContent>
               </Card>
             ))
           ) : (
-            <div className="col-span-full text-center p-10 border rounded-md">
+            <div className="col-span-full text-center py-8 text-gray-500">
               No archived items found.
             </div>
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              task from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

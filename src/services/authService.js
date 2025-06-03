@@ -1,6 +1,10 @@
 import apiClient from "@/lib/api/client";
 import { jwtDecode } from "jwt-decode";
-import { signInWithGoogle, onAuthStateChanged } from "@/config/firebase";
+import {
+  signInWithGoogle,
+  checkRedirectResult,
+  onAuthStateChanged,
+} from "@/config/firebase";
 import { ROLES } from "@/lib/constants";
 import { queryClient } from "@/lib/queryClient";
 
@@ -143,10 +147,22 @@ export const login = async (credentials) => {
 
 /**
  * Google Sign-in authentication with Firebase
+ * @param {boolean} useRedirect - Whether to force using redirect method
  */
-export const loginWithGoogle = async () => {
+export const loginWithGoogle = async (useRedirect = false) => {
   try {
-    const { user: googleUser, idToken } = await signInWithGoogle();
+    const result = await signInWithGoogle(useRedirect);
+
+    // If redirect is in progress, return early
+    if (result.inProgress) {
+      return {
+        success: false,
+        inProgress: true,
+        message: "Google sign-in redirect in progress...",
+      };
+    }
+
+    const { user: googleUser, idToken } = result;
     const response = await apiClient.post("/auth/firebase", { idToken });
     const { message, token, user, needsRegistration } = response.data;
 
@@ -168,6 +184,16 @@ export const loginWithGoogle = async () => {
     };
   } catch (error) {
     console.error("Google sign-in failed:", error);
+
+    // Handle popup blocked error by automatically retrying with redirect
+    if (
+      error.code === "auth/popup-blocked" ||
+      error.code === "auth/popup-closed-by-user"
+    ) {
+      console.log("Popup was blocked, retrying with redirect...");
+      return loginWithGoogle(true); // Retry with redirect
+    }
+
     return {
       user: null,
       success: false,
@@ -175,6 +201,56 @@ export const loginWithGoogle = async () => {
         error.response?.data?.message ||
         error.message ||
         "Google sign-in failed",
+    };
+  }
+};
+
+/**
+ * Check for Google sign-in redirect result
+ * This should be called on app initialization to handle redirect results
+ */
+export const checkGoogleRedirectResult = async () => {
+  try {
+    const result = await checkRedirectResult();
+
+    if (!result) {
+      // No redirect result found
+      return null;
+    }
+
+    if (result.error) {
+      console.error("Google redirect error:", result.error);
+      return {
+        success: false,
+        error: result.error.message || "Google sign-in failed after redirect",
+      };
+    }
+
+    const { user: googleUser, idToken } = result;
+    const response = await apiClient.post("/auth/firebase", { idToken });
+    const { message, token, user, needsRegistration } = response.data;
+
+    if (needsRegistration) {
+      return {
+        success: false,
+        needsRegistration: true,
+        email: googleUser.email,
+        message: "Additional information required",
+      };
+    }
+
+    if (token) storeToken(token);
+    return {
+      user,
+      token,
+      success: true,
+      message: message || "Google sign-in successful after redirect",
+    };
+  } catch (error) {
+    console.error("Failed to process Google redirect result:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to process Google sign-in",
     };
   }
 };
@@ -258,12 +334,16 @@ export const initiateSignup = async (basicData) => {
 export const completeSignup = async (completeData) => {
   try {
     if (!completeData.tempToken) throw new Error("Temporary token is required");
+
+    // Create formatted data without gender
     const formatted = {
       tempToken: completeData.tempToken,
       studentNumber: completeData.studentNo || completeData.studentNumber,
       course:
         completeData.course === "BSIS"
           ? "Bachelor of Science in Information Systems"
+          : completeData.course === "ACT"
+          ? "Associate in Computer Technology"
           : completeData.course,
       yearLevel:
         {
@@ -272,19 +352,25 @@ export const completeSignup = async (completeData) => {
           3: "Third Year",
           4: "Fourth Year",
         }[completeData.yearLevel] || completeData.yearLevel,
-      gender: completeData.gender,
     };
+
+    // Log the data being sent (for debugging)
     console.log("Signup Complete:", formatted);
+
     const res = await apiClient.post("/auth/signup/complete", formatted);
     const { message, token } = res.data;
+
     if (!token) throw new Error("No token received");
     storeToken(token);
+
     const userData = await getCurrentUser();
     if (!userData || !userData.user) {
       throw new Error("Failed to fetch user data after signup");
     }
+
     const normalizedUser = normalizeUserData(userData.user);
     console.log("Normalized user data after signup:", normalizedUser);
+
     return {
       success: true,
       token,
@@ -296,7 +382,7 @@ export const completeSignup = async (completeData) => {
     return {
       success: false,
       error: error.response?.data?.message || "Signup completion failed",
-      details: error.response?.data?.error?.details || {},
+      details: error.response?.data?.errors || {},
     };
   }
 };
@@ -512,4 +598,5 @@ export const authService = {
   initiateSignup,
   completeSignup,
   register,
+  checkGoogleRedirectResult,
 };
