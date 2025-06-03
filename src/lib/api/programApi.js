@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from "./client";
 
 /**
  * Program and Subject Management API Service
@@ -11,17 +11,20 @@ import apiClient from './client';
  */
 export const getPrograms = async () => {
   try {
-    const response = await apiClient.get('/programs');
+    const response = await apiClient.get("/programs");
     return {
       data: response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching programs:', error);
+    console.error("Error fetching programs:", error);
     return {
       data: [],
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch programs'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch programs",
     };
   }
 };
@@ -34,26 +37,29 @@ export const getPrograms = async () => {
 export const getSubjects = async (filters = {}) => {
   try {
     const params = new URLSearchParams();
-    
+
     // Add filters to params
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         params.append(key, value);
       }
     });
-    
+
     const response = await apiClient.get(`/subjects?${params.toString()}`);
     return {
       data: response.data.data || response.data,
       pagination: response.data.pagination,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching subjects:', error);
+    console.error("Error fetching subjects:", error);
     return {
       data: [],
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch subjects'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch subjects",
     };
   }
 };
@@ -68,14 +74,17 @@ export const getSubjectById = async (subjectId) => {
     const response = await apiClient.get(`/subjects/${subjectId}`);
     return {
       data: response.data.subject || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching subject by ID:', error);
+    console.error("Error fetching subject by ID:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch subject'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch subject",
     };
   }
 };
@@ -87,19 +96,22 @@ export const getSubjectById = async (subjectId) => {
  */
 export const createSubject = async (subjectData) => {
   try {
-    const response = await apiClient.post('/subjects', subjectData);
+    const response = await apiClient.post("/subjects", subjectData);
     return {
       data: response.data.subject,
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error creating subject:', error);
+    console.error("Error creating subject:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to create subject',
-      details: error.response?.data?.error?.details || {}
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to create subject",
+      details: error.response?.data?.error?.details || {},
     };
   }
 };
@@ -116,15 +128,18 @@ export const updateSubject = async (subjectId, subjectData) => {
     return {
       data: response.data.subject,
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error updating subject:', error);
+    console.error("Error updating subject:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update subject',
-      details: error.response?.data?.error?.details || {}
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update subject",
+      details: error.response?.data?.error?.details || {},
     };
   }
 };
@@ -139,13 +154,16 @@ export const deleteSubject = async (subjectId) => {
     const response = await apiClient.delete(`/subjects/${subjectId}`);
     return {
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error deleting subject:', error);
+    console.error("Error deleting subject:", error);
     return {
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to delete subject'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to delete subject",
     };
   }
 };
@@ -162,20 +180,57 @@ export const getSubjectsByProgram = async (programId, year, semester) => {
     const params = new URLSearchParams({
       programId,
       year: year.toString(),
-      semester
+      semester,
     });
-    
+
     const response = await apiClient.get(`/subjects?${params.toString()}`);
     return {
       data: response.data.data || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching subjects by program:', error);
+    console.error("Error fetching subjects by program:", error);
     return {
       data: [],
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch subjects'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch subjects",
+    };
+  }
+};
+
+/**
+ * Create an announcement for a subject
+ * @param {string} subjectId - Subject ID
+ * @param {Object} announcementData - Announcement data (title, content, type, priority, dueDate)
+ * @returns {Promise<Object>} Created announcement
+ */
+export const createSubjectAnnouncement = async (
+  subjectId,
+  announcementData
+) => {
+  try {
+    const response = await apiClient.post(
+      `/subjects/${subjectId}/announcements`,
+      announcementData
+    );
+    return {
+      data: response.data.announcement,
+      message: response.data.message,
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error creating subject announcement:", error);
+    return {
+      data: null,
+      success: false,
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to create announcement",
+      details: error.response?.data?.error?.details || {},
     };
   }
 };
@@ -188,4 +243,5 @@ export default {
   updateSubject,
   deleteSubject,
   getSubjectsByProgram,
-}; 
+  createSubjectAnnouncement,
+};
