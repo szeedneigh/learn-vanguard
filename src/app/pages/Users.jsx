@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useUsersPage, useSearchUsers } from "@/hooks/useUsersQuery";
 import { Search, MoreHorizontal, Plus, ChevronRight } from "lucide-react";
 import {
@@ -28,6 +28,9 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import toast from "react-hot-toast";
+import { usePermission } from "@/context/PermissionContext";
+import { PERMISSIONS } from "@/lib/constants";
+import { useAuth } from "@/context/AuthContext";
 
 const programsData = [
   { id: "bsis", name: "Bachelor of Science in Information Systems", years: 4 },
@@ -88,9 +91,19 @@ const Users = () => {
   const currentProgram =
     programsData.find((p) => p.id === selectedProgramId) || programsData[0];
 
+  // Add user context to check current user's role
+  const { user } = useAuth();
+  const { hasPermission } = usePermission();
+  const isCurrentUserPIO = user?.role === "pio";
+
   // Filter and sort students
   const filteredAndSortedStudents = students
     .filter((student) => {
+      // Exclude admin users from the list
+      if (student.role === "admin") {
+        return false;
+      }
+
       // Search filter - handle both name formats and studentNumber
       const fullName =
         student.firstName && student.lastName
@@ -288,7 +301,7 @@ const Users = () => {
 
     // Use the correct ID field (_id from MongoDB)
     // MongoDB IDs are typically stored in the _id field
-    const userId = studentToAssignRole._id;
+    const userId = studentToAssignRole._id || studentToAssignRole.id;
 
     console.log("Assigning PIO role to user:", {
       user: studentToAssignRole,
@@ -301,6 +314,7 @@ const Users = () => {
         "Cannot assign PIO role: Student ID is undefined",
         studentToAssignRole
       );
+      toast.error("Cannot assign PIO role: Student ID is undefined");
       return;
     }
 
@@ -324,13 +338,19 @@ const Users = () => {
     } catch (error) {
       console.error("Failed to assign PIO role:", error);
       // Force refetch even on error to ensure UI is updated
-      await refetch();
+      try {
+        await refetch();
+      } catch (refetchError) {
+        console.error("Failed to refetch after error:", refetchError);
+      }
 
       // Show error message
       toast.error(error.message || "Failed to assign PIO role");
     } finally {
-      // Reset loading state
-      setIsLocalMutating(false);
+      // Reset loading state if component is still mounted
+      if (mounted.current) {
+        setIsLocalMutating(false);
+      }
     }
   };
 
@@ -346,6 +366,7 @@ const Users = () => {
           "Cannot remove student: Student ID is undefined",
           studentToRemove
         );
+        toast.error("Cannot remove student: Student ID is undefined");
         return;
       }
 
@@ -365,13 +386,19 @@ const Users = () => {
     } catch (error) {
       console.error("Failed to remove student:", error);
       // Force refetch even on error to ensure UI is updated
-      await refetch();
+      try {
+        await refetch();
+      } catch (refetchError) {
+        console.error("Failed to refetch after error:", refetchError);
+      }
 
       // Show error message
       toast.error("Failed to remove student");
     } finally {
-      // Reset loading state
-      setIsLocalMutating(false);
+      // Reset loading state if component is still mounted
+      if (mounted.current) {
+        setIsLocalMutating(false);
+      }
     }
   };
 
@@ -386,6 +413,7 @@ const Users = () => {
         "Cannot revert PIO role: Student ID is undefined",
         studentToRevertRole
       );
+      toast.error("Cannot revert PIO role: Student ID is undefined");
       return;
     }
 
@@ -406,13 +434,19 @@ const Users = () => {
     } catch (error) {
       console.error("Failed to revert PIO role:", error);
       // Force refetch even on error to ensure UI is updated
-      await refetch();
+      try {
+        await refetch();
+      } catch (refetchError) {
+        console.error("Failed to refetch after error:", refetchError);
+      }
 
       // Show error message
       toast.error("Failed to revert PIO role");
     } finally {
-      // Reset loading state
-      setIsLocalMutating(false);
+      // Reset loading state if component is still mounted
+      if (mounted.current) {
+        setIsLocalMutating(false);
+      }
     }
   };
 
@@ -443,6 +477,16 @@ const Users = () => {
       </div>
     );
   };
+
+  // Add a mounted ref to track component mount state
+  const mounted = useRef(true);
+
+  // Update the mounted ref on unmount
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
@@ -555,14 +599,15 @@ const Users = () => {
               <SelectItem value="student">Students Only</SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            onClick={openAddStudentModal}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1 shadow-sm"
-            disabled={isLoading || isLocalMutating}
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add Student
-          </Button>
+          {!isCurrentUserPIO && hasPermission(PERMISSIONS.MANAGE_STUDENTS) && (
+            <Button
+              onClick={openAddStudentModal}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm flex items-center"
+            >
+              <Plus size={18} className="mr-2" />
+              Add Student
+            </Button>
+          )}
         </div>
       </div>
       {/* Display errors */}
@@ -659,43 +704,40 @@ const Users = () => {
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            disabled={isLocalMutating}
+                            className="h-8 w-8 p-0 focus:ring-0"
                           >
-                            <span className="sr-only">
-                              Open options for {student.name}
-                            </span>
-                            <MoreHorizontal
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            />
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="border border-gray-200 shadow-md"
-                        >
-                          {student.role !== "pio" ? (
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
+                          {/* Only show Assign PIO option if user is not PIO */}
+                          {!isCurrentUserPIO && student.role !== "pio" && (
                             <DropdownMenuItem
                               onClick={() => openAssignRoleModal(student)}
-                              className="cursor-pointer hover:bg-gray-100 text-sm"
-                              disabled={isLocalMutating}
+                              className="cursor-pointer"
                             >
-                              Assign Public Information Officer Role
+                              Assign Public Information Officer
                             </DropdownMenuItem>
-                          ) : (
+                          )}
+
+                          {/* Only show Revert option if user is not PIO */}
+                          {!isCurrentUserPIO && student.role === "pio" && (
                             <DropdownMenuItem
                               onClick={() => openRevertRoleModal(student)}
-                              className="cursor-pointer hover:bg-gray-100 text-sm"
-                              disabled={isLocalMutating}
+                              className="cursor-pointer"
                             >
                               Revert to Student
                             </DropdownMenuItem>
                           )}
+
+                          <DropdownMenuSeparator />
+
                           <DropdownMenuItem
                             onClick={() => openRemoveModal(student)}
-                            className="cursor-pointer hover:bg-red-50 text-red-600 text-sm"
-                            disabled={isLocalMutating}
+                            className="cursor-pointer text-red-600"
                           >
                             Remove Student
                           </DropdownMenuItem>

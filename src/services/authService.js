@@ -334,12 +334,16 @@ export const initiateSignup = async (basicData) => {
 export const completeSignup = async (completeData) => {
   try {
     if (!completeData.tempToken) throw new Error("Temporary token is required");
+
+    // Create formatted data without gender
     const formatted = {
       tempToken: completeData.tempToken,
       studentNumber: completeData.studentNo || completeData.studentNumber,
       course:
         completeData.course === "BSIS"
           ? "Bachelor of Science in Information Systems"
+          : completeData.course === "ACT"
+          ? "Associate in Computer Technology"
           : completeData.course,
       yearLevel:
         {
@@ -349,17 +353,24 @@ export const completeSignup = async (completeData) => {
           4: "Fourth Year",
         }[completeData.yearLevel] || completeData.yearLevel,
     };
+
+    // Log the data being sent (for debugging)
     console.log("Signup Complete:", formatted);
+
     const res = await apiClient.post("/auth/signup/complete", formatted);
     const { message, token } = res.data;
+
     if (!token) throw new Error("No token received");
     storeToken(token);
+
     const userData = await getCurrentUser();
     if (!userData || !userData.user) {
       throw new Error("Failed to fetch user data after signup");
     }
+
     const normalizedUser = normalizeUserData(userData.user);
     console.log("Normalized user data after signup:", normalizedUser);
+
     return {
       success: true,
       token,
@@ -371,7 +382,7 @@ export const completeSignup = async (completeData) => {
     return {
       success: false,
       error: error.response?.data?.message || "Signup completion failed",
-      details: error.response?.data?.error?.details || {},
+      details: error.response?.data?.errors || {},
     };
   }
 };

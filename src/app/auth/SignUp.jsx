@@ -18,6 +18,7 @@ import PropTypes from "prop-types";
 import { Alert, AlertDescription } from "@/components/ui/alert"; // Adjust path if necessary
 import * as authService from "@/services/authService"; // Adjust path if necessary
 import { useAuth } from "@/context/AuthContext"; // Add this import
+import { toast } from "@/hooks/use-toast";
 
 const smoothTransition = {
   type: "spring",
@@ -184,7 +185,7 @@ const SelectInput = React.memo(
           </motion.div>
         )}
         <select
-          id={id} // Added id here
+          id={id}
           value={value}
           onChange={onChange}
           className={`w-full h-12 ${Icon ? "pl-10" : "pl-3.5"} pr-3.5 rounded-lg
@@ -193,9 +194,9 @@ const SelectInput = React.memo(
                 } focus:ring-2 focus:ring-blue-500
                 text-gray-900 text-sm transition-all duration-200 outline-none appearance-none`}
           aria-invalid={!!error}
-          aria-describedby={error ? `${id}-error` : undefined} // Use id for describedby
+          aria-describedby={error ? `${id}-error` : undefined}
         >
-          <option value="">{label}</option> {/* This acts as a placeholder */}
+          <option value="">{label}</option>
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -213,7 +214,7 @@ const SelectInput = React.memo(
 );
 
 SelectInput.propTypes = {
-  id: PropTypes.string.isRequired, // Added id prop
+  id: PropTypes.string.isRequired,
   value: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
   options: PropTypes.arrayOf(
@@ -224,7 +225,7 @@ SelectInput.propTypes = {
       disabled: PropTypes.bool,
     })
   ).isRequired,
-  label: PropTypes.string.isRequired, // This is for the placeholder option
+  label: PropTypes.string.isRequired,
   icon: PropTypes.elementType,
   error: PropTypes.string,
 };
@@ -232,7 +233,7 @@ SelectInput.displayName = "SelectInput";
 
 const SignUp = () => {
   const navigate = useNavigate();
-  const { loginWithGoogle } = useAuth(); // Add this line
+  const { loginWithGoogle } = useAuth();
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -245,10 +246,16 @@ const SignUp = () => {
     yearLevel: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false); // Add this line
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [googleSignupData, setGoogleSignupData] = useState(null); // Add this line
+  const [yearLevelOptions, setYearLevelOptions] = useState([
+    { value: "", label: "Select Year Level", disabled: true },
+    { value: "1", label: "First Year" },
+    { value: "2", label: "Second Year" },
+    { value: "3", label: "Third Year" },
+    { value: "4", label: "Fourth Year" },
+  ]);
 
   const validateField = useCallback((name, value) => {
     switch (name) {
@@ -324,8 +331,31 @@ const SignUp = () => {
       setFormData((prev) => ({ ...prev, [id]: value }));
       const error = validateField(id, value);
       setErrors((prev) => ({ ...prev, [id]: error, form: "" }));
+
+      // Update year level options based on selected course
+      if (id === "course") {
+        if (value === "ACT") {
+          setYearLevelOptions([
+            { value: "", label: "Select Year Level", disabled: true },
+            { value: "1", label: "First Year" },
+            { value: "2", label: "Second Year" },
+          ]);
+          // Reset year level if it was set to 3 or 4
+          if (formData.yearLevel === "3" || formData.yearLevel === "4") {
+            setFormData((prev) => ({ ...prev, yearLevel: "" }));
+          }
+        } else {
+          setYearLevelOptions([
+            { value: "", label: "Select Year Level", disabled: true },
+            { value: "1", label: "First Year" },
+            { value: "2", label: "Second Year" },
+            { value: "3", label: "Third Year" },
+            { value: "4", label: "Fourth Year" },
+          ]);
+        }
+      }
     },
-    [validateField]
+    [validateField, formData.yearLevel]
   );
 
   const clearError = useCallback((field) => {
@@ -361,7 +391,6 @@ const SignUp = () => {
           let formErrorMessage = result.error || "Initial registration failed.";
           const fieldSpecificErrors = {};
           if (result.details && Object.keys(result.details).length > 0) {
-            let detailedMessages = [];
             for (const field in result.details) {
               const message = Array.isArray(result.details[field])
                 ? result.details[field].join(", ")
@@ -371,7 +400,8 @@ const SignUp = () => {
           }
           setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
         }
-      } catch (error) {
+      } catch (err) {
+        console.error("Signup initiation error:", err);
         setErrors({
           form: "A critical error occurred during initial sign-up. Please try again.",
         });
@@ -420,7 +450,11 @@ const SignUp = () => {
 
         if (result.success) {
           localStorage.removeItem("signupTempToken");
-          navigate("/dashboard");
+          toast({
+            title: "Registration Successful",
+            description: "Your account has been created. Please log in.",
+          });
+          navigate("/login");
         } else {
           let formErrorMessage =
             result.error ||
@@ -440,9 +474,6 @@ const SignUp = () => {
               // Map backend field names to frontend state keys if they differ
               let frontendFieldKey = field;
               if (field === "studentNumber") frontendFieldKey = "studentNo";
-              // Add more specific mappings if backend uses different keys than formData
-              // e.g., if backend returns 'academicCourse' for 'course'
-              // if (field === 'academicCourse') frontendFieldKey = 'course';
 
               if (
                 Object.prototype.hasOwnProperty.call(
@@ -475,7 +506,8 @@ const SignUp = () => {
             setStep(1);
           }
         }
-      } catch (error) {
+      } catch (err) {
+        console.error("Registration completion error:", err);
         setErrors({
           form: "A critical error occurred during account creation. Please try again later.",
         });
@@ -486,7 +518,6 @@ const SignUp = () => {
     [formData, validateStep, navigate, acceptedTerms]
   );
 
-  // Add Google sign-up handler
   const handleGoogleSignUp = async (e) => {
     e.preventDefault();
     setErrors({});
@@ -496,32 +527,24 @@ const SignUp = () => {
       const result = await loginWithGoogle();
 
       if (result?.success) {
-        // Successfully logged in with Google
         setTimeout(() => {
           navigate("/dashboard");
         }, 500);
       } else if (result?.needsRegistration) {
-        // User needs to complete registration with additional info
-        setGoogleSignupData({
-          email: result.email,
-          // Any other data returned from Google that might be useful
-        });
-        setStep(2); // Move to step 2 to collect additional info
-
-        // Pre-fill email field if available
         if (result.email) {
           setFormData((prev) => ({
             ...prev,
             email: result.email,
           }));
         }
+        setStep(2);
       } else {
         setErrors({
           form: result?.error || "Google sign-up failed. Please try again.",
         });
       }
-    } catch (error) {
-      console.error("Google sign-up error:", error);
+    } catch (err) {
+      console.error("Google sign-up error:", err);
       setErrors({
         form: "An unexpected error occurred during Google sign-up.",
       });
@@ -809,17 +832,7 @@ const SignUp = () => {
                           target: { id: "yearLevel", value: e.target.value },
                         })
                       }
-                      options={[
-                        {
-                          value: "",
-                          label: "Select Year Level",
-                          disabled: true,
-                        },
-                        { value: "1", label: "First Year" },
-                        { value: "2", label: "Second Year" },
-                        { value: "3", label: "Third Year" },
-                        { value: "4", label: "Fourth Year" },
-                      ]}
+                      options={yearLevelOptions}
                       label="Select Year Level"
                       icon={Calendar}
                       error={errors.yearLevel}
@@ -855,7 +868,7 @@ const SignUp = () => {
                           type="button"
                           onClick={() => setIsModalOpen(true)}
                           className="text-blue-600 hover:text-blue-700 font-medium relative group"
-                          whileHover={{ scale: 1.02 }} // Subtle hover
+                          whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
                           Terms and Conditions & Privacy Policy
@@ -877,7 +890,7 @@ const SignUp = () => {
                         type="button"
                         onClick={() => {
                           setStep(1);
-                          setErrors({}); // Clear errors when going back
+                          setErrors({});
                         }}
                         className="w-1/3 h-12 bg-white ring-1 ring-gray-200
                                   text-gray-700 rounded-lg font-medium
@@ -942,7 +955,7 @@ const SignUp = () => {
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{
-              backgroundImage: `url('/images/LVauthbg.png')`, // Ensure this path is correct from public folder
+              backgroundImage: `url('/images/LVauthbg.png')`,
             }}
           >
             <motion.div
@@ -957,7 +970,7 @@ const SignUp = () => {
               }}
             />
             <motion.img
-              src="/images/headLogo.png" // Ensure this path is correct from public folder
+              src="/images/headLogo.png"
               alt="Application Logo"
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1/2 drop-shadow-xl"
               loading="lazy"
@@ -973,7 +986,6 @@ const SignUp = () => {
         </motion.div>
       </div>
 
-      {/* Terms and Conditions Modal */}
       <AnimatePresence>
         {isModalOpen && (
           <motion.div
@@ -1019,7 +1031,6 @@ const SignUp = () => {
                 </div>
                 <div className="prose prose-sm max-h-96 overflow-y-auto pr-2">
                   <div className="space-y-4 text-gray-600">
-                    {/* ... (Your Terms and Conditions content) ... */}
                     <h3 className="font-semibold text-gray-900">
                       Terms of Service
                     </h3>
@@ -1067,7 +1078,6 @@ const SignUp = () => {
                         <li>Academic information (Course, Year Level)</li>
                       </ul>
                     </section>
-                    {/* ... (Rest of your T&C and Privacy Policy) ... */}
                   </div>
                 </div>
                 <div className="mt-6 flex justify-end">

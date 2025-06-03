@@ -13,34 +13,68 @@ const formatDate = (dateString) => {
   });
 };
 
-const TaskPreviewCard = ({ task }) => (
-  <Card className="bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 rounded-lg">
-    <CardContent className="p-4 space-y-1">
-      <h3 className="font-semibold text-sm text-gray-800">{task.name}</h3>
-      <p className="text-xs text-gray-500">{task.description}</p>
-      <div className="flex items-center gap-1 text-gray-500 text-xs pt-1">
-        <Calendar className="h-3 w-3" />
-        <span>{formatDate(task.dueDate)}</span>
-      </div>
-    </CardContent>
-  </Card>
-);
+const TaskPreviewCard = ({ task }) => {
+  // Handle both frontend and backend property naming conventions
+  const taskName = task.name || task.taskName || "";
+  const taskDescription = task.description || task.taskDescription || "";
+  const taskDueDate = task.dueDate || task.taskDeadline || "";
+
+  return (
+    <Card className="bg-white/90 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 rounded-lg">
+      <CardContent className="p-4 space-y-1">
+        <h3 className="font-semibold text-sm text-gray-800">{taskName}</h3>
+        <p className="text-xs text-gray-500">{taskDescription}</p>
+        <div className="flex items-center gap-1 text-gray-500 text-xs pt-1">
+          <Calendar className="h-3 w-3" />
+          <span>{formatDate(taskDueDate)}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 TaskPreviewCard.propTypes = {
   task: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-    name: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    dueDate: PropTypes.string.isRequired,
+    name: PropTypes.string,
+    taskName: PropTypes.string,
+    description: PropTypes.string,
+    taskDescription: PropTypes.string,
+    dueDate: PropTypes.string,
+    taskDeadline: PropTypes.string,
   }).isRequired,
+};
+
+// Custom validator to ensure at least one naming convention is provided
+TaskPreviewCard.propTypes.task = function (props, propName, componentName) {
+  const task = props[propName];
+  if (!task) {
+    return new Error(`${propName} is required in ${componentName}`);
+  }
+
+  if (!task.name && !task.taskName) {
+    return new Error(
+      `Either 'name' or 'taskName' is required in ${componentName}`
+    );
+  }
+
+  if (!task.dueDate && !task.taskDeadline) {
+    return new Error(
+      `Either 'dueDate' or 'taskDeadline' is required in ${componentName}`
+    );
+  }
+
+  return null;
 };
 
 const TaskList = () => {
   const { filteredTasks, isLoading, isError, error } = useTasks();
 
-  const sortedTasks = [...(filteredTasks || [])].sort(
-    (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
-  );
+  const sortedTasks = [...(filteredTasks || [])].sort((a, b) => {
+    const aDueDate = a.dueDate || a.taskDeadline || new Date();
+    const bDueDate = b.dueDate || b.taskDeadline || new Date();
+    return new Date(aDueDate) - new Date(bDueDate);
+  });
   const topTasks = sortedTasks.slice(0, 3);
 
   return (

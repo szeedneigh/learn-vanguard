@@ -589,6 +589,26 @@ export const AuthProvider = ({ children }) => {
     return permissions.includes("*") || permissions.includes(permission);
   };
 
+  // Refresh user data without logging out
+  const refreshUserData = useCallback(async () => {
+    try {
+      if (!isAuthenticated) return;
+
+      const response = await authService.verifyToken();
+
+      if (response && response.user) {
+        setUser(response.user);
+
+        // Invalidate and refetch user-related queries
+        if (response.user?.id) {
+          queryClient.invalidateQueries(queryKeys.user(response.user.id));
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+    }
+  }, [isAuthenticated]);
+
   const value = {
     // State
     user,
@@ -616,6 +636,7 @@ export const AuthProvider = ({ children }) => {
     hasPermission,
     getPermissions,
     refreshAuth: initializeAuth, // Expose refresh function
+    refreshUserData, // Add the new function to the context value
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

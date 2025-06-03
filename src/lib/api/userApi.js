@@ -291,30 +291,24 @@ export const uploadUserAvatar = async (file, onProgress = null) => {
     const formData = new FormData();
     formData.append("avatar", file);
 
-    const config = {
+    const response = await apiClient.post("/users/profile/avatar", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    };
+      onUploadProgress: (progressEvent) => {
+        if (onProgress) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          onProgress(percentCompleted);
+        }
+      },
+    });
 
-    // Add progress tracking if callback provided
-    if (onProgress) {
-      config.onUploadProgress = (progressEvent) => {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        onProgress(percentCompleted);
-      };
-    }
-
-    const response = await apiClient.post(
-      "/users/profile/avatar",
-      formData,
-      config
-    );
     return {
       data: response.data.data || response.data,
       success: true,
+      url: response.data.data?.avatarUrl || response.data.avatarUrl,
     };
   } catch (error) {
     console.error("Error uploading avatar:", error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Search, MoreHorizontal, Plus, ChevronRight } from "lucide-react"; // Added ChevronDown
 // Assuming shadcn/ui components are correctly set up in '@/components/ui/'
 import {
@@ -29,6 +29,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Placeholder for a notification system (e.g., shadcn/ui Sonner or react-toastify)
 // import { useToast } from "@/components/ui/use-toast"; // Example import
+import { useAuth } from "@/context/AuthContext";
 
 // --- Mock Data and API Functions ---
 // Replace these with actual API calls and data fetching logic
@@ -168,9 +169,12 @@ const searchAvailableStudentsAPI = async (query) => {
     // Ensure mock results don't include students already in the initial list for clarity
   ].filter(
     (s) =>
+      // Filter out students already in the class
       (s.name.toLowerCase().includes(query.toLowerCase()) ||
         s.id.toLowerCase().includes(query.toLowerCase())) &&
-      !initialStudentsData.some((is) => is.id === s.id)
+      !initialStudentsData.some((is) => is.id === s.id) &&
+      // Filter out student IDs that start with "00-"
+      !s.id.startsWith("00-")
   );
   // Simulate API success
   return mockResults;
@@ -222,7 +226,7 @@ const Users = () => {
   // --- State ---
   const [searchQuery, setSearchQuery] = useState(""); // For filtering the main student list
   const [filterOption, setFilterOption] = useState("all"); // 'all', 'pio', 'student'
-  const [programs, setPrograms] = useState(programsData); // Could be fetched from API
+  const [programs] = useState(programsData); // Could be fetched from API
   const [selectedProgramId, setSelectedProgramId] = useState(
     programsData[0].id
   ); // Default to first program
@@ -232,6 +236,10 @@ const Users = () => {
   const [isLoading, setIsLoading] = useState(false); // For loading indicators (main page data)
   const [isActionLoading, setIsActionLoading] = useState(false); // Separate loading state for modal actions (add, assign, remove)
   const [error, setError] = useState(null); // For displaying errors
+
+  // Get current user role from auth context
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   // Add Student Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -331,22 +339,49 @@ const Users = () => {
 
   // Filter and sort students for display
   const getFilteredAndSortedStudents = useCallback(() => {
-    // Filter by search query (main list)
-    const queryFiltered = students.filter(
-      (student) =>
-        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.id.toLowerCase().includes(searchQuery.toLowerCase()) || // Also search by ID
-        student.email.toLowerCase().includes(searchQuery.toLowerCase()) // Also search by email
-    );
+    // Filter by search query (main list) and exclude admin users
+    const queryFiltered = students.filter((student) => {
+      // First check if student is an admin (using role or normalizedRole)
+      const studentRole = (student.role || "").toLowerCase();
+      const isStudentAdmin =
+        studentRole === "admin" ||
+        (student.normalizedRole &&
+          student.normalizedRole.toLowerCase() === "admin");
+
+      // Check if student ID starts with "00-"
+      const hasReservedId = student.id && student.id.startsWith("00-");
+
+      // Exclude admins, reserved IDs, and apply search filter
+      return (
+        !isStudentAdmin &&
+        !hasReservedId &&
+        (student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          student.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          student.email.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    });
 
     // Filter by role
     let roleFiltered;
     if (filterOption === "pio") {
-      roleFiltered = queryFiltered.filter((student) => student.role === "pio");
+      roleFiltered = queryFiltered.filter((student) => {
+        const studentRole = (student.role || "").toLowerCase();
+        return (
+          studentRole === "pio" ||
+          (student.normalizedRole &&
+            student.normalizedRole.toLowerCase() === "pio")
+        );
+      });
     } else if (filterOption === "student") {
-      roleFiltered = queryFiltered.filter(
-        (student) => !student.role || student.role === "student"
-      );
+      roleFiltered = queryFiltered.filter((student) => {
+        const studentRole = (student.role || "").toLowerCase();
+        return (
+          !student.role ||
+          studentRole === "student" ||
+          (student.normalizedRole &&
+            student.normalizedRole.toLowerCase() === "student")
+        );
+      });
     } else {
       roleFiltered = queryFiltered;
     }
@@ -408,6 +443,14 @@ const Users = () => {
   const handleAddStudent = async () => {
     if (!studentToAdd) {
       alert("Please select a student to add."); // Replace with better UI feedback (e.g., toast)
+      return;
+    }
+
+    // Validate student ID format
+    if (studentToAdd.id.startsWith("00-")) {
+      setError(
+        "Cannot add student with ID starting with '00-'. These IDs are reserved."
+      );
       return;
     }
 
@@ -667,15 +710,17 @@ const Users = () => {
             </SelectContent>
           </Select>
 
-          {/* Add Student Button */}
-          <Button
-            onClick={openAddStudentModal} // Use specific handler
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1 shadow-sm"
-            disabled={isLoading || isActionLoading} // Disable if loading data OR performing an action
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add Student
-          </Button>
+          {/* Add Student Button - Only visible to admins */}
+          {user?.role === "admin" || user?.normalizedRole === "admin" ? (
+            <Button
+              onClick={openAddStudentModal} // Use specific handler
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1 shadow-sm"
+              disabled={isLoading || isActionLoading} // Disable if loading data OR performing an action
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Add Student
+            </Button>
+          ) : null}
         </div>
       </div>
       {/* Display Error Message */}
@@ -729,12 +774,15 @@ const Users = () => {
                 >
                   Role
                 </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
+                {/* Only show Actions column for admin users */}
+                {isAdmin && (
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -784,48 +832,50 @@ const Users = () => {
                         <span className="text-gray-600">Student</span> // Use a dash for no role
                       )}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                      {/* Actions Dropdown */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            disabled={isActionLoading} // Disable actions trigger while another action is loading
+                    {/* Only show Actions cell for admin users */}
+                    {isAdmin && (
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              disabled={isActionLoading} // Disable actions trigger while another action is loading
+                            >
+                              <span className="sr-only">
+                                Open options for {student.name}
+                              </span>
+                              <MoreHorizontal
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="border border-gray-200 shadow-md"
                           >
-                            <span className="sr-only">
-                              Open options for {student.name}
-                            </span>
-                            <MoreHorizontal
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="border border-gray-200 shadow-md"
-                        >
-                          {/* Conditionally render Assign PIO only if not already PIO */}
-                          {student.role !== "pio" && (
+                            {/* Conditionally render Assign PIO only if not already PIO */}
+                            {student.role !== "pio" && (
+                              <DropdownMenuItem
+                                onClick={() => openAssignRoleModal(student)} // Use specific handler
+                                className="cursor-pointer hover:bg-gray-100 text-sm"
+                                disabled={isActionLoading} // Disable during any action loading state
+                              >
+                                Assign Public Information Officer Role
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
-                              onClick={() => openAssignRoleModal(student)} // Use specific handler
-                              className="cursor-pointer hover:bg-gray-100 text-sm"
+                              onClick={() => openRemoveModal(student)} // Use specific handler
+                              className="cursor-pointer hover:bg-red-50 text-red-600 text-sm"
                               disabled={isActionLoading} // Disable during any action loading state
                             >
-                              Assign Public Information Officer Role
+                              Remove Student
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            onClick={() => openRemoveModal(student)} // Use specific handler
-                            className="cursor-pointer hover:bg-red-50 text-red-600 text-sm"
-                            disabled={isActionLoading} // Disable during any action loading state
-                          >
-                            Remove Student
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -838,13 +888,12 @@ const Users = () => {
       {/* --- Modals --- */}
       {/* Add Student Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        {/* Added preventDefault to stop modal closing when clicking search results */}
         <DialogContent
-          className="sm:max-w-lg"
+          className="sm:max-w-md"
+          aria-describedby="add-student-description"
           onPointerDownOutside={(e) => {
-            // Check if the click target is inside the search results dropdown
-            const resultsDropdown = e.target.closest("[data-results-dropdown]");
-            if (resultsDropdown) {
+            // Prevent closing when clicking on the search results dropdown
+            if (e.target.closest("[data-results-dropdown]")) {
               e.preventDefault();
             }
           }}
@@ -853,7 +902,7 @@ const Users = () => {
             <DialogTitle className="text-lg font-semibold">
               Add Student to Class
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription id="add-student-description">
               Search for a student and add them to {currentProgram.name} - Year{" "}
               {selectedYear}.
             </DialogDescription>
@@ -977,13 +1026,19 @@ const Users = () => {
       </Dialog>
       {/* Assign Role Modal */}
       <Dialog open={showAssignRoleModal} onOpenChange={setShowAssignRoleModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          aria-describedby="assign-role-description"
+        >
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
               Assign PIO Role
             </DialogTitle>
           </DialogHeader>
-          <DialogDescription className="py-4 text-gray-600">
+          <DialogDescription
+            id="assign-role-description"
+            className="py-4 text-gray-600"
+          >
             Are you sure you want to assign{" "}
             <span className="font-medium">{studentToAssignRole?.name}</span> (
             {studentToAssignRole?.id}) as a PIO (Peer Information Officer)?
@@ -1009,13 +1064,19 @@ const Users = () => {
       </Dialog>
       {/* Remove Student Modal */}
       <Dialog open={showRemoveModal} onOpenChange={setShowRemoveModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          aria-describedby="remove-student-description"
+        >
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-red-700">
               Remove Student
             </DialogTitle>
           </DialogHeader>
-          <DialogDescription className="py-4 text-gray-600">
+          <DialogDescription
+            id="remove-student-description"
+            className="py-4 text-gray-600"
+          >
             Are you sure you want to remove{" "}
             <span className="font-medium">{studentToRemove?.name}</span> (
             {studentToRemove?.id}) from {currentProgram.name} - Year{" "}
