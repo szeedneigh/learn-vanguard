@@ -23,4 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
+.env
 .codegpt
+.qodo
+.cursor
+
+.roadmap
+.secret

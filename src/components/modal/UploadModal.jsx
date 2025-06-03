@@ -1,284 +1,288 @@
-import { useState, useCallback } from "react";
-import { X, FileText, AlertCircle, Upload, File, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from "framer-motion";
-import { Progress } from "@/components/ui/progress";
+import { useState, useEffect, useRef } from "react";
+import PropTypes from "prop-types";
 
-const ALLOWED_FILE_TYPES = {
-  'application/pdf': {},
-  'application/msword': {},
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {},
-  'application/vnd.ms-powerpoint': {},
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': {},
-  'image/jpeg': {},
-  'image/png': {},
-  'image/jpg': {}
-};
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-export const UploadModal = ({ isOpen, onClose, onUpload, selectedSubject, setSelectedSubject, subjects }) => {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+export const UploadModal = ({
+  isOpen,
+  onClose,
+  onUpload,
+  subject,
+  selectedTopic = null,
+}) => {
+  const [file, setFile] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [topics, setTopics] = useState([]);
+  const [selectedTopicState, setSelectedTopicState] = useState(null);
+  const [topicsLoading, setTopicsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const validateAndSetFile = useCallback((file) => {
-    if (!file) return;
-    
-    if (!Object.keys(ALLOWED_FILE_TYPES).includes(file.type)) {
-      setErrorMessage("Please upload only PDF, Word, or PowerPoint files.");
-      setSelectedFile(null);
-      return;
+  // Use the selectedTopic prop if provided
+  useEffect(() => {
+    if (selectedTopic) {
+      console.log(
+        "UploadModal: Setting selected topic from prop:",
+        selectedTopic
+      );
+      setSelectedTopicState(selectedTopic);
+    } else {
+      // Reset the selected topic if none is provided and the subject changes
+      if (!selectedTopic && subject?.id) {
+        setSelectedTopicState(null);
+      }
     }
-    
-    if (file.size > MAX_FILE_SIZE) {
-      setErrorMessage("File size should not exceed 10MB.");
-      setSelectedFile(null);
-      return;
+  }, [selectedTopic, subject]);
+
+  // Fetch topics when subject changes
+  useEffect(() => {
+    // Only fetch topics if subject is available
+    if (subject?.id) {
+      setTopicsLoading(true);
+      import("@/services/topicService")
+        .then((topicService) => {
+          topicService
+            .getTopicsBySubject(subject.id)
+            .then((result) => {
+              if (result.success && result.data) {
+                setTopics(result.data);
+
+                // If selectedTopicState exists and is from this subject, ensure it's selected
+                if (selectedTopicState && selectedTopicState.id) {
+                  const matchingTopic = result.data.find(
+                    (t) => t.id === selectedTopicState.id
+                  );
+                  if (matchingTopic) {
+                    console.log(
+                      "Setting selected topic from fetched data:",
+                      matchingTopic
+                    );
+                    // Only update if truly different to prevent infinite loop
+                    if (
+                      JSON.stringify(matchingTopic) !==
+                      JSON.stringify(selectedTopicState)
+                    ) {
+                      setSelectedTopicState(matchingTopic);
+                    }
+                  }
+                }
+              } else {
+                setTopics([]);
+              }
+            })
+            .catch((err) => {
+              console.error("Error fetching topics:", err);
+              setTopics([]);
+            })
+            .finally(() => {
+              setTopicsLoading(false);
+            });
+        })
+        .catch((err) => {
+          console.error("Error importing topic service:", err);
+          setTopicsLoading(false);
+        });
+    } else {
+      setTopics([]);
     }
-    
-    setSelectedFile(file);
-    setErrorMessage("");
-  }, []);
+  }, [subject]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
-    setIsDragging(true);
+    e.stopPropagation();
+    setDragActive(true);
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
-    setIsDragging(false);
+    e.stopPropagation();
+    setDragActive(false);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    validateAndSetFile(file);
-  };
+    e.stopPropagation();
+    setDragActive(false);
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    validateAndSetFile(file);
-  };
-
-  const simulateUpload = async () => {
-    setIsUploading(true);
-    for (let i = 0; i <= 100; i += 10) {
-      setUploadProgress(i);
-      await new Promise(resolve => setTimeout(resolve, 200));
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0]);
     }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  const handleButtonClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleUpload = () => {
+    if (file) {
+      setIsUploading(true);
+
+      onUpload(
+        file,
+        subject,
+        selectedTopicState,
+        // Success callback
+        () => {
+          console.log("Upload completed successfully, closing modal");
+          // Don't show toast here as it's already shown in Resources.jsx
+          setIsUploading(false);
+
+          // Close modal after success
+          handleClose();
+        },
+        // Error callback
+        // eslint-disable-next-line no-unused-vars
+        (error) => {
+          console.log("Upload failed, closing modal");
+          // Don't show toast here as it's already shown in Resources.jsx
+          setIsUploading(false);
+
+          // Also close the modal on error
+          onClose();
+        }
+      );
+    }
+  };
+
+  const handleClose = () => {
+    // Don't allow closing during active upload
+    if (isUploading) return;
+
+    setFile(null);
+    setSelectedTopicState(null);
     setIsUploading(false);
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      setErrorMessage("Please select a file to upload.");
-      return;
-    }
-    // if (!selectedSubject) {
-    //   setErrorMessage("Please select a subject for this file.");
-    //   return;
-    // }
-    
-    await simulateUpload();
-    onUpload(selectedFile);
     onClose();
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 "
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          style={{ margin: 0, padding: 0 }}
-        >
-          <motion.div 
-            className="bg-white w-full max-w-md rounded-2xl shadow-2xl"
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            transition={{ type: "spring", damping: 20 }}
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={!isUploading ? handleClose : undefined}
+    >
+      <div
+        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-semibold mb-4">Upload Resource</h2>
+        <div className="mb-4">
+          <p className="text-sm text-gray-500 mb-2">
+            {subject ? `Uploading to: ${subject.name}` : "No subject selected"}
+          </p>
+
+          {subject && topics.length > 0 && (
+            <div className="mb-4">
+              <label
+                htmlFor="topic-select"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Select Topic (Optional)
+              </label>
+              <select
+                id="topic-select"
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={selectedTopicState?.id || ""}
+                onChange={(e) => {
+                  const topicId = e.target.value;
+                  const topic = topics.find((t) => t.id === topicId);
+                  setSelectedTopicState(topic || null);
+                }}
+                disabled={topicsLoading || isUploading}
+              >
+                <option value="">No specific topic</option>
+                {topics.map((topic) => (
+                  <option key={topic.id} value={topic.id}>
+                    {topic.name}
+                  </option>
+                ))}
+              </select>
+              {topicsLoading && (
+                <p className="text-xs text-gray-500 mt-1">Loading topics...</p>
+              )}
+            </div>
+          )}
+
+          <div
+            className={`border-2 border-dashed ${
+              dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"
+            } rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              isUploading ? "opacity-50 pointer-events-none" : ""
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={handleButtonClick}
           >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Upload Materials</h2>
-                  <p className="text-sm text-gray-500 mt-1">Add learning resources</p>
-                </div>
-                <motion.button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <X className="w-5 h-5" />
-                </motion.button>
+            {file ? (
+              <div>
+                <p className="text-green-600 font-medium">File selected:</p>
+                <p className="text-sm text-gray-600 mt-1 truncate max-w-full">
+                  {file.name}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
               </div>
-
-              <div className="space-y-6">
-                {/* Subject Selection */}
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Subject
-                  </label>
-                  <select
-                    className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-                    value={selectedSubject || ""}
-                    onChange={(e) => setSelectedSubject(e.target.value)}
-                  >
-                    <option value="">Select a subject</option>
-                    {subjects?.map((subject) => (
-                      <option key={subject} value={subject}>
-                        {subject}
-                      </option>
-                    ))}
-                  </select>
-                </div> */}
-
-                {/* File Drop Zone */}
-                <motion.div
-                  className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                    isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  whileHover={{ scale: 1.01 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 10 }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/50 to-transparent pointer-events-none" />
-                  <Upload className="w-10 h-10 text-blue-500 mx-auto mb-4" />
-                  <p className="text-sm text-gray-600 mb-2">
-                    Drag and drop your file here, or{' '}
-                    <label className="inline-block">
-                      <span className="text-blue-600 hover:text-blue-700 cursor-pointer font-medium">
-                        browse files
-                      </span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={handleFileChange}
-                        accept=".pdf,.doc,.docx,.ppt,.pptx"
-                      />
-                    </label>
-                  </p>
-                  <div className="flex justify-center gap-4 mt-4">
-                    {Object.values(ALLOWED_FILE_TYPES).map(({ name, icon }) => (
-                      <div key={name} className="text-xs text-gray-500">
-                        <span className="mr-1">{icon}</span>
-                        {name}
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-
-                {/* Selected File Info */}
-                <AnimatePresence mode="wait">
-                  {selectedFile && (
-                    <motion.div 
-                      className="bg-gray-50 p-4 rounded-xl space-y-3"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-blue-100 rounded-lg">
-                            <File className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">{selectedFile.name}</p>
-                            <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
-                          </div>
-                        </div>
-                        <motion.button
-                          onClick={() => setSelectedFile(null)}
-                          className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-200 rounded-full"
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <X className="w-4 h-4" />
-                        </motion.button>
-                      </div>
-                      
-                      {isUploading && (
-                        <div className="space-y-2">
-                          <Progress value={uploadProgress} className="h-2" />
-                          <p className="text-xs text-gray-500 text-right">{uploadProgress}%</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Error Message */}
-                <AnimatePresence>
-                  {errorMessage && (
-                    <motion.div 
-                      className="flex items-center space-x-2 text-red-600 bg-red-50 p-4 rounded-xl"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                    >
-                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                      <p className="text-sm">{errorMessage}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            ) : (
+              <div>
+                <p className="text-gray-600">
+                  Drag and drop your file here, or click to select
+                </p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Supported file types: PDF, Word, PowerPoint, Images, etc.
+                </p>
               </div>
-            </div>
-
-            <div className="p-6 bg-gray-50 rounded-b-2xl flex justify-end space-x-3">
-              <motion.button
-                onClick={onClose}
-                className="px-4 py-2 text-gray-700 bg-white rounded-xl hover:bg-gray-100 transition-colors shadow-sm"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={isUploading}
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                onClick={handleUpload}
-                className={`px-4 py-2 rounded-xl text-white shadow-sm flex items-center space-x-2 ${
-                  isUploading ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                disabled={!selectedFile || !selectedSubject || isUploading}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {isUploading ? (
-                  <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-5 h-5" />
-                    <span>Upload</span>
-                  </>
-                )}
-              </motion.button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            )}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              disabled={isUploading}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={handleClose}
+            className={`px-4 py-2 text-sm border border-gray-300 rounded-md ${
+              isUploading ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+            }`}
+            disabled={isUploading}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpload}
+            disabled={!file || !subject || isUploading}
+            className={`px-4 py-2 text-sm bg-blue-600 text-white rounded-md ${
+              !file || !subject || isUploading
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-blue-700"
+            }`}
+          >
+            {isUploading ? "Uploading..." : "Upload"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
+};
+
+UploadModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onUpload: PropTypes.func.isRequired,
+  subject: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    name: PropTypes.string,
+  }),
+  selectedTopic: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  }),
 };

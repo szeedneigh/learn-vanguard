@@ -91,41 +91,6 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
 
 <div align="center">
 
-## 🚀 Development Team
-
-<table align="center">
-  <tr>
-    <td align="center" width="400">
-      <img src="https://img.shields.io/badge/Role-Lead%20Developer-black?style=for-the-badge&logo=javascript&logoColor=white"/>
-      <br>
-      <img src="public\assets\Sidney.png" width="100" height="100" style="border-radius: 50%"/>
-      <br>
-      <b>Sidney John Sarcia</b>
-      <br>
-      <sub><code>Frontend Architecture | Performance Optimization</code></sub>
-      <br>
-      <br>
-      <a href="https://github.com/szeedneigh">
-        <img src="https://img.shields.io/badge/GitHub-szeedneigh-black?style=flat-square&logo=github"/>
-      </a>
-    </td>
-    <td align="center" width="400">
-      <img src="https://img.shields.io/badge/Role-Lead%20Developer-black?style=for-the-badge&logo=javascript&logoColor=white"/>
-      <br>
-      <img src="public\assets\Daniel.jpg" width="100" height="100" style="border-radius: 50%"/>
-      <br>
-      <b>Daniel Latina</b>
-      <br>
-      <sub><code>Component Development | Integration Testing</code></sub>
-      <br>
-      <br>
-      <a href="https://github.com/Dan-903">
-        <img src="https://img.shields.io/badge/GitHub-Dan--903-black?style=flat-square&logo=github"/>
-      </a>
-    </td>
-  </tr>
-</table>
-
 ## 📊 Project Management
 
 <table align="center">
@@ -156,6 +121,41 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
       <br>
       <a href="https://github.com/shills16">
         <img src="https://img.shields.io/badge/GitHub-shills16-black?style=flat-square&logo=github"/>
+      </a>
+    </td>
+  </tr>
+</table>
+
+## 🚀 Development Team
+
+<table align="center">
+  <tr>
+    <td align="center" width="400">
+      <img src="https://img.shields.io/badge/Role-Lead%20Developer-black?style=for-the-badge&logo=javascript&logoColor=white"/>
+      <br>
+      <img src="public\assets\Sidney.png" width="100" height="100" style="border-radius: 50%"/>
+      <br>
+      <b>Sidney John Sarcia</b>
+      <br>
+      <sub><code>Frontend/Backend Architecture | Performance Optimization</code></sub>
+      <br>
+      <br>
+      <a href="https://github.com/szeedneigh">
+        <img src="https://img.shields.io/badge/GitHub-szeedneigh-black?style=flat-square&logo=github"/>
+      </a>
+    </td>
+    <td align="center" width="400">
+      <img src="https://img.shields.io/badge/Role-Lead%20Developer-black?style=for-the-badge&logo=javascript&logoColor=white"/>
+      <br>
+      <img src="public\assets\Daniel.jpg" width="100" height="100" style="border-radius: 50%"/>
+      <br>
+      <b>Daniel Latina</b>
+      <br>
+      <sub><code>Component/API Development | Integration Testing</code></sub>
+      <br>
+      <br>
+      <a href="https://github.com/Dan-903">
+        <img src="https://img.shields.io/badge/GitHub-Dan--903-black?style=flat-square&logo=github"/>
       </a>
     </td>
   </tr>
@@ -265,15 +265,13 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
 - [x] Core platform architecture
 - [x] User interface implementation
 - [x] Basic resource management
-- [ ] Advanced learning analytics
-- [ ] Collaboration tools
-- [ ] Mobile optimization
-- [ ] Backend implementation
+- [x] Mobile optimization
+- [x] Backend implementation
 
 ### Upcoming Milestones
 1. **Q1 2025**
-   - Advanced analytics dashboard
-   - Enhanced collaboration features
+   - Administration features
+   - Collaboration features
    - Enhanced user experience
    - Enhanced user interface
 
@@ -284,7 +282,7 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
 ## 📫 Contact
 
 ### Project Inquiries
-- **Email**: learnvanguard@student.resource.hub.com
+- **Email**: learnvanguard@gmail.com
 - **Location**: La Verdad Christian College - Apalit
 
 - GitHub Issues: [Report a bug](https://github.com/szeedneigh/learn-vanguard/issues)
@@ -298,10 +296,10 @@ This project is proprietary and confidential. Unauthorized copying, modification
 ## 🙏 Acknowledgments
 
 - All our amazing Instructors
-- Information Systems Project Management 1
-- Application Development and Emerging Technologies 1
+- Information Systems Project Management 1 and 2
+- Application Development and Emerging Technologies 1 and 2
 - Our dedicated team of developers, designers, project managers, and SQA
-- Bachelor of Science in Information Systems 3
+- Bachelor of Science in Information Systems 3 Batch 2024-2025
 - La Verdad Christian College - Apalit
 
 ---
