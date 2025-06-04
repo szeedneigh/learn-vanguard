@@ -8,9 +8,11 @@ import PropTypes from "prop-types";
 import {
   getUserNotifications,
   markNotificationAsRead,
+  deleteNotification,
 } from "@/lib/api/notificationApi";
 import { formatDistanceToNow } from "date-fns";
 import { getUserInitials } from "@/utils/userUtils";
+import { useToast } from "@/hooks/use-toast";
 
 const SearchInput = memo(
   ({ searchValue, isSearchFocused, onSearchChange, onFocus, onBlur }) => (
@@ -74,6 +76,7 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
   const { user } = useAuth();
   const notificationButtonRef = useRef(null);
   const profileButtonRef = useRef(null);
+  const { toast } = useToast();
 
   // Check if we're on mobile
   useEffect(() => {
@@ -94,18 +97,39 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
       const result = await getUserNotifications();
       if (result.success && Array.isArray(result.data)) {
         // Transform the notifications to match our UI format
-        const formattedNotifications = result.data.map((notification) => ({
-          id: notification._id,
-          title: notification.title,
-          message: notification.message,
-          time: formatDistanceToNow(new Date(notification.createdAt), {
-            addSuffix: true,
-          }),
-          read: notification.isRead,
-          type: notification.type,
-          referenceId: notification.referenceId,
-          createdAt: notification.createdAt,
-        }));
+        const formattedNotifications = result.data.map((notification) => {
+          // Format the notification title for activity-related announcements
+          let title = notification.title;
+          let subjectName = notification.subjectName || "";
+
+          // Extract subject info if available
+          if (notification.subjectId && notification.subjectId.name) {
+            subjectName = notification.subjectId.name;
+          }
+
+          // For activity-created announcements, simplify the title
+          if (notification.type === "announcement" && title.startsWith("New")) {
+            // Keep the simplified title format (e.g., "New assignment: Assignment 2")
+            title = title.split("\n")[0]; // Take only the first line
+          }
+
+          return {
+            id: notification._id,
+            title: title,
+            message: notification.message,
+            time: formatDistanceToNow(new Date(notification.createdAt), {
+              addSuffix: true,
+            }),
+            read: notification.isRead,
+            type: notification.type,
+            referenceId: notification.referenceId,
+            createdAt: notification.createdAt,
+            dueDate: notification.dueDate,
+            subjectId: notification.subjectId?._id || notification.subjectId,
+            subjectName: subjectName,
+            topicId: notification.topicId,
+          };
+        });
         setNotifications(formattedNotifications);
       } else {
         console.error("Invalid notification data format:", result);
@@ -123,8 +147,8 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
   useEffect(() => {
     fetchNotifications();
 
-    // Refresh notifications every 5 minutes
-    const intervalId = setInterval(fetchNotifications, 5 * 60 * 1000);
+    // Refresh notifications every 2 minutes
+    const intervalId = setInterval(fetchNotifications, 2 * 60 * 1000);
 
     return () => clearInterval(intervalId);
   }, [fetchNotifications]);
@@ -144,22 +168,59 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
     [onSearch]
   );
 
-  const handleMarkAsRead = useCallback(async (notificationId) => {
-    try {
-      const result = await markNotificationAsRead(notificationId);
-      if (result.success) {
-        setNotifications((prev) =>
-          prev.map((notification) =>
-            notification.id === notificationId
-              ? { ...notification, read: true }
-              : notification
-          )
-        );
+  const handleMarkAsRead = useCallback(
+    async (notificationId) => {
+      try {
+        const result = await markNotificationAsRead(notificationId);
+        if (result.success) {
+          setNotifications((prev) =>
+            prev.map((notification) =>
+              notification.id === notificationId
+                ? { ...notification, read: true }
+                : notification
+            )
+          );
+          toast({
+            title: "Success",
+            description: "Notification marked as read",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to mark notification as read:", error);
+        toast({
+          title: "Error",
+          description: "Failed to mark notification as read",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
-  }, []);
+    },
+    [toast]
+  );
+
+  const handleDeleteNotification = useCallback(
+    async (notificationId) => {
+      try {
+        const result = await deleteNotification(notificationId);
+        if (result.success) {
+          setNotifications((prev) =>
+            prev.filter((notification) => notification.id !== notificationId)
+          );
+          toast({
+            title: "Success",
+            description: "Notification deleted",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to delete notification:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete notification",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast]
+  );
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -171,8 +232,9 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
       notifications.map((notification) => ({
         ...notification,
         onMarkAsRead: () => handleMarkAsRead(notification.id),
+        onDelete: () => handleDeleteNotification(notification.id),
       })),
-    [notifications, handleMarkAsRead]
+    [notifications, handleMarkAsRead, handleDeleteNotification]
   );
 
   const handleSearchFocus = useCallback(() => setIsSearchFocused(true), []);

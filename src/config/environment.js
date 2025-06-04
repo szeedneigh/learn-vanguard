@@ -33,6 +33,7 @@ const backendUrl =
     ? "https://learn-vanguard-server.onrender.com"
     : "http://localhost:5000");
 
+// Log the environment configuration
 console.log("Environment loaded with API URLs:", {
   mode: isProduction ? "production" : "development",
   API_BASE_URL: apiBaseUrl,

@@ -346,12 +346,22 @@ export const assignPIORole = async (userId, assignedClass) => {
     const response = await apiClient.post(`/users/pio/${userId}`, {
       assignedClass,
     });
+
+    console.log("PIO role assignment response:", response.data);
+
     return {
-      data: response.data.data || response.data,
+      data: response.data.user || response.data,
+      message: response.data.message || "PIO role assigned successfully",
       success: true,
     };
   } catch (error) {
     console.error("Error assigning PIO role:", error);
+    console.error("Error details:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+    });
 
     // Extract the most useful error message
     let errorMessage = "Failed to assign PIO role";
@@ -376,20 +386,42 @@ export const assignPIORole = async (userId, assignedClass) => {
  */
 export const revertPIORole = async (userId) => {
   try {
+    if (!userId) {
+      throw new Error("User ID is required to revert PIO role");
+    }
+
+    console.log(`API: Reverting PIO role for user ${userId}`);
+
     const response = await apiClient.post(`/users/pio/${userId}/revert`);
+
+    console.log("Revert PIO role response:", response.data);
+
     return {
-      data: response.data.data || response.data,
+      data: response.data.user || response.data,
+      message: response.data.message || "PIO role reverted successfully",
       success: true,
     };
   } catch (error) {
     console.error("Error reverting PIO role:", error);
+    console.error("Error details:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+    });
+
+    // Extract the most useful error message
+    let errorMessage = "Failed to revert PIO role";
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
     return {
       data: null,
       success: false,
-      error:
-        error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        "Failed to revert PIO role",
+      error: errorMessage,
     };
   }
 };

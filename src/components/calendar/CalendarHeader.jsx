@@ -1,15 +1,32 @@
 import { useMemo, useContext } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import PropTypes from 'prop-types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import PropTypes from "prop-types";
 import { AuthContext } from "@/context/AuthContext";
 import { ROLES } from "@/lib/constants";
 
-function CalendarHeader({ currentDate, currentView, onPrevious, onNext, onViewChange, onAddEvent }) {
+function CalendarHeader({
+  currentDate,
+  currentView,
+  onPrevious,
+  onNext,
+  onViewChange,
+  onAddEvent,
+  showAddEvent = true, // Default to showing the button
+}) {
   const formattedDate = useMemo(() => {
     if (currentView === "month") {
-      return currentDate.toLocaleString("default", { month: "long", year: "numeric" });
+      return currentDate.toLocaleString("default", {
+        month: "long",
+        year: "numeric",
+      });
     } else if (currentView === "week") {
       const startOfWeek = new Date(currentDate);
       startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
@@ -17,7 +34,12 @@ function CalendarHeader({ currentDate, currentView, onPrevious, onNext, onViewCh
       endOfWeek.setDate(startOfWeek.getDate() + 6);
       return `Week of ${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}`;
     } else {
-      return currentDate.toLocaleDateString("default", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      return currentDate.toLocaleDateString("default", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     }
   }, [currentDate, currentView]);
 
@@ -29,7 +51,9 @@ function CalendarHeader({ currentDate, currentView, onPrevious, onNext, onViewCh
         <Button variant="outline" size="icon" onClick={onPrevious}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-xl font-bold min-w-[200px] text-center">{formattedDate}</h2>
+        <h2 className="text-xl font-bold min-w-[200px] text-center">
+          {formattedDate}
+        </h2>
         <Button variant="outline" size="icon" onClick={onNext}>
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -45,7 +69,7 @@ function CalendarHeader({ currentDate, currentView, onPrevious, onNext, onViewCh
             <SelectItem value="day">Day</SelectItem>
           </SelectContent>
         </Select>
-        {(user?.role === ROLES.STUDENT || user?.role === ROLES.PIO) && (
+        {showAddEvent && (
           <Button onClick={onAddEvent}>
             <Plus className="mr-2 h-4 w-4" />
             Add Event
@@ -58,11 +82,12 @@ function CalendarHeader({ currentDate, currentView, onPrevious, onNext, onViewCh
 
 CalendarHeader.propTypes = {
   currentDate: PropTypes.instanceOf(Date).isRequired,
-  currentView: PropTypes.oneOf(['month', 'week', 'day']).isRequired,
+  currentView: PropTypes.oneOf(["month", "week", "day"]).isRequired,
   onPrevious: PropTypes.func.isRequired,
   onNext: PropTypes.func.isRequired,
   onViewChange: PropTypes.func.isRequired,
   onAddEvent: PropTypes.func.isRequired,
+  showAddEvent: PropTypes.bool,
 };
 
-export default CalendarHeader; 
+export default CalendarHeader;
