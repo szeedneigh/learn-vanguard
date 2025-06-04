@@ -77,7 +77,7 @@ const Tasks = () => {
   } = useTasksPage({
     search: searchQuery,
     status: statusFilter !== "all" ? statusFilter : undefined,
-    showArchived,
+    archived: showArchived ? "true" : "false",
   });
 
   const taskStatusColumns = [
@@ -86,6 +86,38 @@ const Tasks = () => {
     "On Hold",
     "Completed",
   ];
+
+  // Status mapping functions - moved up before they're used
+  const mapStatusForDisplay = (apiStatus) => {
+    if (!apiStatus) return "Unknown";
+    // Convert to lowercase for case-insensitive comparison
+    const apiStatusLower =
+      typeof apiStatus === "string" ? apiStatus.toLowerCase() : "";
+
+    const statusMap = {
+      "not-started": "Not Started",
+      "in-progress": "In Progress",
+      "on-hold": "On Hold",
+      completed: "Completed",
+      // Add mappings for backend format
+      "not yet started": "Not Started",
+      "in progress": "In Progress",
+      "on-hold": "On Hold",
+      completed: "Completed",
+    };
+    return statusMap[apiStatusLower] || apiStatus;
+  };
+
+  const mapStatusForAPI = (displayStatus) => {
+    if (!displayStatus) return "unknown";
+    const statusMap = {
+      "Not Started": "not-started",
+      "In Progress": "in-progress",
+      "On Hold": "on-hold",
+      Completed: "completed",
+    };
+    return statusMap[displayStatus] || displayStatus;
+  };
 
   // Filter tasks for display based on search and status
   const filteredTasks = tasks.filter((task) => {
@@ -365,37 +397,6 @@ const Tasks = () => {
     });
   };
 
-  const mapStatusForDisplay = (apiStatus) => {
-    if (!apiStatus) return "Unknown";
-    // Convert to lowercase for case-insensitive comparison
-    const apiStatusLower =
-      typeof apiStatus === "string" ? apiStatus.toLowerCase() : "";
-
-    const statusMap = {
-      "not-started": "Not Started",
-      "in-progress": "In Progress",
-      "on-hold": "On Hold",
-      completed: "Completed",
-      // Add mappings for backend format
-      "not yet started": "Not Started",
-      "in progress": "In Progress",
-      "on-hold": "On Hold",
-      completed: "Completed",
-    };
-    return statusMap[apiStatusLower] || apiStatus;
-  };
-
-  const mapStatusForAPI = (displayStatus) => {
-    if (!displayStatus) return "unknown";
-    const statusMap = {
-      "Not Started": "not-started",
-      "In Progress": "in-progress",
-      "On Hold": "on-hold",
-      Completed: "completed",
-    };
-    return statusMap[displayStatus] || displayStatus;
-  };
-
   const getTasksForColumn = (columnDisplayStatus) => {
     return filteredTasks.filter(
       (task) => mapStatusForDisplay(task.taskStatus) === columnDisplayStatus
@@ -446,25 +447,23 @@ const Tasks = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="not-started">Not Started</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="on-hold">On Hold</SelectItem>
+                  <SelectItem value="Not Started">Not Started</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="On Hold">On Hold</SelectItem>
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
-              {hasPermission(PERMISSIONS.CREATE_TASK) && (
-                <Button
-                  onClick={() => {
-                    setEditingTask(null);
-                    setIsModalOpen(true);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm flex items-center"
-                >
-                  <Plus size={18} className="mr-2" />
-                  Add Task
-                </Button>
-              )}
+              <Button
+                onClick={() => {
+                  setEditingTask(null);
+                  setIsModalOpen(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm flex items-center"
+              >
+                <Plus size={18} className="mr-2" />
+                Add Task
+              </Button>
             </div>
           </div>
 

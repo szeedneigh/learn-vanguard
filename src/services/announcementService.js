@@ -37,15 +37,23 @@ const mockGetAnnouncements = async ({ subjectId }) => {
 /**
  * Mock implementation of createAnnouncement
  */
-const mockCreateAnnouncement = async ({ content, subjectId }) => {
+const mockCreateAnnouncement = async ({
+  content,
+  subjectId,
+  title,
+  priority = "medium",
+  type = "general",
+}) => {
   await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API delay
 
   return {
     id: `mock-announcement-${Date.now()}`,
     content,
+    title,
+    priority,
+    type,
     createdAt: new Date().toISOString(),
     subjectId,
-    priority: "medium",
     author: "Current User",
   };
 };
@@ -134,22 +142,43 @@ export const getAnnouncements = async ({ subjectId }) => {
 /**
  * Creates a new announcement for a subject.
  * Uses backend API with fallback to mock behavior if API fails.
- * @param {object} params - { content, subjectId }
+ * @param {object} params - { content, subjectId, title, priority, type }
  * @returns {Promise<object>} The created announcement object.
  */
-export const createAnnouncement = async ({ content, subjectId }) => {
+export const createAnnouncement = async ({
+  content,
+  subjectId,
+  title,
+  priority = "medium",
+  type = "general",
+}) => {
   console.log(
     "announcementService.js: createAnnouncement called with:",
-    { content, subjectId },
+    { content, subjectId, title, priority, type },
     "USE_MOCK_DATA:",
     config.useMockData
   );
+
+  if (!content || !subjectId || !title) {
+    console.error(
+      "announcementService.js: createAnnouncement - Missing required fields"
+    );
+    throw new Error(
+      "Missing required fields: content, subjectId, and title are required"
+    );
+  }
 
   if (config.useMockData) {
     console.log(
       "announcementService.js: createAnnouncement - MOCK - creating announcement"
     );
-    return mockCreateAnnouncement({ content, subjectId });
+    return mockCreateAnnouncement({
+      content,
+      subjectId,
+      title,
+      priority,
+      type,
+    });
   }
 
   try {
@@ -159,6 +188,9 @@ export const createAnnouncement = async ({ content, subjectId }) => {
     const result = await announcementApi.createAnnouncement({
       content,
       subjectId,
+      title,
+      priority,
+      type,
     });
 
     if (result.success) {
@@ -176,7 +208,13 @@ export const createAnnouncement = async ({ content, subjectId }) => {
       console.log(
         "announcementService.js: createAnnouncement - falling back to mock data"
       );
-      return mockCreateAnnouncement({ content, subjectId });
+      return mockCreateAnnouncement({
+        content,
+        subjectId,
+        title,
+        priority,
+        type,
+      });
     }
   } catch (error) {
     console.error(
@@ -187,7 +225,13 @@ export const createAnnouncement = async ({ content, subjectId }) => {
     console.log(
       "announcementService.js: createAnnouncement - falling back to mock data after error"
     );
-    return mockCreateAnnouncement({ content, subjectId });
+    return mockCreateAnnouncement({
+      content,
+      subjectId,
+      title,
+      priority,
+      type,
+    });
   }
 };
 
@@ -261,18 +305,34 @@ export const deleteAnnouncement = async ({ announcementId, subjectId }) => {
     config.useMockData
   );
 
+  // Check if announcementId is valid
+  if (!announcementId) {
+    console.error(
+      "announcementService.js: deleteAnnouncement - Missing or invalid announcementId"
+    );
+    throw new Error("Missing or invalid announcement ID");
+  }
+
+  // Convert to string if it's an object ID
+  const idToDelete =
+    typeof announcementId === "object" && announcementId._id
+      ? announcementId._id
+      : announcementId;
+
+  console.log(`announcementService.js: Using ID for deletion: ${idToDelete}`);
+
   if (config.useMockData) {
     console.log(
       "announcementService.js: deleteAnnouncement - MOCK - deleting announcement"
     );
-    return mockDeleteAnnouncement({ announcementId, subjectId });
+    return mockDeleteAnnouncement({ announcementId: idToDelete, subjectId });
   }
 
   try {
     console.log(
       "announcementService.js: deleteAnnouncement - attempting to delete via API"
     );
-    const result = await announcementApi.deleteAnnouncement(announcementId);
+    const result = await announcementApi.deleteAnnouncement(idToDelete);
 
     if (result.success) {
       console.log(

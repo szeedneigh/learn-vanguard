@@ -15,6 +15,9 @@ import { useToast } from "@/hooks/use-toast";
  * @param {Object} options - React Query options
  */
 export const useTasks = (filters = {}, options = {}) => {
+  // Make sure we're passing the filters to the API
+  console.log("useTasks hook called with filters:", filters);
+
   return useQuery({
     queryKey: queryKeys.tasks.concat([filters]),
     queryFn: () => getTasks(filters),
@@ -272,6 +275,9 @@ export const useArchiveTask = () => {
  * for the Tasks page component
  */
 export const useTasksPage = (filters = {}) => {
+  // Make sure we're passing the archived filter correctly
+  console.log("useTasksPage hook called with filters:", filters);
+
   // Main queries
   const tasksQuery = useTasks(filters);
   const summaryQuery = useTaskSummary();
@@ -288,12 +294,9 @@ export const useTasksPage = (filters = {}) => {
   const summary = summaryQuery.data || {};
 
   // Filter tasks based on client-side filters (for performance)
-  const filteredTasks = tasks.filter((task) => {
-    if (filters.showArchived !== undefined) {
-      return filters.showArchived ? task.archived : !task.archived;
-    }
-    return true;
-  });
+  // We're now letting the backend handle the archived filtering
+  // so we don't need to filter again here
+  const filteredTasks = tasks;
 
   // Local stats calculation (can be replaced with backend summary if needed)
   const localStats = {

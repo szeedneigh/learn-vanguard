@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from "./client";
 
 /**
  * Event Management API Service
@@ -7,31 +7,42 @@ import apiClient from './client';
 
 /**
  * Get events with optional filters
- * @param {Object} filters - Optional filters (startDate, endDate, course, yearLevel)
- * @returns {Promise<Object>} Events list
+ * @param {Object} filters - Optional filters (startDate, endDate, course, yearLevel, etc.)
+ * @returns {Promise<Object>} Events data
  */
 export const getEvents = async (filters = {}) => {
   try {
+    // Build query params
     const params = new URLSearchParams();
-    
-    // Add filters to params
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params.append(key, value);
-      }
-    });
-    
-    const response = await apiClient.get(`/events?${params.toString()}`);
+    if (filters.startDate) params.append("startDate", filters.startDate);
+    if (filters.endDate) params.append("endDate", filters.endDate);
+    if (filters.course) params.append("course", filters.course);
+    if (filters.yearLevel) params.append("yearLevel", filters.yearLevel);
+    if (filters.archived !== undefined)
+      params.append("archived", filters.archived);
+
+    // Add userFiltered parameter to rely on backend filtering for students
+    if (filters.userFiltered) params.append("userFiltered", "true");
+
+    const url = `/events${params.toString() ? `?${params.toString()}` : ""}`;
+
+    console.log("Fetching events with URL:", url);
+    const response = await apiClient.get(url);
+    console.log("Events response:", response.data);
+
     return {
       data: response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching events:', error);
+    console.error("Error fetching events:", error);
     return {
       data: [],
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch events'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch events",
     };
   }
 };
@@ -42,17 +53,20 @@ export const getEvents = async (filters = {}) => {
  */
 export const getTodayEvents = async () => {
   try {
-    const response = await apiClient.get('/events/today');
+    const response = await apiClient.get("/events/today");
     return {
       data: response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching today\'s events:', error);
+    console.error("Error fetching today's events:", error);
     return {
       data: [],
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch today\'s events'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch today's events",
     };
   }
 };
@@ -64,19 +78,22 @@ export const getTodayEvents = async () => {
  */
 export const createEvent = async (eventData) => {
   try {
-    const response = await apiClient.post('/events', eventData);
+    const response = await apiClient.post("/events", eventData);
     return {
       data: response.data.event,
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error creating event:', error);
+    console.error("Error creating event:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to create event',
-      details: error.response?.data?.error?.details || {}
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to create event",
+      details: error.response?.data?.error?.details || {},
     };
   }
 };
@@ -93,15 +110,18 @@ export const updateEvent = async (eventId, eventData) => {
     return {
       data: response.data.event,
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error updating event:', error);
+    console.error("Error updating event:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update event',
-      details: error.response?.data?.error?.details || {}
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update event",
+      details: error.response?.data?.error?.details || {},
     };
   }
 };
@@ -116,13 +136,16 @@ export const deleteEvent = async (eventId) => {
     const response = await apiClient.delete(`/events/${eventId}`);
     return {
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error deleting event:', error);
+    console.error("Error deleting event:", error);
     return {
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to delete event'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to delete event",
     };
   }
 };
@@ -133,4 +156,4 @@ export default {
   createEvent,
   updateEvent,
   deleteEvent,
-}; 
+};
