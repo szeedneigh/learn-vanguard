@@ -1,13 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/queryClient';
-import { 
-  getEvents, 
-  getTodayEvents, 
-  createEvent, 
-  updateEvent, 
-  deleteEvent 
-} from '@/lib/api/eventApi';
-import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
+import {
+  getEvents,
+  getTodayEvents,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+} from "@/lib/api/eventApi";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Hook for fetching events with filters
@@ -45,7 +45,7 @@ export const useEventsByDate = (startDate, endDate, options = {}) => {
  */
 export const useTodayEvents = (options = {}) => {
   return useQuery({
-    queryKey: queryKeys.events.concat(['today']),
+    queryKey: queryKeys.events.concat(["today"]),
     queryFn: () => getTodayEvents(),
     select: (data) => data?.data || [],
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -65,17 +65,17 @@ export const useCreateEvent = () => {
     onSuccess: (data) => {
       // Invalidate and refetch events queries
       queryClient.invalidateQueries({ queryKey: queryKeys.events });
-      
+
       toast({
-        title: 'Success',
-        description: data.message || 'Event created successfully',
+        title: "Success",
+        description: data.message || "Event created successfully",
       });
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.error || 'Failed to create event',
-        variant: 'destructive',
+        title: "Error",
+        description: error.error || "Failed to create event",
+        variant: "destructive",
       });
     },
   });
@@ -93,17 +93,17 @@ export const useUpdateEvent = () => {
     onSuccess: (data) => {
       // Invalidate and refetch events queries
       queryClient.invalidateQueries({ queryKey: queryKeys.events });
-      
+
       toast({
-        title: 'Success',
-        description: data.message || 'Event updated successfully',
+        title: "Success",
+        description: data.message || "Event updated successfully",
       });
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.error || 'Failed to update event',
-        variant: 'destructive',
+        title: "Error",
+        description: error.error || "Failed to update event",
+        variant: "destructive",
       });
     },
   });
@@ -121,17 +121,17 @@ export const useDeleteEvent = () => {
     onSuccess: (data) => {
       // Invalidate and refetch events queries
       queryClient.invalidateQueries({ queryKey: queryKeys.events });
-      
+
       toast({
-        title: 'Success',
-        description: data.message || 'Event deleted successfully',
+        title: "Success",
+        description: data.message || "Event deleted successfully",
       });
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.error || 'Failed to delete event',
-        variant: 'destructive',
+        title: "Error",
+        description: error.error || "Failed to delete event",
+        variant: "destructive",
       });
     },
   });
@@ -156,11 +156,13 @@ export const useEventsPage = (filters = {}) => {
   const todayEvents = todayEventsQuery.data || [];
 
   // Filter events for calendar view
-  const calendarEvents = events.map(event => ({
-    id: event.id,
+  const calendarEvents = events.map((event) => ({
+    id: event.id || event._id, // Handle both id formats
     title: event.title,
     start: new Date(event.scheduleDate || event.startDate),
-    end: event.endDate ? new Date(event.endDate) : new Date(event.scheduleDate || event.startDate),
+    end: event.endDate
+      ? new Date(event.endDate)
+      : new Date(event.scheduleDate || event.startDate),
     allDay: event.allDay || false,
     resource: event,
   }));
@@ -170,31 +172,32 @@ export const useEventsPage = (filters = {}) => {
     events,
     todayEvents,
     calendarEvents,
-    
+
     // Loading states
     isLoading: eventsQuery.isLoading || todayEventsQuery.isLoading,
     isError: eventsQuery.isError || todayEventsQuery.isError,
     error: eventsQuery.error || todayEventsQuery.error,
-    
+
     // Refetch functions
     refetch: () => {
       eventsQuery.refetch();
       todayEventsQuery.refetch();
     },
-    
+
     // Mutations
     createEvent: createEventMutation.mutate,
     updateEvent: updateEventMutation.mutate,
     deleteEvent: deleteEventMutation.mutate,
-    
+
     // Mutation loading states
     isCreating: createEventMutation.isPending,
     isUpdating: updateEventMutation.isPending,
     isDeleting: deleteEventMutation.isPending,
-    
+
     // Any mutation loading
-    isMutating: createEventMutation.isPending || 
-                updateEventMutation.isPending || 
-                deleteEventMutation.isPending,
+    isMutating:
+      createEventMutation.isPending ||
+      updateEventMutation.isPending ||
+      deleteEventMutation.isPending,
   };
-}; 
+};

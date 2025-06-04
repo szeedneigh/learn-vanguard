@@ -149,8 +149,8 @@ const Archive = () => {
   const handleDeleteConfirm = () => {
     if (taskToDelete) {
       handleDeleteTask(taskToDelete);
-      setTaskToDelete(null);
       setDeleteDialogOpen(false);
+      setTaskToDelete(null);
       toast({
         title: "Task Deleted",
         description: "The task has been permanently deleted.",
@@ -160,8 +160,10 @@ const Archive = () => {
   };
 
   const openDeleteDialog = (id) => {
-    setTaskToDelete(id);
-    setDeleteDialogOpen(true);
+    if (id) {
+      setTaskToDelete(id);
+      setDeleteDialogOpen(true);
+    }
   };
 
   return (
@@ -330,7 +332,15 @@ const Archive = () => {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) {
+            setTaskToDelete(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>

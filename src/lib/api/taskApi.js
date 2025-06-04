@@ -31,11 +31,25 @@ export const getTaskSummary = async () => {
 
 /**
  * Get all tasks
+ * @param {Object} filters - Optional filters (status, search, archived, etc.)
  * @returns {Promise<Object>} Tasks list
  */
-export const getTasks = async () => {
+export const getTasks = async (filters = {}) => {
   try {
-    const response = await apiClient.get("/tasks");
+    // Build query params
+    const params = new URLSearchParams();
+
+    // Add filters to query params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        params.append(key, value);
+      }
+    });
+
+    const queryString = params.toString();
+    const url = `/tasks${queryString ? `?${queryString}` : ""}`;
+
+    const response = await apiClient.get(url);
     return {
       data: response.data,
       success: true,
@@ -243,6 +257,33 @@ export const assignTask = async (taskId, assigneeId) => {
   }
 };
 
+/**
+ * Get task counts for the current user
+ * @returns {Promise<Object>} Task counts
+ */
+export const getTaskCounts = async () => {
+  try {
+    const response = await apiClient.get("/tasks/counts");
+    return {
+      data: response.data.data,
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error fetching task counts:", error);
+    return {
+      data: {
+        total: 0,
+        active: 0,
+        completed: 0,
+        overdue: 0,
+        upcoming: 0,
+      },
+      success: false,
+      error: error.response?.data?.message || "Failed to fetch task counts",
+    };
+  }
+};
+
 export default {
   getTaskSummary,
   getTasks,
@@ -253,4 +294,5 @@ export default {
   deleteTask,
   updateTaskStatus,
   assignTask,
+  getTaskCounts,
 };

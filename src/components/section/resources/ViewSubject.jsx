@@ -31,6 +31,7 @@ import {
 import { AddTopicModal } from "@/components/modal/AddTopicModal";
 import { AddActivityModal } from "@/components/modal/AddActivityModal";
 import TopicResourceView from "./TopicResourceView";
+import TopicActivitiesView from "./TopicActivitiesView";
 
 const ViewSubject = ({
   currentSubject,
@@ -277,7 +278,7 @@ const ViewSubject = ({
                     </p>
                   )}
 
-                  {/* Topic Resources - Using the new component */}
+                  {/* Topic Resources */}
                   <TopicResourceView
                     topic={topic}
                     subjectId={currentSubject?.id}
@@ -286,44 +287,15 @@ const ViewSubject = ({
                     refetchTrigger={refetchTrigger}
                   />
 
-                  {/* Activities */}
-                  {topic.activities && topic.activities.length > 0 ? (
-                    <div className="mt-3 space-y-2">
-                      <p className="text-xs font-medium text-gray-500">
-                        Activities:
-                      </p>
-                      {topic.activities.map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="p-2 bg-white border border-gray-200 rounded-lg"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm font-medium">
-                              {activity.title}
-                            </p>
-                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                              {activity.type}
-                            </span>
-                          </div>
-                          {activity.description && (
-                            <p className="text-xs text-gray-600 mb-1">
-                              {activity.description}
-                            </p>
-                          )}
-                          {activity.dueDate && (
-                            <p className="text-xs text-orange-600">
-                              Due:{" "}
-                              {new Date(activity.dueDate).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500 italic mt-2">
-                      No activities yet
-                    </p>
-                  )}
+                  {/* Topic Activities */}
+                  <TopicActivitiesView
+                    topic={topic}
+                    userRole={userRole}
+                    onActivityDeleted={() => {
+                      // Refetch topics when an activity is deleted
+                      refetchAll();
+                    }}
+                  />
                 </div>
               ))}
             </div>
@@ -496,9 +468,19 @@ const ViewSubject = ({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-red-600 hover:bg-red-100"
-                            onClick={() =>
-                              onDeleteAnnouncement(announcement.id)
-                            }
+                            onClick={() => {
+                              // Ensure we have a valid ID before attempting deletion
+                              const announcementId =
+                                announcement._id || announcement.id;
+                              if (announcementId) {
+                                onDeleteAnnouncement(announcementId);
+                              } else {
+                                console.error(
+                                  "Invalid announcement ID:",
+                                  announcement
+                                );
+                              }
+                            }}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
