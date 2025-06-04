@@ -3,39 +3,62 @@
  */
 
 /**
- * Extracts initials from a user's full name
- * @param {string} name - User's full name
- * @returns {string} - One or two character initials
- * @example
- * // Returns "JD"
- * getUserInitials("John Doe")
- * // Returns "J"
- * getUserInitials("John")
- * // Returns "?"
- * getUserInitials("")
+ * Get user initials from name
+ * @param {string} firstName - User's first name
+ * @param {string} lastName - User's last name
+ * @param {string} fallbackName - Fallback full name if firstName and lastName are not provided
+ * @returns {string} User initials (max 2 characters)
  */
-export const getUserInitials = (name) => {
-  if (!name) return "?";
-  
-  const parts = name.trim().split(' ');
-  if (parts.length === 1) {
-    return parts[0].charAt(0).toUpperCase();
+export const getUserInitials = (firstName, lastName, fallbackName) => {
+  // If firstName and lastName are provided, use them
+  if (firstName && lastName) {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   }
-  
-  return parts[0].charAt(0).toUpperCase() + parts[parts.length - 1].charAt(0).toUpperCase();
+
+  // If only firstName is provided
+  if (firstName && !lastName) {
+    return firstName.charAt(0).toUpperCase();
+  }
+
+  // If only lastName is provided
+  if (!firstName && lastName) {
+    return lastName.charAt(0).toUpperCase();
+  }
+
+  // Use fallbackName if provided
+  if (fallbackName) {
+    const nameParts = fallbackName.split(" ").filter((part) => part.length > 0);
+    if (nameParts.length >= 2) {
+      return `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(
+        0
+      )}`.toUpperCase();
+    } else if (nameParts.length === 1) {
+      return nameParts[0].charAt(0).toUpperCase();
+    }
+  }
+
+  // Default return if no name data is available
+  return "U";
 };
 
 /**
- * Formats a user role for display
- * @param {string} role - User role (typically uppercase)
- * @returns {string} - Formatted role for display (capitalized)
- * @example
- * // Returns "Admin"
- * formatUserRole("ADMIN")
+ * Format user role for display
+ * @param {string} role - User role
+ * @returns {string} Formatted role
  */
 export const formatUserRole = (role) => {
-  if (!role) return '';
-  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+  if (!role) return "User";
+
+  switch (role.toLowerCase()) {
+    case "admin":
+      return "Administrator";
+    case "pio":
+      return "Public Information Officer";
+    case "student":
+      return "Student";
+    default:
+      return role.charAt(0).toUpperCase() + role.slice(1);
+  }
 };
 
 /**
@@ -51,6 +74,6 @@ export const hasPermission = (user, allowedRoles) => {
   if (!user || !user.role || !allowedRoles) {
     return false;
   }
-  
+
   return allowedRoles.includes(user.role);
-}; 
+};
