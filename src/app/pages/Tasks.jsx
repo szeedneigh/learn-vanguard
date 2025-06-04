@@ -1,9 +1,5 @@
-import { useState } from "react";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-} from "@hello-pangea/dnd";
+import { useState, useEffect } from "react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
   ArrowUpCircle,
   CheckCircle,
@@ -28,11 +24,21 @@ import StatCard from "@/components/section/StatCard";
 import { useTasksPage } from "@/hooks/useTasksQuery";
 import { usePermission } from "@/context/PermissionContext";
 import { PERMISSIONS } from "@/lib/constants";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 const Tasks = () => {
   const { toast } = useToast();
   const { hasPermission } = usePermission();
-  
+
   // Local state for UI
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -40,6 +46,14 @@ const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [taskToArchive, setTaskToArchive] = useState(null);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+
+  // Update showArchived state based on statusFilter
+  useEffect(() => {
+    setShowArchived(statusFilter === "archived");
+  }, [statusFilter]);
 
   // React Query hook for all task operations
   const {
@@ -60,24 +74,36 @@ const Tasks = () => {
     isUpdatingStatus,
     isArchiving,
     isMutating,
-  } = useTasksPage({ 
+  } = useTasksPage({
     search: searchQuery,
-    status: statusFilter !== 'all' ? statusFilter : undefined,
-    showArchived 
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    showArchived,
   });
 
-  const taskStatusColumns = ["Not Started", "In Progress", "On Hold", "Completed"];
+  const taskStatusColumns = [
+    "Not Started",
+    "In Progress",
+    "On Hold",
+    "Completed",
+  ];
 
   // Filter tasks for display based on search and status
-  const filteredTasks = tasks.filter(task => {
-    const searchMatch = !searchQuery || 
+  const filteredTasks = tasks.filter((task) => {
+    const searchMatch =
+      !searchQuery ||
       task.taskName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.taskDescription?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const statusMatch = statusFilter === 'all' || 
-      mapStatusForDisplay(task.taskStatus) === statusFilter;
-    
-    return searchMatch && statusMatch;
+
+    // Handle archived filter separately
+    if (statusFilter === "archived") {
+      return searchMatch && (task.isArchived || task.archived);
+    } else {
+      const statusMatch =
+        statusFilter === "all" ||
+        mapStatusForDisplay(task.taskStatus) === statusFilter;
+
+      return searchMatch && statusMatch && !(task.isArchived || task.archived);
+    }
   });
 
   // Handler functions
@@ -92,25 +118,124 @@ const Tasks = () => {
   };
 
   const handleDeleteTask = (taskId) => {
-    deleteTaskMutation(taskId);
+    // Find the task to ensure we have the correct ID
+    const task = tasks.find((t) => t.id === taskId || t._id === taskId);
+    if (!task) {
+      console.error("Cannot delete task: Task not found", taskId);
+      toast({
+        title: "Error",
+        description: "Failed to delete task: Task not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Use the task's _id or id property (MongoDB uses _id)
+    const actualTaskId = task._id || task.id;
+
+    if (!actualTaskId) {
+      console.error("Cannot delete task: Invalid task ID", task);
+      toast({
+        title: "Error",
+        description: "Failed to delete task: Invalid task ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    deleteTaskMutation(actualTaskId);
     setTaskToDelete(null);
   };
 
   const handleStatusChange = (taskId, newStatus, completedDate = null) => {
+    if (!taskId) {
+      console.error("Cannot update task status: Task ID is undefined");
+      toast({
+        title: "Error",
+        description: "Failed to update task status: Invalid task ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("Updating task status:", { taskId, newStatus, completedDate });
+
     const updateData = { taskStatus: mapStatusForAPI(newStatus) };
-    if (newStatus === 'completed' && completedDate) {
+    if (newStatus === "completed" && completedDate) {
       updateData.dateCompleted = completedDate;
     }
-    updateTaskStatus({ taskId, status: mapStatusForAPI(newStatus) });
+
+    updateTaskStatus({
+      taskId,
+      status: mapStatusForAPI(newStatus),
+    });
   };
 
   const handleSetHighPriority = (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
+    const task = tasks.find((t) => t.id === taskId || t._id === taskId);
     if (task) {
-      updateTask({ 
-        taskId, 
-        taskData: { taskPriority: task.taskPriority === 'High' ? 'Medium' : 'High' }
+      // Use the task's _id or id property (MongoDB uses _id)
+      const actualTaskId = task._id || task.id;
+
+      updateTask({
+        taskId: actualTaskId,
+        taskData: {
+          taskPriority: task.taskPriority === "High" ? "Medium" : "High",
+        },
       });
+    }
+  };
+
+  const handleArchiveTask = (taskId) => {
+    if (!taskId) {
+      console.error("Cannot archive task: Task ID is undefined");
+      return;
+    }
+
+    const task = tasks.find((t) => t.id === taskId || t._id === taskId);
+    if (!task) {
+      console.error("Cannot archive task: Task not found", taskId);
+      return;
+    }
+
+    // Use the task's _id or id property (MongoDB uses _id)
+    const actualTaskId = task._id || task.id;
+
+    console.log("Archiving task:", { taskId: actualTaskId, task });
+
+    updateTask({
+      taskId: actualTaskId,
+      taskData: {
+        archived: true,
+        isArchived: true,
+        archivedAt: new Date().toISOString(),
+      },
+    });
+
+    toast({
+      title: "Task Archived",
+      description: "The task has been moved to archives.",
+      variant: "default",
+    });
+
+    setTaskToArchive(null);
+    setArchiveDialogOpen(false);
+  };
+
+  const openArchiveDialog = (taskId) => {
+    const task = tasks.find((t) => t.id === taskId || t._id === taskId);
+    if (task) {
+      setTaskToArchive(task);
+      setArchiveDialogOpen(true);
+    }
+  };
+
+  const handleArchiveConfirm = () => {
+    if (taskToArchive) {
+      const actualTaskId = taskToArchive._id || taskToArchive.id;
+      if (actualTaskId) {
+        handleArchiveTask(actualTaskId);
+      }
     }
   };
 
@@ -129,59 +254,105 @@ const Tasks = () => {
     }
 
     if (source.droppableId !== destination.droppableId) {
-      const taskId = draggableId;
+      // Find the task object using the draggableId
+      const task = filteredTasks.find(
+        (t) => String(t._id || t.id) === draggableId
+      );
+
+      if (!task) {
+        console.error("Task not found for draggableId:", draggableId);
+        toast({
+          title: "Error",
+          description: "Failed to update task: Task not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Use the task's _id or id property (MongoDB uses _id)
+      const taskId = task._id || task.id;
+
+      if (!taskId) {
+        console.error("Invalid task ID in drag operation:", task);
+        toast({
+          title: "Error",
+          description: "Failed to update task: Invalid task ID",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const newApiStatus = destination.droppableId;
-      
+
       if (newApiStatus === "completed") {
-        const task = filteredTasks.find(t => String(t.id) === taskId);
-        if (task) {
-          toast({
-            title: "Complete Task?",
-            description: `Are you sure you want to mark "${task.taskName}" as completed?`,
-            action: (
-              <div className="flex gap-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => {
-                    handleStatusChange(taskId, newApiStatus, new Date().toISOString());
-                    toast({
-                      title: "🎉 Task Completed!",
-                      description: "Great job on completing this task!",
-                      variant: "success",
-                    });
-                  }}
-                >
-                  Yes
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    handleStatusChange(taskId, source.droppableId);
-                  }}
-                >
-                  No
-                </Button>
-              </div>
-            ),
-          });
-        }
+        toast({
+          title: "Complete Task?",
+          description: `Are you sure you want to mark "${
+            task.taskName || task.name
+          }" as completed?`,
+          action: (
+            <div className="flex gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  handleStatusChange(
+                    taskId,
+                    newApiStatus,
+                    new Date().toISOString()
+                  );
+                  // Force refetch to update summary stats
+                  refetch();
+                  toast({
+                    title: "🎉 Task Completed!",
+                    description: "Great job on completing this task!",
+                    variant: "success",
+                  });
+                }}
+              >
+                Yes
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  handleStatusChange(taskId, source.droppableId);
+                }}
+              >
+                No
+              </Button>
+            </div>
+          ),
+        });
       } else {
         handleStatusChange(taskId, newApiStatus);
+        // Force refetch to update summary stats
+        refetch();
       }
     }
   };
 
   const handleDeleteConfirm = () => {
     if (taskToDelete) {
-      handleDeleteTask(taskToDelete.id);
+      // Use the task's _id or id property (MongoDB uses _id)
+      const actualTaskId = taskToDelete._id || taskToDelete.id;
+
+      if (!actualTaskId) {
+        console.error("Cannot delete task: Invalid task ID", taskToDelete);
+        toast({
+          title: "Error",
+          description: "Failed to delete task: Invalid task ID",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      handleDeleteTask(actualTaskId);
       toast({
         title: "Task Deleted",
         description: "The task has been permanently deleted.",
         variant: "default",
       });
-      setTaskToDelete(null);
     }
   };
 
@@ -196,13 +367,22 @@ const Tasks = () => {
 
   const mapStatusForDisplay = (apiStatus) => {
     if (!apiStatus) return "Unknown";
+    // Convert to lowercase for case-insensitive comparison
+    const apiStatusLower =
+      typeof apiStatus === "string" ? apiStatus.toLowerCase() : "";
+
     const statusMap = {
       "not-started": "Not Started",
       "in-progress": "In Progress",
       "on-hold": "On Hold",
-      "completed": "Completed" 
+      completed: "Completed",
+      // Add mappings for backend format
+      "not yet started": "Not Started",
+      "in progress": "In Progress",
+      "on-hold": "On Hold",
+      completed: "Completed",
     };
-    return statusMap[apiStatus.toLowerCase()] || apiStatus;
+    return statusMap[apiStatusLower] || apiStatus;
   };
 
   const mapStatusForAPI = (displayStatus) => {
@@ -211,14 +391,14 @@ const Tasks = () => {
       "Not Started": "not-started",
       "In Progress": "in-progress",
       "On Hold": "on-hold",
-      "Completed": "completed"
+      Completed: "completed",
     };
     return statusMap[displayStatus] || displayStatus;
   };
 
   const getTasksForColumn = (columnDisplayStatus) => {
-    return filteredTasks.filter(task => 
-      mapStatusForDisplay(task.taskStatus) === columnDisplayStatus
+    return filteredTasks.filter(
+      (task) => mapStatusForDisplay(task.taskStatus) === columnDisplayStatus
     );
   };
 
@@ -270,14 +450,15 @@ const Tasks = () => {
                   <SelectItem value="in-progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="on-hold">On Hold</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
               {hasPermission(PERMISSIONS.CREATE_TASK) && (
-                <Button 
+                <Button
                   onClick={() => {
                     setEditingTask(null);
                     setIsModalOpen(true);
-                  }} 
+                  }}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm flex items-center"
                 >
                   <Plus size={18} className="mr-2" />
@@ -289,8 +470,8 @@ const Tasks = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {taskStatusColumns.map((statusColumnDisplay) => (
-              <Droppable 
-                droppableId={mapStatusForAPI(statusColumnDisplay)} 
+              <Droppable
+                droppableId={mapStatusForAPI(statusColumnDisplay)}
                 key={statusColumnDisplay}
                 isDropDisabled={showArchived}
               >
@@ -300,50 +481,77 @@ const Tasks = () => {
                     ref={provided.innerRef}
                     className={`bg-gray-200/70 rounded-lg p-4 min-h-[300px] transition-colors duration-200 ease-in-out
                                 ${snapshot.isDraggingOver ? "bg-blue-100" : ""}
-                                ${statusColumnDisplay === "Completed" ? "bg-green-100/50" : ""}`}
+                                ${
+                                  statusColumnDisplay === "Completed"
+                                    ? "bg-green-100/50"
+                                    : ""
+                                }`}
                   >
                     <div className="flex items-center mb-5">
-                      <h2 className={`text-base font-semibold ${statusColumnDisplay === "Completed" ? "text-green-700" : "text-gray-700"}`}>
+                      <h2
+                        className={`text-base font-semibold ${
+                          statusColumnDisplay === "Completed"
+                            ? "text-green-700"
+                            : "text-gray-700"
+                        }`}
+                      >
                         {statusColumnDisplay}
                       </h2>
-                      <span className={`ml-2 text-sm font-medium ${statusColumnDisplay === "Completed" ? "text-green-600" : "text-gray-500"}`}>
+                      <span
+                        className={`ml-2 text-sm font-medium ${
+                          statusColumnDisplay === "Completed"
+                            ? "text-green-600"
+                            : "text-gray-500"
+                        }`}
+                      >
                         {getTasksForColumn(statusColumnDisplay).length}
                       </span>
                     </div>
-                    
-                    {getTasksForColumn(statusColumnDisplay).length === 0 && !snapshot.isDraggingOver && (
-                         <div className="text-center text-sm text-gray-400 mt-10">
-                            No tasks here.
-                         </div>
-                    )}
 
-                    {getTasksForColumn(statusColumnDisplay).map((task, index) => (
-                      <Draggable 
-                        key={String(task.id)}
-                        draggableId={String(task.id)}
-                        index={index}
-                        isDragDisabled={showArchived || task.isArchived}
-                      >
-                        {(providedDraggable, snapshotDraggable) => (
-                          <div
-                            ref={providedDraggable.innerRef}
-                            {...providedDraggable.draggableProps}
-                            {...providedDraggable.dragHandleProps}
-                            className={`select-none ${snapshotDraggable.isDragging ? "opacity-75" : ""}`}
-                          >
-                            <TaskCard 
-                              task={{ ...task, status: mapStatusForDisplay(task.status) }}
-                              onEdit={() => {
-                                setEditingTask(task);
-                                setIsModalOpen(true);
-                              }}
-                              onDelete={() => setTaskToDelete(task)}
-                              onSetHighPriority={() => handleHighPriorityClick(task.id)}
-                            />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
+                    {getTasksForColumn(statusColumnDisplay).length === 0 &&
+                      !snapshot.isDraggingOver && (
+                        <div className="text-center text-sm text-gray-400 mt-10">
+                          No tasks here.
+                        </div>
+                      )}
+
+                    {getTasksForColumn(statusColumnDisplay).map(
+                      (task, index) => (
+                        <Draggable
+                          key={String(task._id || task.id)}
+                          draggableId={String(task._id || task.id)}
+                          index={index}
+                          isDragDisabled={showArchived || task.isArchived}
+                        >
+                          {(providedDraggable, snapshotDraggable) => (
+                            <div
+                              ref={providedDraggable.innerRef}
+                              {...providedDraggable.draggableProps}
+                              {...providedDraggable.dragHandleProps}
+                              className={`select-none ${
+                                snapshotDraggable.isDragging ? "opacity-75" : ""
+                              }`}
+                            >
+                              <TaskCard
+                                task={{
+                                  ...task,
+                                  status: mapStatusForDisplay(task.taskStatus),
+                                }}
+                                onEdit={() => {
+                                  setEditingTask(task);
+                                  setIsModalOpen(true);
+                                }}
+                                onDelete={() => setTaskToDelete(task)}
+                                onSetHighPriority={() =>
+                                  handleHighPriorityClick(task._id || task.id)
+                                }
+                                onArchive={openArchiveDialog}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      )
+                    )}
                     {provided.placeholder}
                   </div>
                 )}
@@ -369,6 +577,53 @@ const Tasks = () => {
             onConfirm={handleDeleteConfirm}
             taskName={taskToDelete?.name}
           />
+
+          {/* Archive Confirmation Dialog */}
+          <AlertDialog
+            open={archiveDialogOpen}
+            onOpenChange={setArchiveDialogOpen}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Archive this task?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This task will be moved to the archive. You can restore it
+                  later from the Archive page.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleArchiveConfirm}>
+                  Archive
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  task from the system.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteConfirm}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </DragDropContext>

@@ -176,13 +176,14 @@ PasswordInput.propTypes = {
  */
 export default function LogIn() {
   const navigate = useNavigate();
-  const { login, isLoading: authIsLoading } = useAuth();
+  const { login, loginWithGoogle, isLoading: authIsLoading } = useAuth();
   const [formErrors, setFormErrors] = useState({});
   const [apiError, setApiError] = useState(null);
   const [formData, setFormData] = useState({
     emailOrUsername: "",
     password: "",
   });
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const validateForm = () => {
     const errors = {};
@@ -303,6 +304,33 @@ export default function LogIn() {
     },
     [login, formData, navigate]
   );
+
+  // Add Google sign-in handler
+  const handleGoogleSignIn = async (e) => {
+    e.preventDefault();
+    setApiError(null);
+    setIsGoogleLoading(true);
+
+    try {
+      const result = await loginWithGoogle();
+
+      if (result?.success) {
+        // Wait a moment to ensure auth state is updated
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 500);
+      } else {
+        setApiError(
+          result?.error || "Google sign-in failed. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      setApiError("An unexpected error occurred during Google sign-in.");
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/95 via-indigo-50/95 to-violet-50/95 backdrop-blur-sm">
@@ -475,9 +503,9 @@ export default function LogIn() {
                     </div>
                   </motion.div>
 
-                  <motion.a
-                    href="https://accounts.google.com"
-                    rel="noopener noreferrer"
+                  <motion.button
+                    onClick={handleGoogleSignIn}
+                    disabled={isGoogleLoading || authIsLoading}
                     className="w-full h-12 border border-gray-300 text-gray-700 rounded-lg font-medium flex items-center justify-center gap-2 shadow-sm hover:border-gray-400 hover:shadow-md bg-white relative transition-all duration-300"
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
@@ -506,9 +534,13 @@ export default function LogIn() {
                         fill="#EA4335"
                       />
                     </svg>
-                    <span>Continue with Google</span>
+                    <span>
+                      {isGoogleLoading
+                        ? "Signing in..."
+                        : "Continue with Google"}
+                    </span>
                     <div className="absolute inset-0 bg-black/5 opacity-0 hover:opacity-100 transition-opacity rounded-lg" />
-                  </motion.a>
+                  </motion.button>
                 </form>
               </motion.div>
             </AnimatePresence>

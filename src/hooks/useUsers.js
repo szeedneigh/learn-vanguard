@@ -1,23 +1,25 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast"; // Assuming useToast is in the root hooks dir
 import {
   getUsers,
   createUser,
   assignUserRole,
   deleteUser,
-} from '@/services/users';
+} from "@/services/users";
 
 const programsData = [
-  { id: 'bsis', name: 'Bachelor of Science in Information Systems', years: 4 },
-  { id: 'act', name: 'Associate in Computer Technology', years: 2 }
+  { id: "bsis", name: "Bachelor of Science in Information Systems", years: 4 },
+  { id: "act", name: "Associate in Computer Technology", years: 2 },
 ];
 
 export const useUsers = () => {
-  const [searchQuery, setSearchQuery] = useState(''); // For filtering the main student list
-  const [filterOption, setFilterOption] = useState('all'); // 'all', 'girls', 'boys'
+  const [searchQuery, setSearchQuery] = useState(""); // For filtering the main student list
+  const [filterOption, setFilterOption] = useState("all"); // 'all', 'pio', 'student'
   const [programs, setPrograms] = useState(programsData); // Could be fetched from API
-  const [selectedProgramId, setSelectedProgramId] = useState(programsData[0].id); // Default to first program
-  const [selectedYear, setSelectedYear] = useState('1'); // Default to year 1
+  const [selectedProgramId, setSelectedProgramId] = useState(
+    programsData[0].id
+  ); // Default to first program
+  const [selectedYear, setSelectedYear] = useState("1"); // Default to year 1
 
   const [students, setStudents] = useState([]); // Students currently displayed for the selected program/year
   const [isLoading, setIsLoading] = useState(false); // For loading indicators (main page data)
@@ -26,7 +28,7 @@ export const useUsers = () => {
 
   // Add Student Modal State
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addStudentSearchQuery, setAddStudentSearchQuery] = useState(''); // Search query inside the modal
+  const [addStudentSearchQuery, setAddStudentSearchQuery] = useState(""); // Search query inside the modal
   const [addStudentSearchResults, setAddStudentSearchResults] = useState([]); // Results for the modal search
   const [studentToAdd, setStudentToAdd] = useState(null); // Student selected from search results
   const [isSearchingStudents, setIsSearchingStudents] = useState(false); // Loading state for modal search
@@ -42,7 +44,10 @@ export const useUsers = () => {
   const { toast } = useToast(); // Uncomment and use if you have a toast system
 
   // --- Derived State ---
-  const currentProgram = useMemo(() => programs.find(p => p.id === selectedProgramId) || programs[0], [programs, selectedProgramId]);
+  const currentProgram = useMemo(
+    () => programs.find((p) => p.id === selectedProgramId) || programs[0],
+    [programs, selectedProgramId]
+  );
 
   // --- Effects ---
 
@@ -55,21 +60,25 @@ export const useUsers = () => {
       setIsLoading(true); // Use main loading state for fetching list data
       setError(null); // Clear previous errors
       try {
-        const data = await getUsers({ 
-          programId: selectedProgramId, 
-          year: selectedYear, 
-          role: 'STUDENT',
-          signal: abortController.signal 
+        const data = await getUsers({
+          programId: selectedProgramId,
+          year: selectedYear,
+          role: "STUDENT",
+          signal: abortController.signal,
         });
-        
+
         if (!isStale) {
           setStudents(data);
         }
       } catch (err) {
-        if (!isStale && err.name !== 'AbortError') {
+        if (!isStale && err.name !== "AbortError") {
           console.error("Error fetching students:", err);
           setError("Failed to load students. Please try again.");
-          toast({ title: "Error", description: "Failed to load students.", variant: "destructive" });
+          toast({
+            title: "Error",
+            description: "Failed to load students.",
+            variant: "destructive",
+          });
           setStudents([]); // Clear students on error
         }
       } finally {
@@ -101,21 +110,21 @@ export const useUsers = () => {
 
     setIsSearchingStudents(true);
     const currentQuery = addStudentSearchQuery; // Capture current query value
-    
+
     const debounceTimeout = setTimeout(async () => {
       try {
-        const results = await getUsers({ 
-          search: currentQuery, 
-          role: 'STUDENT',
-          signal: abortController.signal 
+        const results = await getUsers({
+          search: currentQuery,
+          role: "STUDENT",
+          signal: abortController.signal,
         });
-        
+
         // Only update if the query hasn't changed and component is still mounted
         if (!isStale && currentQuery === addStudentSearchQuery) {
           setAddStudentSearchResults(results);
         }
       } catch (err) {
-        if (!isStale && err.name !== 'AbortError') {
+        if (!isStale && err.name !== "AbortError") {
           console.error("Error searching students:", err);
           setAddStudentSearchResults([]); // Clear results on error
         }
@@ -139,9 +148,9 @@ export const useUsers = () => {
   const handleProgramChange = (programId) => {
     if (programId !== selectedProgramId) {
       setSelectedProgramId(programId);
-      setSelectedYear('1'); // Reset to year 1 when changing programs
-      setSearchQuery(''); // Clear search when changing context
-      setFilterOption('all'); // Reset filter
+      setSelectedYear("1"); // Reset to year 1 when changing programs
+      setSearchQuery(""); // Clear search when changing context
+      setFilterOption("all"); // Reset filter
     }
   };
 
@@ -149,8 +158,8 @@ export const useUsers = () => {
   const handleYearChange = (year) => {
     if (year !== selectedYear) {
       setSelectedYear(year);
-      setSearchQuery(''); // Clear search
-      setFilterOption('all'); // Reset filter
+      setSearchQuery(""); // Clear search
+      setFilterOption("all"); // Reset filter
     }
   };
 
@@ -160,33 +169,40 @@ export const useUsers = () => {
     const safeStudents = Array.isArray(students) ? students : [];
 
     // Filter by search query (main list)
-    const queryFiltered = safeStudents.filter(student => {
+    const queryFiltered = safeStudents.filter((student) => {
       // Normalize search fields to strings
-      const name = typeof student.name === 'string' ? student.name : '';
-      const id = student.id != null ? String(student.id) : '';
-      const email = typeof student.email === 'string' ? student.email : '';
+      const name = typeof student.name === "string" ? student.name : "";
+      const id = student.id != null ? String(student.id) : "";
+      const email = typeof student.email === "string" ? student.email : "";
       const searchTerm = searchQuery.toLowerCase();
-      
-      return name.toLowerCase().includes(searchTerm) ||
-             id.toLowerCase().includes(searchTerm) ||
-             email.toLowerCase().includes(searchTerm);
+
+      return (
+        name.toLowerCase().includes(searchTerm) ||
+        id.toLowerCase().includes(searchTerm) ||
+        email.toLowerCase().includes(searchTerm)
+      );
     });
 
-    // Filter by gender
-    let genderFiltered;
-    if (filterOption === 'girls') {
-      genderFiltered = queryFiltered.filter(student => student.gender === 'female');
-    } else if (filterOption === 'boys') {
-      genderFiltered = queryFiltered.filter(student => student.gender === 'male');
+    // Filter by role
+    let roleFiltered;
+    if (filterOption === "pio") {
+      roleFiltered = queryFiltered.filter((student) => student.role === "PIO");
+    } else if (filterOption === "student") {
+      roleFiltered = queryFiltered.filter(
+        (student) => !student.role || student.role !== "PIO"
+      );
     } else {
-      genderFiltered = queryFiltered;
+      roleFiltered = queryFiltered;
     }
 
     // Sort alphabetically by name
-    return [...genderFiltered].sort((a, b) => a.name.localeCompare(b.name));
+    return [...roleFiltered].sort((a, b) => a.name.localeCompare(b.name));
   }, [students, searchQuery, filterOption]); // Dependencies for memoization
 
-  const sortedAndFilteredStudents = useMemo(() => getFilteredAndSortedStudents(), [getFilteredAndSortedStudents]);
+  const sortedAndFilteredStudents = useMemo(
+    () => getFilteredAndSortedStudents(),
+    [getFilteredAndSortedStudents]
+  );
 
   // Open Modals
   const openAssignRoleModal = (student) => {
@@ -202,7 +218,7 @@ export const useUsers = () => {
   const openAddStudentModal = () => {
     setShowAddModal(true);
     // Reset modal state when opening
-    setAddStudentSearchQuery('');
+    setAddStudentSearchQuery("");
     setAddStudentSearchResults([]);
     setStudentToAdd(null);
   };
@@ -211,7 +227,7 @@ export const useUsers = () => {
   const closeAddModal = () => {
     setShowAddModal(false);
     // Reset state on close
-    setAddStudentSearchQuery('');
+    setAddStudentSearchQuery("");
     setAddStudentSearchResults([]);
     setStudentToAdd(null);
   };
@@ -243,17 +259,18 @@ export const useUsers = () => {
     }
 
     // Check for existing student with same id in this program/year
-    const isDuplicate = students.some(student => 
-      student.id === studentToAdd.id && 
-      student.programId === selectedProgramId && 
-      student.year === parseInt(selectedYear)
+    const isDuplicate = students.some(
+      (student) =>
+        student.id === studentToAdd.id &&
+        student.programId === selectedProgramId &&
+        student.year === parseInt(selectedYear)
     );
 
     if (isDuplicate) {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: "This student is already in this program and year.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -270,19 +287,29 @@ export const useUsers = () => {
         ...studentToAdd,
         role: null, // Default role
         programId: selectedProgramId,
-        year: parseInt(selectedYear)
+        year: parseInt(selectedYear),
       };
       // Add to the list and re-sort
-      setStudents(prev => [...prev, newStudentEntry].sort((a, b) => a.name.localeCompare(b.name)));
+      setStudents((prev) =>
+        [...prev, newStudentEntry].sort((a, b) => a.name.localeCompare(b.name))
+      );
 
-      console.log(`Added ${studentToAdd.name} to ${currentProgram.name} Year ${selectedYear}.`);
-      toast({ title: "Student Added", description: `${studentToAdd.name} added.` });
+      console.log(
+        `Added ${studentToAdd.name} to ${currentProgram.name} Year ${selectedYear}.`
+      );
+      toast({
+        title: "Student Added",
+        description: `${studentToAdd.name} added.`,
+      });
       closeAddModal(); // Close modal on success
-
     } catch (err) {
       console.error("Error adding student:", err);
       setError("Failed to add student. Please try again.");
-      toast({ title: "Error", description: "Failed to add student.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to add student.",
+        variant: "destructive",
+      });
     } finally {
       setIsActionLoading(false);
     }
@@ -295,25 +322,31 @@ export const useUsers = () => {
     setIsActionLoading(true);
     setError(null);
     try {
-      await assignUserRole(studentToAssignRole.id, 'PIO');
+      await assignUserRole(studentToAssignRole.id, "PIO");
 
       // Update the role in the local state
-      setStudents(prev =>
-        prev.map(student =>
+      setStudents((prev) =>
+        prev.map((student) =>
           student.id === studentToAssignRole.id
-            ? { ...student, role: 'PIO' }
+            ? { ...student, role: "PIO" }
             : student
         )
       );
 
       console.log(`${studentToAssignRole.name} has been assigned as PIO.`);
-      toast({ title: "Role Assigned", description: `${studentToAssignRole.name} is now a PIO.` }); // Example toast
+      toast({
+        title: "Role Assigned",
+        description: `${studentToAssignRole.name} is now a PIO.`,
+      }); // Example toast
       closeAssignRoleModal();
-
     } catch (err) {
       console.error("Error assigning role:", err);
       setError("Failed to assign role. Please try again.");
-      toast({ title: "Error", description: "Failed to assign role.", variant: "destructive" }); // Example toast
+      toast({
+        title: "Error",
+        description: "Failed to assign role.",
+        variant: "destructive",
+      }); // Example toast
     } finally {
       setIsActionLoading(false);
     }
@@ -330,16 +363,24 @@ export const useUsers = () => {
       await deleteUser(studentToRemove.id, selectedProgramId, selectedYear);
 
       // Remove the student from the local state
-      setStudents(prev => prev.filter(student => student.id !== studentToRemove.id));
+      setStudents((prev) =>
+        prev.filter((student) => student.id !== studentToRemove.id)
+      );
 
       console.log(`${studentToRemove.name} has been removed from the class.`);
-      toast({ title: "Student Removed", description: `${studentToRemove.name} removed.` }); // Example toast
+      toast({
+        title: "Student Removed",
+        description: `${studentToRemove.name} removed.`,
+      }); // Example toast
       closeRemoveModal();
-
     } catch (err) {
       console.error("Error removing student:", err);
       setError("Failed to remove student. Please try again.");
-      toast({ title: "Error", description: "Failed to remove student.", variant: "destructive" }); // Example toast
+      toast({
+        title: "Error",
+        description: "Failed to remove student.",
+        variant: "destructive",
+      }); // Example toast
     } finally {
       setIsActionLoading(false);
     }

@@ -23,7 +23,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { parseISO, startOfDay } from 'date-fns';
+import { parseISO, startOfDay } from "date-fns";
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 500;
@@ -31,16 +31,20 @@ const MAX_DESCRIPTION_LENGTH = 500;
 const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
   const { toast } = useToast();
   const [errors, setErrors] = useState({});
-  
-  const initialFormState = useMemo(() => ({
-    id: editTask?.id || null,
-    name: editTask?.name || "",
-    description: editTask?.description || "",
-    dueDate: editTask?.dueDate || "",
-    priority: editTask?.priority || "Medium",
-    status: editTask?.status || "not-started",
-    lastUpdated: editTask?.lastUpdated || new Date().toISOString()
-  }), [editTask]);
+
+  const initialFormState = useMemo(
+    () => ({
+      id: editTask?.id || null,
+      name: editTask?.name || "",
+      description: editTask?.description || "",
+      dueDate: editTask?.dueDate || "",
+      priority: editTask?.priority || "Medium Priority",
+      status: editTask?.status || "not-started",
+      onHoldRemark: editTask?.onHoldRemark || "",
+      lastUpdated: editTask?.lastUpdated || new Date().toISOString(),
+    }),
+    [editTask]
+  );
 
   const [formData, setFormData] = useState(initialFormState);
 
@@ -77,42 +81,45 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
     return Object.keys(newErrors).length === 0;
   }, [formData]);
 
-  const handleSubmit = useCallback((e) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Please check all required fields.",
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      if (!validateForm()) {
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: "Please check all required fields.",
+        });
+        return;
+      }
+
+      onSubmit({
+        ...formData,
+        lastUpdated: new Date().toISOString(),
       });
-      return;
-    }
 
-    onSubmit({
-      ...formData,
-      lastUpdated: new Date().toISOString()
-    });
+      toast({
+        title: editTask ? "Task Updated" : "Task Created",
+        description: editTask
+          ? "Your task has been successfully updated."
+          : "New task has been added to your list.",
+      });
 
-    toast({
-      title: editTask ? "Task Updated" : "Task Created",
-      description: editTask 
-        ? "Your task has been successfully updated."
-        : "New task has been added to your list.",
-    });
-
-    onClose();
-  }, [formData, validateForm, onSubmit, onClose, editTask, toast]);
+      onClose();
+    },
+    [formData, validateForm, onSubmit, onClose, editTask, toast]
+  );
 
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   }, []);
 
   const getPriorityBadgeColor = (priority) => {
     const colors = {
       Low: "bg-green-100 text-green-800",
       Medium: "bg-yellow-100 text-yellow-800",
-      High: "bg-red-100 text-red-800"
+      High: "bg-red-100 text-red-800",
     };
     return colors[priority] || colors.Medium;
   };
@@ -125,10 +132,12 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
             {editTask ? "Edit Task" : "Create New Task"}
           </DialogTitle>
           <DialogDescription>
-            {editTask ? "Update your task details below" : "Fill in the details to create a new task"}
+            {editTask
+              ? "Update your task details below"
+              : "Fill in the details to create a new task"}
           </DialogDescription>
         </DialogHeader>
-        
+
         <ScrollArea className="max-h-[80vh]">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             <Card>
@@ -168,7 +177,9 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
                     placeholder="Enter task description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    className={`min-h-[120px] ${errors.description ? "ring-destructive" : ""}`}
+                    className={`min-h-[120px] ${
+                      errors.description ? "ring-destructive" : ""
+                    }`}
                   />
                   <div className="flex justify-between text-sm">
                     {errors.description && (
@@ -195,7 +206,9 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
                         type="date"
                         value={formData.dueDate}
                         onChange={handleInputChange}
-                        className={`pl-10 ${errors.dueDate ? "ring-destructive" : ""}`}
+                        className={`pl-10 ${
+                          errors.dueDate ? "ring-destructive" : ""
+                        }`}
                         min={new Date().toISOString().split("T")[0]}
                       />
                       <Calendar className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
@@ -214,7 +227,9 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
                     </Label>
                     <Select
                       value={formData.priority}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, priority: value }))
+                      }
                     >
                       <SelectTrigger id="priority">
                         <SelectValue placeholder="Select Priority" />
@@ -223,7 +238,10 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
                         {["Low", "Medium", "High"].map((priority) => (
                           <SelectItem key={priority} value={priority}>
                             <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className={getPriorityBadgeColor(priority)}>
+                              <Badge
+                                variant="secondary"
+                                className={getPriorityBadgeColor(priority)}
+                              >
                                 {priority}
                               </Badge>
                             </div>
@@ -246,17 +264,10 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
             )}
 
             <div className="flex justify-end gap-3 pt-4">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={onClose}
-              >
+              <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                className="bg-primary hover:bg-primary/90"
-              >
+              <Button type="submit" className="bg-primary hover:bg-primary/90">
                 {editTask ? "Save Changes" : "Create Task"}
               </Button>
             </div>

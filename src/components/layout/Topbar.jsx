@@ -4,55 +4,63 @@ import { cn } from "@/lib/utils";
 import ProfileModal from "../modal/ProfileModal";
 import NotificationPopup from "../modal/NotificationPopup";
 import { useAuth } from "@/context/AuthContext";
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
+import {
+  getUserNotifications,
+  markNotificationAsRead,
+} from "@/lib/api/notificationApi";
+import { formatDistanceToNow } from "date-fns";
+import { getUserInitials } from "@/utils/userUtils";
 
-const SearchInput = memo(({ searchValue, isSearchFocused, onSearchChange, onFocus, onBlur }) => (
-  <div
-    className={cn(
-      "relative flex items-center transition-all duration-300",
-      isSearchFocused ? "w-96" : "w-64"
-    )}
-  >
-    <Search
+const SearchInput = memo(
+  ({ searchValue, isSearchFocused, onSearchChange, onFocus, onBlur }) => (
+    <div
       className={cn(
-        "absolute left-3 transition-colors duration-200",
-        isSearchFocused ? "text-blue-500" : "text-gray-400",
-        "h-4 w-4"
+        "relative flex items-center transition-all duration-300",
+        isSearchFocused ? "w-96" : "w-64"
       )}
-    />
-    <input
-      type="text"
-      value={searchValue}
-      onChange={(e) => onSearchChange(e.target.value)}
-      placeholder="Search anything..."
-      className={cn(
-        "pl-10 pr-10 py-2.5 w-full",
-        "rounded-xl bg-gray-50",
-        "text-sm text-gray-900 placeholder:text-gray-400",
-        "transition-all duration-200",
-        "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white",
-        "hover:bg-gray-100 focus:hover:bg-white"
+    >
+      <Search
+        className={cn(
+          "absolute left-3 transition-colors duration-200",
+          isSearchFocused ? "text-blue-500" : "text-gray-400",
+          "h-4 w-4"
+        )}
+      />
+      <input
+        type="text"
+        value={searchValue}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search anything..."
+        className={cn(
+          "pl-10 pr-10 py-2.5 w-full",
+          "rounded-xl bg-gray-50",
+          "text-sm text-gray-900 placeholder:text-gray-400",
+          "transition-all duration-200",
+          "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white",
+          "hover:bg-gray-100 focus:hover:bg-white"
+        )}
+        onFocus={onFocus}
+        onBlur={onBlur}
+      />
+      {searchValue && (
+        <button
+          onClick={() => onSearchChange("")}
+          className="absolute right-3 p-1 hover:bg-gray-200 rounded-full transition-colors duration-200"
+        >
+          <X className="h-3 w-3 text-gray-400" />
+        </button>
       )}
-      onFocus={onFocus}
-      onBlur={onBlur}
-    />
-    {searchValue && (
-      <button
-        onClick={() => onSearchChange("")}
-        className="absolute right-3 p-1 hover:bg-gray-200 rounded-full transition-colors duration-200"
-      >
-        <X className="h-3 w-3 text-gray-400" />
-      </button>
-    )}
-  </div>
-));
+    </div>
+  )
+);
 
 SearchInput.propTypes = {
   searchValue: PropTypes.string.isRequired,
   isSearchFocused: PropTypes.bool.isRequired,
   onSearchChange: PropTypes.func.isRequired,
   onFocus: PropTypes.func.isRequired,
-  onBlur: PropTypes.func.isRequired
+  onBlur: PropTypes.func.isRequired,
 };
 
 const Topbar = memo(({ onSearch, onMenuClick }) => {
@@ -61,45 +69,65 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const notificationButtonRef = useRef(null);
   const profileButtonRef = useRef(null);
-  
+
   // Check if we're on mobile
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-    
-    return () => window.removeEventListener('resize', checkIfMobile);
+    window.addEventListener("resize", checkIfMobile);
+
+    return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "New Task Assigned",
-      message: "You have been assigned a new high-priority task",
-      time: "5 minutes ago",
-      read: false,
-    },
-    {
-      id: 2,
-      title: "Task Deadline Approaching",
-      message: "The task 'Complete project documentation' is due tomorrow",
-      time: "1 hour ago",
-      read: false,
-    },
-    {
-      id: 3,
-      title: "Task Status Updated",
-      message: "Task 'Review pull requests' has been marked as completed",
-      time: "2 hours ago",
-      read: true,
-    },
-  ]);
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getUserNotifications();
+      if (result.success && Array.isArray(result.data)) {
+        // Transform the notifications to match our UI format
+        const formattedNotifications = result.data.map((notification) => ({
+          id: notification._id,
+          title: notification.title,
+          message: notification.message,
+          time: formatDistanceToNow(new Date(notification.createdAt), {
+            addSuffix: true,
+          }),
+          read: notification.isRead,
+          type: notification.type,
+          referenceId: notification.referenceId,
+          createdAt: notification.createdAt,
+        }));
+        setNotifications(formattedNotifications);
+      } else {
+        console.error("Invalid notification data format:", result);
+        setNotifications([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch notifications on component mount
+  useEffect(() => {
+    fetchNotifications();
+
+    // Refresh notifications every 5 minutes
+    const intervalId = setInterval(fetchNotifications, 5 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [fetchNotifications]);
 
   const handleSearch = useCallback(
     (value) => {
@@ -116,14 +144,21 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
     [onSearch]
   );
 
-  const handleMarkAsRead = useCallback((notificationId) => {
-    setNotifications((prev) =>
-      prev.map((notification) =>
-        notification.id === notificationId
-          ? { ...notification, read: true }
-          : notification
-      )
-    );
+  const handleMarkAsRead = useCallback(async (notificationId) => {
+    try {
+      const result = await markNotificationAsRead(notificationId);
+      if (result.success) {
+        setNotifications((prev) =>
+          prev.map((notification) =>
+            notification.id === notificationId
+              ? { ...notification, read: true }
+              : notification
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
   }, []);
 
   const unreadCount = useMemo(
@@ -143,19 +178,15 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
   const handleSearchFocus = useCallback(() => setIsSearchFocused(true), []);
   const handleSearchBlur = useCallback(() => setIsSearchFocused(false), []);
   const toggleProfile = useCallback(() => setShowProfile((prev) => !prev), []);
-  const toggleNotifications = useCallback(
-    () => setShowNotifications((prev) => !prev),
-    []
-  );
+  const toggleNotifications = useCallback(() => {
+    setShowNotifications((prev) => !prev);
+    // Fetch fresh notifications when opening the popup
+    if (!showNotifications) {
+      fetchNotifications();
+    }
+  }, [fetchNotifications, showNotifications]);
   const closeProfile = useCallback(() => setShowProfile(false), []);
   const closeNotifications = useCallback(() => setShowNotifications(false), []);
-
-  const getUserInitials = (name) => {
-    if (!name) return "?";
-    const parts = name.split(' ');
-    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-    return parts[0].charAt(0).toUpperCase() + parts[parts.length - 1].charAt(0).toUpperCase();
-  };
 
   return (
     <div className="bg-white shadow-sm px-4 sm:px-6 py-4 sticky top-0 z-40">
@@ -210,6 +241,7 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
               isOpen={showNotifications}
               onClose={closeNotifications}
               triggerRef={notificationButtonRef}
+              isLoading={isLoading}
             />
           </div>
 
@@ -222,16 +254,53 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
                 "hover:bg-gray-100 active:bg-gray-200"
               )}
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
-                <span className="text-white text-sm font-semibold">
-                  {user ? getUserInitials(user.name) : ''}
-                </span>
-              </div>
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.name || "User avatar"}
+                  className="w-8 h-8 rounded-lg object-cover shadow-sm"
+                  onError={(e) => {
+                    // If avatar fails to load, replace with initials
+                    e.target.onerror = null;
+                    e.target.style.display = "none";
+                    // Create a fallback div with initials
+                    const parent = e.target.parentNode;
+                    if (!parent.querySelector(".avatar-fallback")) {
+                      const fallback = document.createElement("div");
+                      fallback.className =
+                        "w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-sm avatar-fallback";
+                      const span = document.createElement("span");
+                      span.className = "text-white text-sm font-semibold";
+                      span.textContent = user
+                        ? getUserInitials(
+                            user.firstName,
+                            user.lastName,
+                            user.name
+                          )
+                        : "";
+                      fallback.appendChild(span);
+                      parent.appendChild(fallback);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+                  <span className="text-white text-sm font-semibold">
+                    {user
+                      ? getUserInitials(
+                          user.firstName,
+                          user.lastName,
+                          user.name
+                        )
+                      : ""}
+                  </span>
+                </div>
+              )}
             </button>
-            <ProfileModal 
-              isOpen={showProfile} 
-              onClose={closeProfile} 
-              user={user} 
+            <ProfileModal
+              isOpen={showProfile}
+              onClose={closeProfile}
+              user={user}
               triggerRef={profileButtonRef}
             />
           </div>
@@ -246,7 +315,7 @@ Topbar.displayName = "Topbar";
 
 Topbar.propTypes = {
   onSearch: PropTypes.func,
-  onMenuClick: PropTypes.func
+  onMenuClick: PropTypes.func,
 };
 
 export default Topbar;

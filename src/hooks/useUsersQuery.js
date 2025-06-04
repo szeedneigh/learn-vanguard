@@ -1,19 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/queryClient';
-import { 
-  getUsers, 
-  getUser,
-  updateUser,
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
+import {
+  getUsers,
   deleteUser,
-  searchUsers,
-  getCurrentUserProfile, 
+  getCurrentUserProfile,
   updateCurrentUserProfile,
   updateUserRole,
   updateUserStatus,
   assignPIORole,
-  revertPIORole
-} from '@/lib/api/userApi';
-import { useToast } from '@/hooks/use-toast';
+  revertPIORole,
+} from "@/lib/api/userApi";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Hook for assigning PIO role
@@ -23,8 +20,17 @@ export const useAssignPIORole = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ userId, assignedClass }) => assignPIORole(userId, assignedClass),
-    onSuccess: (data) => {
+    mutationFn: async ({ userId, assignedClass }) => {
+      if (!userId) {
+        throw new Error("User ID is required to assign PIO role");
+      }
+
+      console.log(
+        `Assigning PIO role to user ${userId} with class ${assignedClass}`
+      );
+      return await assignPIORole(userId, assignedClass);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users });
       toast({
         title: "Success",
@@ -32,11 +38,22 @@ export const useAssignPIORole = () => {
       });
     },
     onError: (error) => {
+      console.error("Error in useAssignPIORole:", error);
+
+      // Check if the error is due to an existing PIO
+      const errorMessage =
+        error.error || error.message || "Failed to assign PIO role";
+      const isPIOExistsError = errorMessage.includes("already a PIO assigned");
+
       toast({
-        title: "Error",
-        description: error.error || "Failed to assign PIO role",
+        title: isPIOExistsError ? "PIO Already Exists" : "Error",
+        description: errorMessage,
         variant: "destructive",
+        duration: isPIOExistsError ? 5000 : 3000, // Show longer for important errors
       });
+
+      // Even on error, we should refresh the user list to ensure UI is up-to-date
+      queryClient.invalidateQueries({ queryKey: queryKeys.users });
     },
   });
 };
@@ -49,8 +66,15 @@ export const useRevertPIORole = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (userId) => revertPIORole(userId),
-    onSuccess: (data) => {
+    mutationFn: async (userId) => {
+      if (!userId) {
+        throw new Error("User ID is required to revert PIO role");
+      }
+      console.log(`Reverting PIO role for user ${userId}`);
+      return await revertPIORole(userId);
+    },
+    onSuccess: () => {
+      // Invalidate all user-related queries to ensure UI updates
       queryClient.invalidateQueries({ queryKey: queryKeys.users });
       toast({
         title: "Success",
@@ -58,11 +82,18 @@ export const useRevertPIORole = () => {
       });
     },
     onError: (error) => {
+      console.error("Error in useRevertPIORole:", error);
+      const errorMessage =
+        error.error || error.message || "Failed to revert PIO role";
+
       toast({
         title: "Error",
-        description: error.error || "Failed to revert PIO role",
+        description: errorMessage,
         variant: "destructive",
       });
+
+      // Even on error, we should refresh the user list to ensure UI is up-to-date
+      queryClient.invalidateQueries({ queryKey: queryKeys.users });
     },
   });
 };
@@ -83,17 +114,36 @@ export const useUsers = (filters = {}, options = {}) => {
 
 /**
  * Hook for fetching class students (simulated with filtered users)
- * @param {Object} classInfo - Class information (course, yearLevel)  
+ * @param {Object} classInfo - Class information (course, yearLevel)
  * @param {Object} options - React Query options
  */
 export const useClassStudents = (classInfo, options = {}) => {
   return useQuery({
     queryKey: queryKeys.usersByProgram(classInfo?.course, classInfo?.yearLevel),
-    queryFn: () => getUsers({ 
-      role: 'STUDENT',
-      programId: classInfo?.course,
-      year: classInfo?.yearLevel 
-    }),
+    queryFn: async () => {
+      try {
+        // Get all users (both students and PIOs) for this class
+        const response = await getUsers({
+          course: classInfo?.course,
+          yearLevel: classInfo?.yearLevel,
+        });
+
+        // Ensure consistent ID field naming
+        const data = response?.data || [];
+        return {
+          ...response,
+          data: data.map((user) => ({
+            ...user,
+            // Ensure both _id and id are available for compatibility
+            _id: user._id || user.id,
+            id: user.id || user._id,
+          })),
+        };
+      } catch (error) {
+        console.error("Error fetching class students:", error);
+        throw error;
+      }
+    },
     select: (data) => data?.data || [],
     enabled: !!(classInfo?.course && classInfo?.yearLevel),
     ...options,
@@ -122,20 +172,20 @@ export const useUpdateUserRole = () => {
 
   return useMutation({
     mutationFn: ({ userId, role }) => updateUserRole(userId, role),
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       // Invalidate and refetch users queries
       queryClient.invalidateQueries({ queryKey: queryKeys.users });
-      
+
       toast({
-        title: 'Success',
-        description: 'User role updated successfully',
+        title: "Success",
+        description: "User role updated successfully",
       });
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.error || 'Failed to update user role',
-        variant: 'destructive',
+        title: "Error",
+        description: error.error || "Failed to update user role",
+        variant: "destructive",
       });
     },
   });
@@ -150,20 +200,20 @@ export const useUpdateUserStatus = () => {
 
   return useMutation({
     mutationFn: ({ userId, status }) => updateUserStatus(userId, status),
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       // Invalidate and refetch users queries
       queryClient.invalidateQueries({ queryKey: queryKeys.users });
-      
+
       toast({
-        title: 'Success',
-        description: 'User status updated successfully',
+        title: "Success",
+        description: "User status updated successfully",
       });
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.error || 'Failed to update user status',
-        variant: 'destructive',
+        title: "Error",
+        description: error.error || "Failed to update user status",
+        variant: "destructive",
       });
     },
   });
@@ -177,21 +227,30 @@ export const useRemoveUser = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (userId) => deleteUser(userId),
-    onSuccess: (data) => {
+    mutationFn: async (userId) => {
+      if (!userId) {
+        throw new Error("User ID is required to remove a user");
+      }
+      return await deleteUser(userId);
+    },
+    onSuccess: () => {
       // Invalidate and refetch users queries
       queryClient.invalidateQueries({ queryKey: queryKeys.users });
-      
+
       toast({
-        title: 'Success',
-        description: 'User removed successfully',
+        title: "Success",
+        description: "User removed successfully",
       });
     },
     onError: (error) => {
+      console.error("Error in useRemoveUser:", error);
+      const errorMessage =
+        error.error || error.message || "Failed to remove user";
+
       toast({
-        title: 'Error',
-        description: error.error || 'Failed to remove user',
-        variant: 'destructive',
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
       });
     },
   });
@@ -209,17 +268,17 @@ export const useUpdateUserProfile = () => {
     onSuccess: (data) => {
       // Update the user profile cache
       queryClient.setQueryData(queryKeys.auth, data);
-      
+
       toast({
-        title: 'Success',
-        description: 'Profile updated successfully',
+        title: "Success",
+        description: "Profile updated successfully",
       });
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error.error || 'Failed to update profile',
-        variant: 'destructive',
+        title: "Error",
+        description: error.error || "Failed to update profile",
+        variant: "destructive",
       });
     },
   });
@@ -232,8 +291,22 @@ export const useUpdateUserProfile = () => {
  */
 export const useSearchUsers = (searchQuery, options = {}) => {
   return useQuery({
-    queryKey: queryKeys.users.concat(['search', searchQuery]),
-    queryFn: () => getUsers({ search: searchQuery, role: 'STUDENT' }),
+    queryKey: queryKeys.users.concat(["search", searchQuery]),
+    queryFn: async () => {
+      const response = await getUsers({ search: searchQuery, role: "student" });
+
+      // Ensure consistent ID field naming
+      const data = response?.data || [];
+      return {
+        ...response,
+        data: data.map((user) => ({
+          ...user,
+          // Ensure both _id and id are available for compatibility
+          _id: user._id || user.id,
+          id: user.id || user._id,
+        })),
+      };
+    },
     select: (data) => data?.data || [],
     enabled: !!(searchQuery && searchQuery.trim().length > 2),
     staleTime: 1000 * 30, // 30 seconds
@@ -246,41 +319,87 @@ export const useSearchUsers = (searchQuery, options = {}) => {
  * for the Users page component
  */
 export const useUsersPage = (selectedProgram, selectedYear) => {
+  // Map program ID to full course name
+  const getProgramName = (programId) => {
+    switch (programId) {
+      case "bsis":
+        return "Bachelor of Science in Information Systems";
+      case "act":
+        return "Associate in Computer Technology";
+      default:
+        return programId;
+    }
+  };
+
+  // Map numeric year to year level string
+  const getYearLevel = (year) => {
+    switch (year) {
+      case "1":
+        return "First Year";
+      case "2":
+        return "Second Year";
+      case "3":
+        return "Third Year";
+      case "4":
+        return "Fourth Year";
+      default:
+        return year;
+    }
+  };
+
   const classInfo = {
-    course: selectedProgram,
-    yearLevel: selectedYear,
+    course: getProgramName(selectedProgram),
+    yearLevel: getYearLevel(selectedYear),
   };
 
   // Main queries
   const classStudentsQuery = useClassStudents(classInfo);
-  const allUsersQuery = useUsers({ role: 'STUDENT' }, { enabled: false });
+  // Keep this commented out for now as it might be needed in the future
+  // const allUsersQuery = useUsers({ role: "student" }, { enabled: false });
 
   // Mutations
   const assignPIOMutation = useAssignPIORole();
   const revertPIOMutation = useRevertPIORole();
   const removeUserMutation = useRemoveUser();
 
+  // Process students data to ensure consistent ID fields
+  const processStudentsData = (students = []) => {
+    return students.map((student) => ({
+      ...student,
+      _id: student._id || student.id,
+      id: student.id || student._id,
+    }));
+  };
+
   return {
     // Queries
-    students: classStudentsQuery.data || [],
+    students: processStudentsData(classStudentsQuery.data || []),
     isLoading: classStudentsQuery.isLoading,
     error: classStudentsQuery.error,
     refetch: classStudentsQuery.refetch,
-    
+
     // Search functionality
     searchUsers: useSearchUsers,
-    
+
     // Mutations
     assignPIO: assignPIOMutation.mutate,
     revertPIO: revertPIOMutation.mutate,
     removeUser: removeUserMutation.mutate,
-    
+
     // Loading states
     isAssigningPIO: assignPIOMutation.isPending,
     isRevertingPIO: revertPIOMutation.isPending,
     isRemovingUser: removeUserMutation.isPending,
-    
+
     // Any mutation loading
-    isMutating: assignPIOMutation.isPending || revertPIOMutation.isPending || removeUserMutation.isPending,
+    isMutating:
+      assignPIOMutation.isPending ||
+      revertPIOMutation.isPending ||
+      removeUserMutation.isPending,
+
+    // Error states
+    assignPIOError: assignPIOMutation.error,
+    revertPIOError: revertPIOMutation.error,
+    removeUserError: removeUserMutation.error,
   };
 };
