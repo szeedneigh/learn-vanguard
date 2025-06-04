@@ -28,17 +28,20 @@ const routeComponents = {
   events: Events,
   archive: Archive,
   users: Users,
-  students: Users
+  students: Users,
 };
 
 // Layout component that wraps authorized content
 const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [apiStatus, setApiStatus] = useState({ isChecking: true, isConnected: true });
+  const [apiStatus, setApiStatus] = useState({
+    isChecking: true,
+    isConnected: true,
+  });
   const { toast } = useToast();
-  
+
   const toggleSidebar = useCallback(() => {
-    setIsSidebarOpen(prev => !prev);
+    setIsSidebarOpen((prev) => !prev);
   }, []);
 
   // Check API connection on mount
@@ -46,23 +49,30 @@ const DashboardLayout = ({ children }) => {
     const checkConnection = async () => {
       try {
         const isConnected = await checkApiConnection(API_BASE_URL);
-        console.log('API connection check result:', isConnected, 'API_BASE_URL:', API_BASE_URL);
+        console.log(
+          "API connection check result:",
+          isConnected,
+          "API_BASE_URL:",
+          API_BASE_URL
+        );
         setApiStatus({ isChecking: false, isConnected });
-        
+
         if (!isConnected) {
-          console.error('API connection failed - showing toast notification');
+          console.error("API connection failed - showing toast notification");
           toast({
             title: "API Connection Error",
-            description: "Unable to connect to the server. Please check your connection.",
+            description:
+              "Unable to connect to the server. Please check your connection.",
             variant: "destructive",
           });
         }
       } catch (error) {
-        console.error('API connection check failed:', error);
+        console.error("API connection check failed:", error);
         setApiStatus({ isChecking: false, isConnected: false });
         toast({
           title: "API Error",
-          description: "Failed to check API connection. Please try refreshing the page.",
+          description:
+            "Failed to check API connection. Please try refreshing the page.",
           variant: "destructive",
         });
       }
@@ -91,7 +101,8 @@ const DashboardLayout = ({ children }) => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Connection Error</AlertTitle>
           <AlertDescription>
-            Unable to connect to the API. Please check your connection and try again.
+            Unable to connect to the API. Please check your connection and try
+            again.
             <p className="mt-2">API URL: {API_BASE_URL}</p>
           </AlertDescription>
         </Alert>
@@ -103,8 +114,8 @@ const DashboardLayout = ({ children }) => {
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar 
-          onMenuClick={toggleSidebar} 
+        <Topbar
+          onMenuClick={toggleSidebar}
           isWebSocketConnected={isConnected}
           connectionStatus={connectionStatus}
         />
@@ -119,12 +130,12 @@ const DashboardLayout = ({ children }) => {
 
 // Add prop types for DashboardLayout
 DashboardLayout.propTypes = {
-  children: PropTypes.node.isRequired
+  children: PropTypes.node.isRequired,
 };
 
 const AuthorizedRoute = ({ component: Component, isAuthorized }) => {
   const { toast } = useToast();
-  
+
   useEffect(() => {
     if (!isAuthorized) {
       toast({
@@ -136,10 +147,10 @@ const AuthorizedRoute = ({ component: Component, isAuthorized }) => {
   }, [isAuthorized, toast]);
 
   if (!isAuthorized) {
-    console.log('Route not authorized, redirecting to unauthorized');
+    console.log("Route not authorized, redirecting to unauthorized");
     return <Navigate to="/unauthorized" replace />;
   }
-  
+
   return (
     <DashboardLayout>
       <Component />
@@ -149,7 +160,7 @@ const AuthorizedRoute = ({ component: Component, isAuthorized }) => {
 
 AuthorizedRoute.propTypes = {
   component: PropTypes.elementType.isRequired,
-  isAuthorized: PropTypes.bool.isRequired
+  isAuthorized: PropTypes.bool.isRequired,
 };
 
 const Dashboard = () => {
@@ -159,46 +170,50 @@ const Dashboard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    console.log('Dashboard: Component mounted', {
+    const token = localStorage.getItem("authToken");
+    console.log("Dashboard: Component mounted", {
       user,
       authIsLoading,
       currentPath: window.location.pathname,
       hasToken: !!token,
-      tokenValue: token ? 'exists' : 'missing'
+      tokenValue: token ? "exists" : "missing",
     });
-    
+
     if (!authIsLoading && user) {
-      console.log('Dashboard: User authenticated', {
+      console.log("Dashboard: User authenticated", {
         role: user.role,
         normalizedRole: normalizeRole(user.role),
         permissions: user.permissions,
         currentPath: window.location.pathname,
-        token: token ? 'exists' : 'missing'
+        token: token ? "exists" : "missing",
       });
-      
-      if (window.location.pathname === '/dashboard') {
+
+      if (window.location.pathname === "/dashboard") {
         const normalizedUserRole = normalizeRole(user.role);
-        console.log('Dashboard: At root path, redirecting based on normalized role:', normalizedUserRole);
-        
+        console.log(
+          "Dashboard: At root path, redirecting based on normalized role:",
+          normalizedUserRole
+        );
+
         switch (normalizedUserRole) {
-          case 'admin':
-            console.log('Dashboard: Redirecting admin to users page');
+          case "admin":
+            console.log("Dashboard: Redirecting admin to users page");
             navigate("/dashboard/users", { replace: true });
             break;
-          case 'pio':
-            console.log('Dashboard: Redirecting pio to students page');
+          case "pio":
+            console.log("Dashboard: Redirecting pio to students page");
             navigate("/dashboard/students", { replace: true });
             break;
-          case 'student':
-            console.log('Dashboard: Redirecting student to home page');
+          case "student":
+            console.log("Dashboard: Redirecting student to home page");
             navigate("/dashboard/home", { replace: true });
             break;
           default:
-            console.warn('Dashboard: Unknown user role:', normalizedUserRole);
+            console.warn("Dashboard: Unknown user role:", normalizedUserRole);
             toast({
               title: "Invalid Role",
-              description: "Your user account has an invalid role. Please contact support.",
+              description:
+                "Your user account has an invalid role. Please contact support.",
               variant: "destructive",
             });
             navigate("/unauthorized", { replace: true });
@@ -206,17 +221,19 @@ const Dashboard = () => {
         }
       }
     } else if (!authIsLoading && !user) {
-      console.log('Dashboard: No user found after loading, redirecting to login');
+      console.log(
+        "Dashboard: No user found after loading, redirecting to login"
+      );
       if (token) {
-        console.warn('Dashboard: Token exists but no user data found');
-        localStorage.removeItem('authToken');
+        console.warn("Dashboard: Token exists but no user data found");
+        localStorage.removeItem("authToken");
       }
       navigate("/login", { replace: true });
     }
   }, [user, authIsLoading, navigate, toast]);
 
   if (authIsLoading) {
-    console.log('Dashboard: Auth is still loading');
+    console.log("Dashboard: Auth is still loading");
     return (
       <div className="flex items-center justify-center h-screen bg-blue-50">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -228,31 +245,34 @@ const Dashboard = () => {
   }
 
   if (!user) {
-    console.log('Dashboard: No user found, rendering redirect');
+    console.log("Dashboard: No user found, rendering redirect");
     return <Navigate to="/login" replace />;
   }
 
-  console.log('Dashboard: Rendering routes for user:', {
+  console.log("Dashboard: Rendering routes for user:", {
     role: user.role,
     normalizedRole: normalizeRole(user.role),
-    pathname: window.location.pathname
+    pathname: window.location.pathname,
   });
 
   return (
     <Routes>
       <Route path="/" element={<Navigate replace to="home" />} />
-      
+
       {dashboardRoutes.map((route) => {
-        const RouteComponent = routeComponents[route.path];
-        
+        const RouteComponent = routeComponents[route.path.split("/")[0]];
+
         const normalizedUserRole = normalizeRole(user.role);
-        const normalizedRouteRoles = route.allowedRoles.map(role => normalizeRole(role));
-        
+        const normalizedRouteRoles = route.allowedRoles.map((role) =>
+          normalizeRole(role)
+        );
+
         const hasRole = normalizedRouteRoles.includes(normalizedUserRole);
-        const hasPermissions = !(route.requiredPermissions ?? []).length || 
-                             hasAllPermissions(route.requiredPermissions ?? []);
+        const hasPermissions =
+          !(route.requiredPermissions ?? []).length ||
+          hasAllPermissions(route.requiredPermissions ?? []);
         const isAuthorized = hasRole && hasPermissions;
-        
+
         console.log(`Dashboard: Route ${route.path}`, {
           hasComponent: !!RouteComponent,
           userRole: normalizedUserRole,
@@ -260,7 +280,7 @@ const Dashboard = () => {
           allowedRoles: normalizedRouteRoles,
           hasPermissions,
           isAuthorized,
-          requiredPermissions: route.requiredPermissions
+          requiredPermissions: route.requiredPermissions,
         });
 
         if (!RouteComponent) {
@@ -272,13 +292,13 @@ const Dashboard = () => {
           });
           return null;
         }
-        
+
         return (
           <Route
             key={route.path}
             path={route.path}
             element={
-              <AuthorizedRoute 
+              <AuthorizedRoute
                 component={RouteComponent}
                 isAuthorized={isAuthorized}
               />
@@ -286,7 +306,7 @@ const Dashboard = () => {
           />
         );
       })}
-      
+
       <Route path="*" element={<Navigate to="/unauthorized" replace />} />
     </Routes>
   );

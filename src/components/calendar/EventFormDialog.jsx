@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/context/AuthContext";
 
 const LABEL_COLORS = [
   { name: "Blue", value: "#3b82f6" },
@@ -49,22 +50,87 @@ function EventFormDialog({ open, onOpenChange, onSave, onCancel, isLoading }) {
     { value: "Third Year", label: "Third Year" },
     { value: "Fourth Year", label: "Fourth Year" },
   ]);
+  const [courseOptions, setCourseOptions] = useState([
+    { value: "ALL", label: "All Courses" },
+    {
+      value: "Associate in Computer Technology",
+      label: "Associate in Computer Technology",
+    },
+    {
+      value: "Bachelor of Science in Information Systems",
+      label: "BS Information Systems",
+    },
+  ]);
+
+  const { user } = useAuth();
+  const isPIO = user?.role === "pio";
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     if (open) {
+      // Reset form fields
       setTitle("");
       setDescription("");
       setDate(toLocaleDateStringISO(new Date()));
       setTime("09:00"); // Reset time to default
-      setCourse("ALL");
-      setYearLevel("ALL");
       setLabelColor("#3b82f6");
       setErrors({});
+
+      // Set course and year level based on user role
+      if (isPIO && user?.assignedClass) {
+        const assignedClassParts = user.assignedClass.split(" - ");
+        if (assignedClassParts.length === 2) {
+          const assignedCourse = assignedClassParts[0];
+          const assignedYearLevel = assignedClassParts[1];
+
+          setCourse(assignedCourse);
+          setYearLevel(assignedYearLevel);
+
+          // Set course options for PIO - their assigned course and ALL
+          setCourseOptions([
+            { value: "ALL", label: "All Courses" },
+            { value: assignedCourse, label: assignedCourse },
+          ]);
+
+          // Set year level options for PIO - their assigned year level and ALL
+          setYearLevelOptions([
+            { value: "ALL", label: "All Years" },
+            { value: assignedYearLevel, label: assignedYearLevel },
+          ]);
+        }
+      } else {
+        // Reset to default options for admin
+        setCourse("ALL");
+        setYearLevel("ALL");
+        setCourseOptions([
+          { value: "ALL", label: "All Courses" },
+          {
+            value: "Associate in Computer Technology",
+            label: "Associate in Computer Technology",
+          },
+          {
+            value: "Bachelor of Science in Information Systems",
+            label: "BS Information Systems",
+          },
+        ]);
+
+        // Reset year level options
+        setYearLevelOptions([
+          { value: "ALL", label: "All Years" },
+          { value: "First Year", label: "First Year" },
+          { value: "Second Year", label: "Second Year" },
+          { value: "Third Year", label: "Third Year" },
+          { value: "Fourth Year", label: "Fourth Year" },
+        ]);
+      }
     }
-  }, [open]);
+  }, [open, user, isPIO]);
 
   // Update year level options based on selected course
   useEffect(() => {
+    // Skip this logic for PIO users since they have fixed options
+    if (isPIO) return;
+
     if (course === "Associate in Computer Technology") {
       setYearLevelOptions([
         { value: "ALL", label: "All Years" },
@@ -84,7 +150,7 @@ function EventFormDialog({ open, onOpenChange, onSave, onCancel, isLoading }) {
         { value: "Fourth Year", label: "Fourth Year" },
       ]);
     }
-  }, [course, yearLevel]);
+  }, [course, yearLevel, isPIO]);
 
   const validate = () => {
     const newErrors = {};
@@ -226,20 +292,28 @@ function EventFormDialog({ open, onOpenChange, onSave, onCancel, isLoading }) {
               >
                 Course
               </label>
-              <Select value={course} onValueChange={setCourse}>
+              <Select
+                value={course}
+                onValueChange={setCourse}
+                disabled={false} // Enable for all users
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select course" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Courses</SelectItem>
-                  <SelectItem value="Associate in Computer Technology">
-                    Associate in Computer Technology
-                  </SelectItem>
-                  <SelectItem value="Bachelor of Science in Information Systems">
-                    BS Information Systems
-                  </SelectItem>
+                  {courseOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {isPIO && (
+                <p className="text-xs text-gray-500 mt-1">
+                  PIO users can create events for their assigned class or all
+                  courses
+                </p>
+              )}
             </div>
 
             <div>
@@ -249,7 +323,11 @@ function EventFormDialog({ open, onOpenChange, onSave, onCancel, isLoading }) {
               >
                 Year Level
               </label>
-              <Select value={yearLevel} onValueChange={setYearLevel}>
+              <Select
+                value={yearLevel}
+                onValueChange={setYearLevel}
+                disabled={false} // Enable for all users
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select year level" />
                 </SelectTrigger>

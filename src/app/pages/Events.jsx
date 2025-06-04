@@ -1,12 +1,13 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useContext } from "react";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useEventsPage } from "@/hooks/useEventsQuery";
-import { useTasks } from "@/hooks/useTasksQuery";
 import {
   toLocaleDateStringISO,
   generateCalendarGrid,
 } from "@/lib/calendarHelpers";
+import { AuthContext } from "@/context/AuthContext";
+import { ROLES } from "@/lib/constants";
 import CalendarHeader from "@/components/calendar/CalendarHeader";
 import CalendarGrid from "@/components/calendar/CalendarGrid";
 import UpcomingDeadlines from "@/components/calendar/UpcomingDeadlines";
@@ -28,27 +29,32 @@ export default function Events() {
     toLocaleDateStringISO(new Date())
   );
 
+  // Get user context for role-based permissions
+  const { user } = useContext(AuthContext);
+  const isStudent = user?.role === ROLES.STUDENT;
+
   // Keep selectedDate in sync with currentDate
   useEffect(() => {
     setSelectedDate(toLocaleDateStringISO(currentDate));
   }, [currentDate]);
 
-  // React Query hook for events
+  // React Query hook for events with user-specific filters
   const {
     events,
-    isLoading: eventsLoading,
-    isError: eventsIsError,
-    error: eventsError,
+    isLoading: tasksLoading,
+    isError: tasksIsError,
+    error: tasksError,
     createEvent,
     updateEvent,
     deleteEvent,
-    isCreating: createEventLoading,
-    isUpdating: updateEventLoading,
-    isDeleting: deleteEventLoading,
-  } = useEventsPage();
-
-  // Get tasks for upcoming deadlines
-  const { data: tasksList, isLoading: tasksLoading } = useTasks();
+    isCreating: createTaskLoading,
+    isUpdating: updateTaskLoading,
+    isDeleting: deleteTaskLoading,
+  } = useEventsPage(
+    // For students, we'll rely on backend filtering by course and yearLevel
+    // The backend already handles this in the getEvents controller
+    isStudent ? { userFiltered: true } : {}
+  );
 
   // Calendar navigation handlers
   const handlePrevious = () => {
@@ -128,15 +134,10 @@ export default function Events() {
     };
 
     // Call the API function
-    createEvent(formattedData)
-      .then(() => {
-        // Close the form after successful event creation
-        setIsEventFormOpen(false);
-      })
-      .catch((error) => {
-        // Show error message
-        console.error("Failed to create event:", error);
-      });
+    createEvent(formattedData);
+
+    // Close the form immediately after submitting
+    closeEventForm();
   };
 
   const handleDeleteTask = (taskId) => {
@@ -160,62 +161,35 @@ export default function Events() {
   // Upcoming tasks calculation
   const upcomingTasks = useMemo(() => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const nextWeek = new Date(today);
     nextWeek.setDate(today.getDate() + 7);
 
-    // Use actual tasks data from the tasks API
-    if (!tasksList || tasksList.length === 0) {
-      return [];
-    }
-
-    return tasksList
+    return events
       .filter((task) => {
-        // Filter tasks with upcoming deadlines
-        if (!task.taskDeadline) return false;
+        // Handle both date and scheduleDate properties
+        let taskDate;
+        if (task.date) {
+          taskDate = new Date(task.date + "T00:00:00");
+        } else if (task.scheduleDate) {
+          taskDate = new Date(task.scheduleDate);
+        } else {
+          return false;
+        }
 
-        const taskDate = new Date(task.taskDeadline);
-
-        // Include tasks that are due within the next 7 days
-        // and exclude completed tasks
         return (
           taskDate >= today &&
           taskDate <= nextWeek &&
-          task.taskStatus !== "Completed"
+          task.status !== "completed"
         );
       })
       .sort((a, b) => {
-        // Sort by date (closest first)
-        return new Date(a.taskDeadline) - new Date(b.taskDeadline);
-      })
-      .map((task) => {
-        // Map task data to the format expected by UpcomingDeadlines
-        return {
-          id: task._id,
-          taskName: task.taskName,
-          title: task.taskName,
-          description: task.taskDescription,
-          taskDeadline: task.taskDeadline,
-          status:
-            task.taskStatus === "Not yet started"
-              ? "not-started"
-              : task.taskStatus === "In progress"
-              ? "in-progress"
-              : task.taskStatus === "Completed"
-              ? "completed"
-              : "on-hold",
-          priority:
-            task.taskPriority === "High Priority"
-              ? "high"
-              : task.taskPriority === "Medium Priority"
-              ? "medium"
-              : "low",
-          type: "task",
-        };
+        const dateA = a.date ? new Date(a.date) : new Date(a.scheduleDate);
+        const dateB = b.date ? new Date(b.date) : new Date(b.scheduleDate);
+        return dateA - dateB;
       });
-  }, [tasksList]);
+  }, [events]);
 
-  if (eventsLoading || tasksLoading) {
+  if (tasksLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-theme(space.24))]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -226,13 +200,13 @@ export default function Events() {
     );
   }
 
-  if (eventsIsError) {
+  if (tasksIsError) {
     return (
       <div className="container mx-auto p-4">
         <Alert variant="destructive">
           <AlertTitle>Error Loading Events</AlertTitle>
           <AlertDescription>
-            {eventsError?.message ||
+            {tasksError?.message ||
               "An unexpected error occurred. Please try again later."}
           </AlertDescription>
         </Alert>
@@ -281,7 +255,8 @@ export default function Events() {
         onPrevious={handlePrevious}
         onNext={handleNext}
         onViewChange={setCurrentView}
-        onAddEvent={openAddEventForm}
+        onAddEvent={() => setIsEventFormOpen(true)}
+        showAddEvent={!isStudent}
       />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">{renderCalendarView()}</div>
@@ -298,7 +273,7 @@ export default function Events() {
         onOpenChange={setIsTaskDetailOpen}
         onEdit={openEditTaskForm}
         onDelete={handleDeleteTask}
-        isDeleting={deleteEventLoading}
+        isDeleting={deleteTaskLoading}
       />
       <TaskFormDialog
         open={isTaskFormOpen}
@@ -306,14 +281,14 @@ export default function Events() {
         task={selectedTask}
         onSave={handleSaveTask}
         onCancel={closeTaskForm}
-        isLoading={selectedTask ? updateEventLoading : createEventLoading}
+        isLoading={selectedTask ? updateTaskLoading : createTaskLoading}
       />
       <EventFormDialog
         open={isEventFormOpen}
         onOpenChange={setIsEventFormOpen}
         onSave={handleSaveEvent}
         onCancel={closeEventForm}
-        isLoading={createEventLoading}
+        isLoading={createTaskLoading}
       />
     </div>
   );

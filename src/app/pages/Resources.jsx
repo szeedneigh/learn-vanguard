@@ -267,6 +267,7 @@ export default function Resources() {
     mutationFn: ({ topicId, ...data }) => addActivity(topicId, data),
     onSuccess: () => {
       refetchTopics();
+      refetchAnnouncements();
       toast.success("Activity added successfully!");
     },
     onError: (error) => {
@@ -542,8 +543,22 @@ export default function Resources() {
       toast.error("Cannot delete announcement: Subject context is missing.");
       return;
     }
+
+    // Enhanced validation for announcement ID
+    if (!announcementId) {
+      toast.error("Cannot delete announcement: Invalid announcement ID");
+      return;
+    }
+
+    // Convert to string if it's an object ID
+    const idToDelete = typeof announcementId === 'object' && announcementId._id 
+      ? announcementId._id 
+      : announcementId;
+
+    console.log(`Deleting announcement with ID: ${idToDelete}`);
+
     deleteAnnouncementMutation.mutate({
-      announcementId,
+      announcementId: idToDelete,
       subjectId: currentSubjectId,
     });
   };
@@ -553,17 +568,39 @@ export default function Resources() {
       toast.error("Cannot save announcement: Subject context is missing.");
       return;
     }
+
     if (editingAnnouncement) {
-      updateAnnouncementMutation.mutate({
-        announcementId: editingAnnouncement.id,
-        content: values.content,
-        subjectId: currentSubjectId,
-      });
+      updateAnnouncementMutation.mutate(
+        {
+          announcementId: editingAnnouncement.id,
+          content: values.content,
+          title: values.title,
+          priority: values.priority,
+          type: values.type,
+          subjectId: currentSubjectId,
+        },
+        {
+          onSuccess: () => {
+            setIsAddAnnouncementModalOpen(false);
+            setEditingAnnouncement(null);
+          },
+        }
+      );
     } else {
-      createAnnouncementMutation.mutate({
-        content: values.content,
-        subjectId: currentSubjectId,
-      });
+      createAnnouncementMutation.mutate(
+        {
+          content: values.content,
+          title: values.title,
+          priority: values.priority,
+          type: values.type,
+          subjectId: currentSubjectId,
+        },
+        {
+          onSuccess: () => {
+            setIsAddAnnouncementModalOpen(false);
+          },
+        }
+      );
     }
   };
 
@@ -575,6 +612,7 @@ export default function Resources() {
   // Add activity handler
   const handleActivityAdded = () => {
     refetchTopics();
+    refetchAnnouncements();
   };
 
   if (programsLoading) {
@@ -778,6 +816,7 @@ export default function Resources() {
           }
           announcement={editingAnnouncement}
           subjectName={currentSubject?.name}
+          subjectId={currentSubjectId}
         />
       </div>
     </div>

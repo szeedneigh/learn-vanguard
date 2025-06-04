@@ -529,7 +529,9 @@ export const AuthProvider = ({ children }) => {
   // Check if user has specific role
   const hasRole = useCallback(
     (role) => {
-      return user?.role === role;
+      if (!user?.role) return false;
+      // Case-insensitive role comparison
+      return user.role.toLowerCase() === role.toLowerCase();
     },
     [user?.role]
   );
@@ -537,7 +539,10 @@ export const AuthProvider = ({ children }) => {
   // Check if user has any of the specified roles
   const hasAnyRole = useCallback(
     (roles) => {
-      return roles.includes(user?.role);
+      if (!user?.role) return false;
+      // Case-insensitive role comparison
+      const userRoleLower = user.role.toLowerCase();
+      return roles.some((role) => role.toLowerCase() === userRoleLower);
     },
     [user?.role]
   );
@@ -546,7 +551,10 @@ export const AuthProvider = ({ children }) => {
   const getPermissions = () => {
     if (!user) return [];
 
-    switch (user.role) {
+    // Normalize role to uppercase for consistent comparison
+    const normalizedRole = user.role?.toUpperCase();
+
+    switch (normalizedRole) {
       case "ADMIN":
         return ["*"]; // Admin has all permissions
       case "PIO":

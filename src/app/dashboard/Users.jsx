@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, MoreHorizontal, Plus, ChevronRight } from "lucide-react"; // Added ChevronDown
 // Assuming shadcn/ui components are correctly set up in '@/components/ui/'
 import {
@@ -30,6 +30,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Placeholder for a notification system (e.g., shadcn/ui Sonner or react-toastify)
 // import { useToast } from "@/components/ui/use-toast"; // Example import
 import { useAuth } from "@/context/AuthContext";
+import { assignPIORole, revertPIORole } from "@/lib/api/userApi";
+import { useToast } from "@/hooks/use-toast";
 
 // --- Mock Data and API Functions ---
 // Replace these with actual API calls and data fetching logic
@@ -44,6 +46,7 @@ const programsData = [
 const initialStudentsData = [
   {
     id: "21-00001CJ",
+    _id: "60d0fe4f5311236168a109ca", // Added MongoDB-style _id
     name: "John Chen",
     email: "johnchen@student.lxverdad",
     gender: "male",
@@ -53,15 +56,17 @@ const initialStudentsData = [
   },
   {
     id: "21-00002DB",
+    _id: "60d0fe4f5311236168a109cb", // Added MongoDB-style _id
     name: "Barbie Dela Cruz",
     email: "barbiedelacruz@student.lxverdad",
     gender: "female",
-    role: "PIO",
+    role: "pio",
     programId: "bsis",
     year: 1,
   },
   {
     id: "21-00003FL",
+    _id: "60d0fe4f5311236168a109cc", // Added MongoDB-style _id
     name: "Luca Ferrari",
     email: "lucaferrari@student.lxverdad",
     gender: "male",
@@ -71,6 +76,7 @@ const initialStudentsData = [
   },
   {
     id: "21-00004KA",
+    _id: "60d0fe4f5311236168a109cd", // Added MongoDB-style _id
     name: "Aisha Khan",
     email: "aishakhan@student.lxverdad",
     gender: "female",
@@ -80,6 +86,7 @@ const initialStudentsData = [
   },
   {
     id: "21-00005MS",
+    _id: "60d0fe4f5311236168a109ce", // Added MongoDB-style _id
     name: "Sofia Martinez",
     email: "sofiamartinez@student.lxverdad",
     gender: "female",
@@ -89,6 +96,7 @@ const initialStudentsData = [
   },
   {
     id: "21-00006ML",
+    _id: "60d0fe4f5311236168a109cf", // Added MongoDB-style _id
     name: "Liam Muller",
     email: "liammuller@student.lxverdad",
     gender: "male",
@@ -99,6 +107,7 @@ const initialStudentsData = [
   // Add more students for different programs/years if needed for testing
   {
     id: "22-10001AB",
+    _id: "60d0fe4f5311236168a109d0", // Added MongoDB-style _id
     name: "Anna Bell",
     email: "annabell@student.lxverdad",
     gender: "female",
@@ -108,6 +117,7 @@ const initialStudentsData = [
   },
   {
     id: "22-10002CD",
+    _id: "60d0fe4f5311236168a109d1", // Added MongoDB-style _id
     name: "Carl Davis",
     email: "carldavis@student.lxverdad",
     gender: "male",
@@ -196,16 +206,51 @@ const addStudentAPI = async (studentId, programId, year) => {
   // throw new Error("Failed to add student");
 };
 
-// Mock function to assign PIO role
+// Mock function to assign PIO role - Replace with actual API call
 const assignRoleAPI = async (studentId, role, assignedClass) => {
-  console.log(
-    `API CALL: Assigning role ${role} to student ${studentId} with class ${assignedClass}`
-  );
-  await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
-  // Simulate API success
-  return { success: true };
-  // Simulate API error:
-  // throw new Error("Failed to assign role");
+  try {
+    console.log(
+      `API CALL: Assigning role ${role} to student ${studentId} with class ${assignedClass}`
+    );
+
+    // Use the actual API function with proper ID handling
+    // The backend expects MongoDB ObjectId, but our mock data might have custom IDs
+    // In a real app, you'd use the _id property from the MongoDB document
+    const userId = studentId._id || studentId;
+
+    const result = await assignPIORole(userId, assignedClass);
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to assign role");
+    }
+
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error("Error in assignRoleAPI:", error);
+    throw error;
+  }
+};
+
+// Mock function to revert PIO to student role - Replace with actual API call
+const revertToStudentAPI = async (studentId) => {
+  try {
+    console.log(`API CALL: Reverting student ${studentId} to student role`);
+
+    // Use the actual API function with proper ID handling
+    // The backend expects MongoDB ObjectId, but our mock data might have custom IDs
+    const userId = studentId._id || studentId;
+
+    const result = await revertPIORole(userId);
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to revert role");
+    }
+
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error("Error in revertToStudentAPI:", error);
+    throw error;
+  }
 };
 
 // Mock function to remove a student from a class/year
@@ -238,8 +283,28 @@ const Users = () => {
   const [error, setError] = useState(null); // For displaying errors
 
   // Get current user role from auth context
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { user, hasRole } = useAuth();
+
+  // Direct check for admin role
+  const userRole = user?.role?.toLowerCase();
+
+  // Simplified isAdmin check - directly use hasRole function and check role string
+  const isAdmin = useMemo(() => {
+    return userRole === "admin" || hasRole("admin");
+  }, [userRole, hasRole]);
+
+  // Debug log to verify admin status
+  useEffect(() => {
+    console.log("Is admin:", isAdmin, "User:", user);
+  }, [isAdmin, user]);
+
+  // Debug log for user and students data
+  useEffect(() => {
+    console.log("Current user data:", user);
+    console.log("Is admin:", isAdmin);
+    console.log("Students data:", students);
+    console.log("Filtered students:", sortedAndFilteredStudents);
+  }, [user, isAdmin, students, sortedAndFilteredStudents]);
 
   // Add Student Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -256,8 +321,8 @@ const Users = () => {
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [studentToRemove, setStudentToRemove] = useState(null);
 
-  // Placeholder for toast notifications
-  // const { toast } = useToast(); // Uncomment and use if you have a toast system
+  // Add toast
+  const { toast } = useToast();
 
   // --- Derived State ---
   const currentProgram =
@@ -507,11 +572,19 @@ const Users = () => {
         4: "Fourth Year",
       }[selectedYear];
 
-      await assignRoleAPI(
-        studentToAssignRole.id,
-        "pio",
-        `${programName} - ${yearLevel}`
-      );
+      const assignedClass = `${programName} - ${yearLevel}`;
+
+      // Use the MongoDB-style _id if available, otherwise fall back to the display id
+      const userId = studentToAssignRole._id || studentToAssignRole.id;
+
+      console.log("Assigning PIO role with:", {
+        student: studentToAssignRole,
+        userId,
+        assignedClass,
+      });
+
+      // Pass the MongoDB _id to the API
+      await assignRoleAPI(userId, "pio", assignedClass);
 
       // Update the role in the local state
       setStudents((prev) =>
@@ -523,12 +596,67 @@ const Users = () => {
       );
 
       console.log(`${studentToAssignRole.name} has been assigned as PIO.`);
-      // toast({ title: "Role Assigned", description: `${studentToAssignRole.name} is now a PIO.` }); // Example toast
+      toast({
+        title: "Role Assigned",
+        description: `${studentToAssignRole.name} is now a PIO.`,
+      });
       closeAssignRoleModal();
     } catch (err) {
       console.error("Error assigning role:", err);
-      setError("Failed to assign role. Please try again.");
-      // toast({ title: "Error", description: "Failed to assign role.", variant: "destructive" }); // Example toast
+      setError(err.message || "Failed to assign role. Please try again.");
+      toast({
+        title: "Error",
+        description: err.message || "Failed to assign role.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Handle reverting a PIO to student role
+  const handleRevertToStudent = async () => {
+    if (!studentToAssignRole) return;
+
+    setIsActionLoading(true);
+    setError(null);
+    try {
+      // Use the MongoDB-style _id if available, otherwise fall back to the display id
+      const userId = studentToAssignRole._id || studentToAssignRole.id;
+
+      console.log("Reverting PIO role with:", {
+        student: studentToAssignRole,
+        userId,
+      });
+
+      // Pass the MongoDB _id to the API
+      await revertToStudentAPI(userId);
+
+      // Update the role in the local state
+      setStudents((prev) =>
+        prev.map((student) =>
+          student.id === studentToAssignRole.id
+            ? { ...student, role: null }
+            : student
+        )
+      );
+
+      console.log(
+        `${studentToAssignRole.name} has been reverted to student role.`
+      );
+      toast({
+        title: "Role Reverted",
+        description: `${studentToAssignRole.name} is now a student.`,
+      });
+      closeAssignRoleModal();
+    } catch (err) {
+      console.error("Error reverting role:", err);
+      setError(err.message || "Failed to revert role. Please try again.");
+      toast({
+        title: "Error",
+        description: err.message || "Failed to revert role.",
+        variant: "destructive",
+      });
     } finally {
       setIsActionLoading(false);
     }
@@ -711,7 +839,7 @@ const Users = () => {
           </Select>
 
           {/* Add Student Button - Only visible to admins */}
-          {user?.role === "admin" || user?.normalizedRole === "admin" ? (
+          {isAdmin ? (
             <Button
               onClick={openAddStudentModal} // Use specific handler
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1 shadow-sm"
@@ -775,7 +903,7 @@ const Users = () => {
                   Role
                 </th>
                 {/* Only show Actions column for admin users */}
-                {isAdmin && (
+                {isAdmin && user?.role?.toLowerCase() === "admin" && (
                   <th
                     scope="col"
                     className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -824,7 +952,7 @@ const Users = () => {
                       {student.email}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {student.role === "pio" ? (
+                      {student.role?.toLowerCase() === "pio" ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                           Public Information Officer
                         </span>
@@ -833,18 +961,17 @@ const Users = () => {
                       )}
                     </td>
                     {/* Only show Actions cell for admin users */}
-                    {isAdmin && (
+                    {isAdmin && user?.role?.toLowerCase() === "admin" && (
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center gap-1 border border-gray-300 hover:bg-gray-100"
                               disabled={isActionLoading} // Disable actions trigger while another action is loading
                             >
-                              <span className="sr-only">
-                                Open options for {student.name}
-                              </span>
+                              <span className="hidden sm:inline">Actions</span>
                               <MoreHorizontal
                                 className="h-4 w-4"
                                 aria-hidden="true"
@@ -855,16 +982,36 @@ const Users = () => {
                             align="end"
                             className="border border-gray-200 shadow-md"
                           >
-                            {/* Conditionally render Assign PIO only if not already PIO */}
-                            {student.role !== "pio" && (
+                            {/* Show "Assign PIO" if not already PIO and there's no other PIO */}
+                            {student.role !== "pio" &&
+                              student.role !== "PIO" &&
+                              !sortedAndFilteredStudents.some(
+                                (s) => s.role === "pio" || s.role === "PIO"
+                              ) && (
+                                <DropdownMenuItem
+                                  onClick={() => openAssignRoleModal(student)} // Use specific handler
+                                  className="cursor-pointer hover:bg-gray-100 text-sm"
+                                  disabled={isActionLoading} // Disable during any action loading state
+                                >
+                                  Assign Public Information Officer Role
+                                </DropdownMenuItem>
+                              )}
+
+                            {/* Show "Revert to Student" option only for PIO users */}
+                            {(student.role === "pio" ||
+                              student.role === "PIO") && (
                               <DropdownMenuItem
-                                onClick={() => openAssignRoleModal(student)} // Use specific handler
+                                onClick={() => {
+                                  setStudentToAssignRole(student);
+                                  setShowAssignRoleModal(true);
+                                }}
                                 className="cursor-pointer hover:bg-gray-100 text-sm"
-                                disabled={isActionLoading} // Disable during any action loading state
+                                disabled={isActionLoading}
                               >
-                                Assign Public Information Officer Role
+                                Revert to Student
                               </DropdownMenuItem>
                             )}
+
                             <DropdownMenuItem
                               onClick={() => openRemoveModal(student)} // Use specific handler
                               className="cursor-pointer hover:bg-red-50 text-red-600 text-sm"
@@ -1024,7 +1171,7 @@ const Users = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Assign Role Modal */}
+      {/* Assign Role Modal - Modified to handle both assigning PIO and reverting to student */}
       <Dialog open={showAssignRoleModal} onOpenChange={setShowAssignRoleModal}>
         <DialogContent
           className="sm:max-w-md"
@@ -1032,16 +1179,29 @@ const Users = () => {
         >
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
-              Assign PIO Role
+              {studentToAssignRole?.role === "pio"
+                ? "Revert to Student"
+                : "Assign PIO Role"}
             </DialogTitle>
           </DialogHeader>
           <DialogDescription
             id="assign-role-description"
             className="py-4 text-gray-600"
           >
-            Are you sure you want to assign{" "}
-            <span className="font-medium">{studentToAssignRole?.name}</span> (
-            {studentToAssignRole?.id}) as a PIO (Peer Information Officer)?
+            {studentToAssignRole?.role === "pio" ? (
+              <>
+                Are you sure you want to revert{" "}
+                <span className="font-medium">{studentToAssignRole?.name}</span>{" "}
+                ({studentToAssignRole?.id}) back to a regular student?
+              </>
+            ) : (
+              <>
+                Are you sure you want to assign{" "}
+                <span className="font-medium">{studentToAssignRole?.name}</span>{" "}
+                ({studentToAssignRole?.id}) as a PIO (Public Information
+                Officer)?
+              </>
+            )}
           </DialogDescription>
           <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
             <Button
@@ -1053,11 +1213,21 @@ const Users = () => {
               Cancel
             </Button>
             <Button
-              onClick={handleAssignRole}
+              onClick={
+                studentToAssignRole?.role === "pio"
+                  ? handleRevertToStudent
+                  : handleAssignRole
+              }
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
               disabled={isActionLoading}
             >
-              {isActionLoading ? "Assigning..." : "Assign Role"}
+              {isActionLoading
+                ? studentToAssignRole?.role === "pio"
+                  ? "Reverting..."
+                  : "Assigning..."
+                : studentToAssignRole?.role === "pio"
+                ? "Revert to Student"
+                : "Assign Role"}
             </Button>
           </DialogFooter>
         </DialogContent>
