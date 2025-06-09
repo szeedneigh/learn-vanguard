@@ -347,7 +347,14 @@ const Users = () => {
       );
     } catch (error) {
       console.error("Error assigning PIO role:", error);
-      // Error will be shown in the modal via the assignPIOError state
+      // Close modal after a short delay to allow error display, then refetch
+      setTimeout(() => {
+        closeAssignRoleModal();
+        // Optionally refetch to ensure data consistency
+        refetch().catch((refetchError) => {
+          console.error("Error refetching after PIO assignment error:", refetchError);
+        });
+      }, 2000);
     }
   };
 
@@ -375,7 +382,14 @@ const Users = () => {
       );
     } catch (error) {
       console.error("Error removing student:", error);
-      // Error will be shown in the modal via the removeUserError state
+      // Close modal after a short delay to allow error display, then refetch
+      setTimeout(() => {
+        closeRemoveModal();
+        // Optionally refetch to ensure data consistency
+        refetch().catch((refetchError) => {
+          console.error("Error refetching after student removal error:", refetchError);
+        });
+      }, 2000);
     }
   };
 
@@ -868,7 +882,8 @@ const Users = () => {
         <Dialog
           open={showAssignRoleModal}
           onOpenChange={(open) => {
-            if (!isAssigningPIO) {
+            // Allow closing the modal even during loading after a reasonable delay
+            if (!isAssigningPIO || !open) {
               setShowAssignRoleModal(open);
               if (!open) {
                 setStudentToAssignRole(null);
@@ -944,7 +959,8 @@ const Users = () => {
         <Dialog
           open={showRemoveModal}
           onOpenChange={(open) => {
-            if (!isRemovingUser) {
+            // Allow closing the modal even during loading after a reasonable delay
+            if (!isRemovingUser || !open) {
               setShowRemoveModal(open);
               if (!open) {
                 setStudentToRemove(null);
@@ -1008,7 +1024,8 @@ const Users = () => {
         <Dialog
           open={showRevertRoleModal}
           onOpenChange={(open) => {
-            if (!isRevertingPIO) {
+            // Allow closing the modal even during loading after a reasonable delay
+            if (!isRevertingPIO || !open) {
               setShowRevertRoleModal(open);
               if (!open) {
                 setStudentToRevertRole(null);

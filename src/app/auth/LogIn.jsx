@@ -568,7 +568,7 @@ export default function LogIn() {
               }}
             />
             <motion.img
-              src="/images/headLogo.png"
+              src="/images/LearnVanguard_LOGO.png"
               alt="Application Logo"
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1/2 drop-shadow-xl"
               loading="lazy"

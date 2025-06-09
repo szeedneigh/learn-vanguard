@@ -102,8 +102,6 @@ const Tasks = () => {
       // Add mappings for backend format
       "not yet started": "Not Started",
       "in progress": "In Progress",
-      "on-hold": "On Hold",
-      completed: "Completed",
     };
     return statusMap[apiStatusLower] || apiStatus;
   };
