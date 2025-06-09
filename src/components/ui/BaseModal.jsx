@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +17,8 @@ const BaseModal = ({
   showCloseButton = true,
   closeOnOutsideClick = true,
   maxWidth = 'md',
-  footerContent
+  footerContent,
+  loading = false
 }) => {
   const modalRef = useRef(null);
 
@@ -70,27 +71,39 @@ const BaseModal = ({
       <div 
         ref={modalRef}
         className={cn(
-          "bg-white rounded-xl shadow-lg w-full overflow-hidden",
+          "bg-white rounded-xl shadow-lg w-full overflow-hidden relative",
           "transition-all duration-300 ease-in-out transform",
           "opacity-100 scale-100",
           maxWidthClasses[maxWidth],
+          loading && "pointer-events-none opacity-75",
           className
         )}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? "modal-title" : undefined}
+        aria-describedby={description ? "modal-description" : undefined}
       >
+        {/* Loading Overlay */}
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
         {/* Header */}
         {(title || showCloseButton) && (
           <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
             {title && (
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-                {description && <p className="text-sm text-gray-500">{description}</p>}
+                <h2 id="modal-title" className="text-lg font-semibold text-gray-900">{title}</h2>
+                {description && <p id="modal-description" className="text-sm text-gray-500">{description}</p>}
               </div>
             )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 ml-auto"
-                aria-label="Close"
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 ml-auto min-h-[44px] min-w-[44px] touch-manipulation"
+                aria-label="Close modal"
+                disabled={loading}
               >
                 <X className="h-4 w-4 text-gray-500" />
               </button>
@@ -125,6 +138,7 @@ BaseModal.propTypes = {
   closeOnOutsideClick: PropTypes.bool,
   maxWidth: PropTypes.oneOf(['sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', 'full']),
   footerContent: PropTypes.node,
+  loading: PropTypes.bool,
 };
 
 export default BaseModal; 
