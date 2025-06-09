@@ -42,7 +42,7 @@ const LandingPage = () => {
           <div className="container mx-auto px-4 py-2 flex justify-between md:flex-row md:justify-between md:py-1">
             <a href="/" className="flex items-center mb-2 md:mb-0 animate-fade-in-left">
               <img
-                src="/images/headLogoV2.png"
+                src="/images/LearnVanguard_LOGO.png"
                 alt="Logo"
                 className="w-20 h-16 md:w-25 md:h-20"
               />
