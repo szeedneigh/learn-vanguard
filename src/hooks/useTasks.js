@@ -20,7 +20,7 @@ export const useTasks = (toast) => {
 
   // Fetch tasks with better error handling
   const {
-    data: tasks = [],
+    data: tasksData = { data: [] },
     isLoading,
     isError,
     error,
@@ -28,7 +28,7 @@ export const useTasks = (toast) => {
   } = useQuery({
     queryKey: queryKeys.tasks,
     queryFn: getTasks,
-    select: (data) => data?.data || [],
+    select: (data) => ({ data: data?.data || [] }),
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
@@ -40,6 +40,9 @@ export const useTasks = (toast) => {
       return failureCount < 2;
     },
   });
+
+  // Extract tasks array from the data object for easier use
+  const tasks = tasksData.data;
 
   // Optimized mutations with proper cache updates
   const createTaskMutation = useMutation({
@@ -129,7 +132,7 @@ export const useTasks = (toast) => {
 
       return { previousTasks };
     },
-    onSuccess: (data, { taskId, taskData }) => {
+    onSuccess: () => {
       toast({
         title: "Task Updated",
         description: "Task updated successfully!",
