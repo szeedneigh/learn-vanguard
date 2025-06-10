@@ -1183,26 +1183,26 @@ const Users = () => {
                 ? "Revert to Student"
                 : "Assign PIO Role"}
             </DialogTitle>
+            <DialogDescription
+              id="assign-role-description"
+              className="py-4 text-gray-600"
+            >
+              {studentToAssignRole?.role === "pio" ? (
+                <>
+                  Are you sure you want to revert{" "}
+                  <span className="font-medium">{studentToAssignRole?.name}</span>{" "}
+                  ({studentToAssignRole?.id}) back to a regular student?
+                </>
+              ) : (
+                <>
+                  Are you sure you want to assign{" "}
+                  <span className="font-medium">{studentToAssignRole?.name}</span>{" "}
+                  ({studentToAssignRole?.id}) as a PIO (Public Information
+                  Officer)?
+                </>
+              )}
+            </DialogDescription>
           </DialogHeader>
-          <DialogDescription
-            id="assign-role-description"
-            className="py-4 text-gray-600"
-          >
-            {studentToAssignRole?.role === "pio" ? (
-              <>
-                Are you sure you want to revert{" "}
-                <span className="font-medium">{studentToAssignRole?.name}</span>{" "}
-                ({studentToAssignRole?.id}) back to a regular student?
-              </>
-            ) : (
-              <>
-                Are you sure you want to assign{" "}
-                <span className="font-medium">{studentToAssignRole?.name}</span>{" "}
-                ({studentToAssignRole?.id}) as a PIO (Public Information
-                Officer)?
-              </>
-            )}
-          </DialogDescription>
           <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
             <Button
               variant="outline"
@@ -1242,16 +1242,16 @@ const Users = () => {
             <DialogTitle className="text-lg font-semibold text-red-700">
               Remove Student
             </DialogTitle>
+            <DialogDescription
+              id="remove-student-description"
+              className="py-4 text-gray-600"
+            >
+              Are you sure you want to remove{" "}
+              <span className="font-medium">{studentToRemove?.name}</span> (
+              {studentToRemove?.id}) from {currentProgram.name} - Year{" "}
+              {selectedYear}? This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
-          <DialogDescription
-            id="remove-student-description"
-            className="py-4 text-gray-600"
-          >
-            Are you sure you want to remove{" "}
-            <span className="font-medium">{studentToRemove?.name}</span> (
-            {studentToRemove?.id}) from {currentProgram.name} - Year{" "}
-            {selectedYear}? This action cannot be undone.
-          </DialogDescription>
           <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
             <Button
               variant="outline"
