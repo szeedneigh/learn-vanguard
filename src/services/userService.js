@@ -1,110 +1,4 @@
-import * as userApi from "@/lib/api/userApi";
 import apiClient from "@/lib/api/client";
-
-const config = {
-  useMockData: import.meta.env.VITE_USE_MOCK_DATA === "true",
-};
-
-// --- Mock Data (Fallback only) ---
-const MOCK_USERS = [
-  {
-    id: "mock-user-1",
-    email: "john.doe@student.laverdad.edu.ph",
-    fullName: "John Doe",
-    role: "STUDENT",
-    programId: "bsis",
-    year: 1,
-    semester: "1st Semester",
-    status: "active",
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    lastLoginAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "mock-user-2",
-    email: "jane.smith@student.laverdad.edu.ph",
-    fullName: "Jane Smith",
-    role: "PIO",
-    assignedClass: "BSIS-First Year",
-    status: "active",
-    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-    lastLoginAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
-/**
- * Mock implementation of getUsers
- */
-const mockGetUsers = async (filters = {}) => {
-  await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API delay
-
-  let filteredUsers = [...MOCK_USERS];
-
-  // Apply filters
-  if (filters.role) {
-    filteredUsers = filteredUsers.filter((user) => user.role === filters.role);
-  }
-  if (filters.search) {
-    const searchLower = filters.search.toLowerCase();
-    filteredUsers = filteredUsers.filter(
-      (user) =>
-        user.fullName.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower)
-    );
-  }
-
-  return {
-    data: filteredUsers,
-    pagination: {
-      page: 1,
-      limit: 10,
-      total: filteredUsers.length,
-      totalPages: 1,
-    },
-  };
-};
-
-/**
- * Mock implementation of getCurrentUserProfile
- */
-const mockGetCurrentUserProfile = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API delay
-  return MOCK_USERS[0]; // Return first mock user as current user
-};
-
-/**
- * Mock implementation of updateCurrentUserProfile
- */
-const mockUpdateCurrentUserProfile = async (profileData) => {
-  await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API delay
-
-  return {
-    ...MOCK_USERS[0],
-    ...profileData,
-    updatedAt: new Date().toISOString(),
-  };
-};
-
-/**
- * Mock implementation of updateUser
- */
-const mockUpdateUser = async (userId, updates) => {
-  await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API delay
-
-  const existingUser = MOCK_USERS.find((user) => user.id === userId);
-  return {
-    ...existingUser,
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
-};
-
-/**
- * Mock implementation of deleteUser
- */
-const mockDeleteUser = async (userId) => {
-  await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API delay
-  return { message: `Mock user ${userId} deleted successfully` };
-};
 
 /**
  * Get all users with optional filtering
@@ -195,11 +89,18 @@ export const assignPioRole = async (userId, data) => {
 
 /**
  * Remove a student
- * @param {string} userId - User ID
+ * @param {Object|string} user - User object or User ID
  * @returns {Promise} - API response
  */
-export const removeUser = async (userId) => {
+export const removeUser = async (user) => {
   try {
+    // Extract the user ID from the object or use the string directly
+    const userId = typeof user === 'object' ? (user.studentId || user.id || user.userId) : user;
+    
+    if (!userId) {
+      throw new Error('No valid user ID found');
+    }
+    
     const response = await apiClient.delete(`/users/${userId}`);
     return {
       success: true,
