@@ -21,29 +21,37 @@ export const useAssignPIORole = () => {
 
   return useMutation({
     mutationFn: async (params) => {
-      // Handle both object with studentId and direct parameters
-      let userId, assignedClass;
+      // Ensure params is an object with required properties
+      if (!params || typeof params !== "object") {
+        throw new Error("Parameters must be provided as an object with studentId and either (program + yearLevel) or assignedClass");
+      }
 
-      if (typeof params === "object") {
-        // Extract from object format
-        userId = params.studentId || null;
+      const userId = params.studentId;
+      let assignedClass;
 
-        // Create assignedClass from program and yearLevel if provided
-        if (params.program && params.yearLevel) {
-          const programName = getProgramNameFromId(params.program);
-          const yearLevelName = getYearLevelName(params.yearLevel);
-          assignedClass = `${programName} - ${yearLevelName}`;
-        } else {
-          assignedClass = params.assignedClass;
-        }
+      // Create assignedClass from program and yearLevel if provided
+      if (params.program && params.yearLevel) {
+        const programName = getProgramNameFromId(params.program);
+        const yearLevelName = getYearLevelName(params.yearLevel);
+        assignedClass = `${programName} - ${yearLevelName}`;
+      } else if (params.assignedClass) {
+        assignedClass = params.assignedClass;
       } else {
-        // Legacy format
-        userId = params;
-        assignedClass = arguments[1];
+        throw new Error("Either (program + yearLevel) or assignedClass must be provided");
       }
 
       if (!userId) {
         throw new Error("User ID is required to assign PIO role");
+      }
+
+      // Validate assignedClass before proceeding to API call
+      if (!assignedClass || typeof assignedClass !== "string" || assignedClass.trim() === "") {
+        throw new Error("Valid assigned class is required to assign PIO role");
+      }
+
+      // Additional validation for assignedClass format (should contain course and year level)
+      if (!assignedClass.includes(" - ")) {
+        throw new Error("Assigned class must be in format 'Course - Year Level'");
       }
 
       console.log(
@@ -60,14 +68,7 @@ export const useAssignPIORole = () => {
     },
     onSuccess: (data, variables) => {
       // Use more specific query invalidation to prevent infinite loops
-      // Extract class information from the assigned class string
-      let assignedClass;
-
-      if (
-        typeof variables === "object" &&
-        variables.program &&
-        variables.yearLevel
-      ) {
+      if (variables.program && variables.yearLevel) {
         // If we have program and yearLevel directly
         const programName = getProgramNameFromId(variables.program);
         const yearLevelName = getYearLevelName(variables.yearLevel);
@@ -76,28 +77,17 @@ export const useAssignPIORole = () => {
         queryClient.invalidateQueries({
           queryKey: queryKeys.usersByProgram(programName, yearLevelName),
         });
-      } else {
-        // Legacy format - extract from assignedClass string
-        assignedClass =
-          typeof variables === "object" ? variables.assignedClass : variables;
+      } else if (variables.assignedClass) {
+        // Extract from assignedClass string
+        const parts = variables.assignedClass.split(" - ");
+        if (parts.length === 2) {
+          const course = parts[0];
+          const yearLevel = parts[1];
 
-        if (assignedClass) {
-          const parts = assignedClass.split(" - ");
-          if (parts.length === 2) {
-            const course = parts[0];
-            const yearLevel = parts[1];
-
-            // Invalidate only the specific program/year query
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.usersByProgram(course, yearLevel),
-            });
-          } else {
-            // Fallback to more targeted invalidation
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.users,
-              exact: true,
-            });
-          }
+          // Invalidate only the specific program/year query
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.usersByProgram(course, yearLevel),
+          });
         } else {
           // Fallback to more targeted invalidation
           queryClient.invalidateQueries({
@@ -105,6 +95,12 @@ export const useAssignPIORole = () => {
             exact: true,
           });
         }
+      } else {
+        // Fallback to more targeted invalidation
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.users,
+          exact: true,
+        });
       }
 
       toast({
@@ -241,7 +237,7 @@ export const useRevertPIORole = () => {
  */
 export const useUsers = (filters = {}, options = {}) => {
   return useQuery({
-    queryKey: queryKeys.users.concat([filters]),
+    queryKey: [...queryKeys.users, JSON.stringify(filters)],
     queryFn: () => getUsers(filters),
     select: (data) => data?.data || [],
     ...options,
