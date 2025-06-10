@@ -18,31 +18,73 @@ export const useTasks = (toast) => {
 
   const queryClient = useQueryClient();
 
-  // Fetch tasks
+  // Fetch tasks with better error handling
   const {
     data: tasks = [],
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: queryKeys.tasks,
     queryFn: getTasks,
     select: (data) => data?.data || [],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      // Don't retry on 401/403 errors
+      if (error?.status === 401 || error?.status === 403) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 
-  // Create task mutation with optimized cache management
+  // Optimized mutations with proper cache updates
   const createTaskMutation = useMutation({
     mutationFn: createTask,
-    onSuccess: (newTask) => {
-      // ✅ Add new task to cache instead of invalidating everything
+    onMutate: async (newTaskData) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks });
+
+      // Snapshot previous value
+      const previousTasks = queryClient.getQueryData(queryKeys.tasks);
+
+      // Optimistically update cache
+      const tempId = `temp-${Date.now()}`;
+      const optimisticTask = {
+        ...newTaskData,
+        _id: tempId,
+        id: tempId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData(queryKeys.tasks, (old) => {
+        if (!old?.data) return { data: [optimisticTask] };
+        return {
+          ...old,
+          data: [optimisticTask, ...old.data],
+        };
+      });
+
+      return { previousTasks, tempId };
+    },
+    onSuccess: (newTask, variables, context) => {
+      // Replace optimistic update with real data
       queryClient.setQueryData(queryKeys.tasks, (old) => {
         if (!old?.data) return { data: [newTask.data || newTask] };
         return {
           ...old,
-          data: [newTask.data || newTask, ...old.data]
+          data: old.data.map(task => 
+            task._id === context.tempId || task.id === context.tempId
+              ? newTask.data || newTask
+              : task
+          ),
         };
       });
-      
+
       toast({
         title: "Task Created",
         description: "New task added successfully!",
@@ -50,7 +92,12 @@ export const useTasks = (toast) => {
       setIsModalOpen(false);
       setEditingTask(null);
     },
-    onError: (err) => {
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousTasks) {
+        queryClient.setQueryData(queryKeys.tasks, context.previousTasks);
+      }
+
       toast({
         title: "Error",
         description: err.message || "Failed to create task",
@@ -59,22 +106,30 @@ export const useTasks = (toast) => {
     },
   });
 
-  // Update task mutation
+  // Update task mutation with optimistic updates
   const updateTaskMutation = useMutation({
     mutationFn: ({ taskId, taskData }) => updateTask(taskId, taskData),
-    onSuccess: (data, { taskId, taskData }) => {
+    onMutate: async ({ taskId, taskData }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks });
+
+      const previousTasks = queryClient.getQueryData(queryKeys.tasks);
+
+      // Optimistically update
       queryClient.setQueryData(queryKeys.tasks, (old) => {
         if (!old?.data) return old;
         return {
           ...old,
           data: old.data.map(task => 
             (task._id === taskId || task.id === taskId) 
-              ? { ...task, ...taskData }
+              ? { ...task, ...taskData, updatedAt: new Date().toISOString() }
               : task
-          )
+          ),
         };
       });
-      
+
+      return { previousTasks };
+    },
+    onSuccess: (data, { taskId, taskData }) => {
       toast({
         title: "Task Updated",
         description: "Task updated successfully!",
@@ -82,7 +137,11 @@ export const useTasks = (toast) => {
       setIsModalOpen(false);
       setEditingTask(null);
     },
-    onError: (err) => {
+    onError: (err, variables, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(queryKeys.tasks, context.previousTasks);
+      }
+
       toast({
         title: "Error",
         description: err.message || "Failed to update task",
@@ -91,27 +150,38 @@ export const useTasks = (toast) => {
     },
   });
 
-  // Delete task mutation with optimized cache management
+  // Delete task mutation with optimistic updates
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTask,
-    onSuccess: (data, taskId) => {
-      // ✅ Remove specific task from cache instead of invalidating everything
+    onMutate: async (taskId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks });
+
+      const previousTasks = queryClient.getQueryData(queryKeys.tasks);
+
+      // Optimistically remove task
       queryClient.setQueryData(queryKeys.tasks, (old) => {
         if (!old?.data) return old;
         return {
           ...old,
           data: old.data.filter(task => 
             task._id !== taskId && task.id !== taskId
-          )
+          ),
         };
       });
-      
+
+      return { previousTasks };
+    },
+    onSuccess: () => {
       toast({
         title: "Task Deleted",
         description: "Task removed successfully!",
       });
     },
-    onError: (err) => {
+    onError: (err, variables, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(queryKeys.tasks, context.previousTasks);
+      }
+
       toast({
         title: "Error",
         description: err.message || "Failed to delete task",
@@ -120,6 +190,7 @@ export const useTasks = (toast) => {
     },
   });
 
+  // Memoized handlers to prevent unnecessary re-renders
   const handleTaskSubmit = useCallback(
     (taskData) => {
       if (taskData.id) {
@@ -140,17 +211,14 @@ export const useTasks = (toast) => {
 
   const handleStatusChange = useCallback(
     (taskId, newStatus) => {
-      // Use the appropriate property name based on the API expectations
-      // Some APIs might expect 'status', others might expect 'taskStatus'
+      const now = new Date().toISOString();
       updateTaskMutation.mutate({
         taskId,
         taskData: {
           status: newStatus,
-          taskStatus: newStatus, // Include both property names to be safe
-          completedAt:
-            newStatus === "completed" ? new Date().toISOString() : null,
-          dateCompleted:
-            newStatus === "completed" ? new Date().toISOString() : null, // Include both property names
+          taskStatus: newStatus,
+          completedAt: newStatus === "completed" ? now : null,
+          dateCompleted: newStatus === "completed" ? now : null,
         },
       });
     },
@@ -159,12 +227,13 @@ export const useTasks = (toast) => {
 
   const handleArchiveTask = useCallback(
     (taskId) => {
+      const now = new Date().toISOString();
       updateTaskMutation.mutate({
         taskId,
         taskData: {
           isArchived: true,
-          archived: true, // Include both property names
-          archivedAt: new Date().toISOString(),
+          archived: true,
+          archivedAt: now,
         },
       });
     },
@@ -185,104 +254,57 @@ export const useTasks = (toast) => {
     [updateTaskMutation]
   );
 
-  // Optimized filtered tasks with better performance
-  const filteredTasks = useMemo(
-    () => {
-      if (!Array.isArray(tasks)) return [];
-      
-      // Pre-calculate search query to avoid repeated toLowerCase calls
-      const searchQueryLower = searchQuery.toLowerCase();
-      
-      return tasks.filter((task) => {
-        // Check if task has the necessary properties
-        if (!task) return false;
+  // Memoized filtered tasks with debounced search
+  const filteredTasks = useMemo(() => {
+    if (!Array.isArray(tasks)) return [];
+    
+    const searchQueryLower = searchQuery.toLowerCase().trim();
+    
+    return tasks.filter((task) => {
+      if (!task) return false;
 
-        // Handle both frontend and backend naming conventions
-        const taskName = task.name || task.taskName || "";
-        const taskDescription = task.description || task.taskDescription || "";
-        const taskStatus = task.status || task.taskStatus || "";
-        const taskPriority = task.priority || task.taskPriority || "";
-        const taskIsArchived = task.isArchived || task.archived || false;
-
-        // Early return optimizations
-        if (statusFilter !== "all" && taskStatus !== statusFilter) return false;
-        if (priorityFilter !== "all" && taskPriority !== priorityFilter) return false;
-        if (showArchived !== taskIsArchived) return false;
-        
-        // Search match only if there's a search query
-        if (searchQueryLower) {
-          const searchMatch =
-            taskName.toLowerCase().includes(searchQueryLower) ||
-            taskDescription.toLowerCase().includes(searchQueryLower);
-          return searchMatch;
-        }
-
-        return true;
-      });
-    },
-    [tasks, searchQuery, statusFilter, priorityFilter, showArchived]
-  );
-
-  // Optimized stats calculation with single loop
-  const stats = useMemo(() => {
-    if (!Array.isArray(tasks)) return {
-      total: 0, completed: 0, inProgress: 0, notStarted: 0,
-      onHold: 0, overdue: 0, archived: 0, highPriority: 0
-    };
-
-    const now = new Date();
-    const stats = {
-      total: tasks.length,
-      completed: 0,
-      inProgress: 0,
-      notStarted: 0,
-      onHold: 0,
-      overdue: 0,
-      archived: 0,
-      highPriority: 0,
-    };
-
-    // Single loop for better performance
-    tasks.forEach((task) => {
-      if (!task) return;
-
-      const status = (task.status || task.taskStatus || "").toLowerCase();
-      const priority = task.priority || task.taskPriority || "";
+      // Archive filter
       const isArchived = task.isArchived || task.archived;
-      const dueDate = task.dueDate || task.taskDeadline;
+      if (showArchived !== isArchived) return false;
 
-      // Count status
-      if (status === "completed") stats.completed++;
-      else if (status === "in-progress" || status === "in progress") stats.inProgress++;
-      else if (status === "not-started" || status === "not yet started") stats.notStarted++;
-      else if (status === "on-hold") stats.onHold++;
-
-      // Count archived
-      if (isArchived) stats.archived++;
-
-      // Count high priority (non-completed)
-      if ((priority === "High" || priority === "High Priority") && status !== "completed") {
-        stats.highPriority++;
-      }
-
-      // Count overdue
-      if (dueDate && status !== "completed") {
-        try {
-          if (new Date(dueDate) < now) stats.overdue++;
-        } catch (e) {
-          // Invalid date, skip
+      // Search filter
+      if (searchQueryLower) {
+        const taskName = (task.taskName || task.name || "").toLowerCase();
+        const description = (task.description || "").toLowerCase();
+        
+        if (!taskName.includes(searchQueryLower) && !description.includes(searchQueryLower)) {
+          return false;
         }
       }
-    });
 
-    return stats;
-  }, [tasks]);
+      // Status filter
+      if (statusFilter !== "all") {
+        const taskStatus = task.status || task.taskStatus || "pending";
+        if (taskStatus !== statusFilter) return false;
+      }
+
+      // Priority filter
+      if (priorityFilter !== "all") {
+        const taskPriority = task.priority || task.taskPriority || "medium";
+        if (taskPriority !== priorityFilter) return false;
+      }
+
+      return true;
+    });
+  }, [tasks, searchQuery, statusFilter, priorityFilter, showArchived]);
 
   return {
-    tasks,
+    tasks: filteredTasks,
+    allTasks: tasks,
     isLoading,
     isError,
     error,
+    refetch,
+    handleTaskSubmit,
+    handleDeleteTask,
+    handleStatusChange,
+    handleArchiveTask,
+    handleRestoreTask,
     searchQuery,
     setSearchQuery,
     statusFilter,
@@ -293,14 +315,10 @@ export const useTasks = (toast) => {
     setIsModalOpen,
     editingTask,
     setEditingTask,
-    handleTaskSubmit,
-    handleDeleteTask,
-    handleStatusChange,
-    handleArchiveTask,
-    handleRestoreTask,
     showArchived,
     setShowArchived,
-    filteredTasks,
-    stats,
+    isCreating: createTaskMutation.isPending,
+    isUpdating: updateTaskMutation.isPending,
+    isDeleting: deleteTaskMutation.isPending,
   };
 };
