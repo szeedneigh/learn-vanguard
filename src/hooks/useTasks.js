@@ -30,11 +30,19 @@ export const useTasks = (toast) => {
     select: (data) => data?.data || [],
   });
 
-  // Create task mutation
+  // Create task mutation with optimized cache management
   const createTaskMutation = useMutation({
     mutationFn: createTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+    onSuccess: (newTask) => {
+      // ✅ Add new task to cache instead of invalidating everything
+      queryClient.setQueryData(queryKeys.tasks, (old) => {
+        if (!old?.data) return { data: [newTask.data || newTask] };
+        return {
+          ...old,
+          data: [newTask.data || newTask, ...old.data]
+        };
+      });
+      
       toast({
         title: "Task Created",
         description: "New task added successfully!",
@@ -54,8 +62,19 @@ export const useTasks = (toast) => {
   // Update task mutation
   const updateTaskMutation = useMutation({
     mutationFn: ({ taskId, taskData }) => updateTask(taskId, taskData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+    onSuccess: (data, { taskId, taskData }) => {
+      queryClient.setQueryData(queryKeys.tasks, (old) => {
+        if (!old?.data) return old;
+        return {
+          ...old,
+          data: old.data.map(task => 
+            (task._id === taskId || task.id === taskId) 
+              ? { ...task, ...taskData }
+              : task
+          )
+        };
+      });
+      
       toast({
         title: "Task Updated",
         description: "Task updated successfully!",
@@ -72,11 +91,21 @@ export const useTasks = (toast) => {
     },
   });
 
-  // Delete task mutation
+  // Delete task mutation with optimized cache management
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+    onSuccess: (data, taskId) => {
+      // ✅ Remove specific task from cache instead of invalidating everything
+      queryClient.setQueryData(queryKeys.tasks, (old) => {
+        if (!old?.data) return old;
+        return {
+          ...old,
+          data: old.data.filter(task => 
+            task._id !== taskId && task.id !== taskId
+          )
+        };
+      });
+      
       toast({
         title: "Task Deleted",
         description: "Task removed successfully!",
@@ -148,7 +177,7 @@ export const useTasks = (toast) => {
         taskId,
         taskData: {
           isArchived: false,
-          archived: false, // Include both property names
+          archived: false,
           archivedAt: null,
         },
       });
@@ -156,9 +185,15 @@ export const useTasks = (toast) => {
     [updateTaskMutation]
   );
 
+  // Optimized filtered tasks with better performance
   const filteredTasks = useMemo(
-    () =>
-      tasks.filter((task) => {
+    () => {
+      if (!Array.isArray(tasks)) return [];
+      
+      // Pre-calculate search query to avoid repeated toLowerCase calls
+      const searchQueryLower = searchQuery.toLowerCase();
+      
+      return tasks.filter((task) => {
         // Check if task has the necessary properties
         if (!task) return false;
 
@@ -169,70 +204,78 @@ export const useTasks = (toast) => {
         const taskPriority = task.priority || task.taskPriority || "";
         const taskIsArchived = task.isArchived || task.archived || false;
 
-        const searchMatch =
-          taskName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          taskDescription.toLowerCase().includes(searchQuery.toLowerCase());
+        // Early return optimizations
+        if (statusFilter !== "all" && taskStatus !== statusFilter) return false;
+        if (priorityFilter !== "all" && taskPriority !== priorityFilter) return false;
+        if (showArchived !== taskIsArchived) return false;
+        
+        // Search match only if there's a search query
+        if (searchQueryLower) {
+          const searchMatch =
+            taskName.toLowerCase().includes(searchQueryLower) ||
+            taskDescription.toLowerCase().includes(searchQueryLower);
+          return searchMatch;
+        }
 
-        const statusMatch =
-          statusFilter === "all" || taskStatus === statusFilter;
-        const priorityMatch =
-          priorityFilter === "all" || taskPriority === priorityFilter;
-        const archiveMatch = showArchived ? taskIsArchived : !taskIsArchived;
-
-        return searchMatch && statusMatch && priorityMatch && archiveMatch;
-      }),
+        return true;
+      });
+    },
     [tasks, searchQuery, statusFilter, priorityFilter, showArchived]
   );
 
+  // Optimized stats calculation with single loop
   const stats = useMemo(() => {
-    const now = new Date();
-    return {
-      total: tasks.length,
-      completed: tasks.filter((t) => {
-        const status = t.status || t.taskStatus || "";
-        return status.toLowerCase() === "completed";
-      }).length,
-      inProgress: tasks.filter((t) => {
-        const status = t.status || t.taskStatus || "";
-        return (
-          status.toLowerCase() === "in-progress" ||
-          status.toLowerCase() === "in progress"
-        );
-      }).length,
-      notStarted: tasks.filter((t) => {
-        const status = t.status || t.taskStatus || "";
-        return (
-          status.toLowerCase() === "not-started" ||
-          status.toLowerCase() === "not yet started"
-        );
-      }).length,
-      onHold: tasks.filter((t) => {
-        const status = t.status || t.taskStatus || "";
-        return (
-          status.toLowerCase() === "on-hold" ||
-          status.toLowerCase() === "on-hold"
-        );
-      }).length,
-      overdue: tasks.filter((t) => {
-        const dueDate = t.dueDate || t.taskDeadline;
-        const status = t.status || t.taskStatus || "";
-        if (!dueDate || status.toLowerCase() === "completed") return false;
-        try {
-          return new Date(dueDate) < now;
-        } catch (e) {
-          return false;
-        }
-      }).length,
-      archived: tasks.filter((t) => t.isArchived || t.archived).length,
-      highPriority: tasks.filter((t) => {
-        const priority = t.priority || t.taskPriority || "";
-        const status = t.status || t.taskStatus || "";
-        return (
-          (priority === "High" || priority === "High Priority") &&
-          status.toLowerCase() !== "completed"
-        );
-      }).length,
+    if (!Array.isArray(tasks)) return {
+      total: 0, completed: 0, inProgress: 0, notStarted: 0,
+      onHold: 0, overdue: 0, archived: 0, highPriority: 0
     };
+
+    const now = new Date();
+    const stats = {
+      total: tasks.length,
+      completed: 0,
+      inProgress: 0,
+      notStarted: 0,
+      onHold: 0,
+      overdue: 0,
+      archived: 0,
+      highPriority: 0,
+    };
+
+    // Single loop for better performance
+    tasks.forEach((task) => {
+      if (!task) return;
+
+      const status = (task.status || task.taskStatus || "").toLowerCase();
+      const priority = task.priority || task.taskPriority || "";
+      const isArchived = task.isArchived || task.archived;
+      const dueDate = task.dueDate || task.taskDeadline;
+
+      // Count status
+      if (status === "completed") stats.completed++;
+      else if (status === "in-progress" || status === "in progress") stats.inProgress++;
+      else if (status === "not-started" || status === "not yet started") stats.notStarted++;
+      else if (status === "on-hold") stats.onHold++;
+
+      // Count archived
+      if (isArchived) stats.archived++;
+
+      // Count high priority (non-completed)
+      if ((priority === "High" || priority === "High Priority") && status !== "completed") {
+        stats.highPriority++;
+      }
+
+      // Count overdue
+      if (dueDate && status !== "completed") {
+        try {
+          if (new Date(dueDate) < now) stats.overdue++;
+        } catch (e) {
+          // Invalid date, skip
+        }
+      }
+    });
+
+    return stats;
   }, [tasks]);
 
   return {
