@@ -73,6 +73,7 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const { user } = useAuth();
   const notificationButtonRef = useRef(null);
   const profileButtonRef = useRef(null);
@@ -89,6 +90,11 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
 
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
+
+  // Reset avatar error when user changes
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatarUrl]);
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
@@ -153,20 +159,15 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
     return () => clearInterval(intervalId);
   }, [fetchNotifications]);
 
-  const handleSearch = useCallback(
-    (value) => {
-      setSearchValue(value);
+  const handleSearch = useCallback((value) => {
+    setSearchValue(value);
+  }, []);
 
-      const timeoutId = setTimeout(() => {
-        if (onSearch) {
-          onSearch(value.trim());
-        }
-      }, 300);
-
-      return () => clearTimeout(timeoutId);
-    },
-    [onSearch]
-  );
+  // Debounce side-effect for search
+  useEffect(() => {
+    const id = setTimeout(() => onSearch?.(searchValue.trim()), 300);
+    return () => clearTimeout(id);
+  }, [searchValue, onSearch]);
 
   const handleMarkAsRead = useCallback(
     async (notificationId) => {
@@ -250,6 +251,10 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
   const closeProfile = useCallback(() => setShowProfile(false), []);
   const closeNotifications = useCallback(() => setShowNotifications(false), []);
 
+  const handleAvatarError = useCallback(() => {
+    setAvatarError(true);
+  }, []);
+
   return (
     <div className="bg-white shadow-sm px-4 sm:px-6 py-4 sticky top-0 z-40">
       <div className="flex justify-between items-center">
@@ -316,34 +321,12 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
                 "hover:bg-gray-100 active:bg-gray-200"
               )}
             >
-              {user?.avatarUrl ? (
+              {user?.avatarUrl && !avatarError ? (
                 <img
                   src={user.avatarUrl}
                   alt={user.name || "User avatar"}
                   className="w-8 h-8 rounded-lg object-cover shadow-sm"
-                  onError={(e) => {
-                    // If avatar fails to load, replace with initials
-                    e.target.onerror = null;
-                    e.target.style.display = "none";
-                    // Create a fallback div with initials
-                    const parent = e.target.parentNode;
-                    if (!parent.querySelector(".avatar-fallback")) {
-                      const fallback = document.createElement("div");
-                      fallback.className =
-                        "w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-sm avatar-fallback";
-                      const span = document.createElement("span");
-                      span.className = "text-white text-sm font-semibold";
-                      span.textContent = user
-                        ? getUserInitials(
-                            user.firstName,
-                            user.lastName,
-                            user.name
-                          )
-                        : "";
-                      fallback.appendChild(span);
-                      parent.appendChild(fallback);
-                    }
-                  }}
+                  onError={handleAvatarError}
                 />
               ) : (
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
