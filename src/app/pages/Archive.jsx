@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -37,26 +37,24 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Utility function for throttling rapid successive calls
+function throttle(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 // Helper function to format date strings
 const formatDate = (dateString) => {
   if (!dateString) return "Unknown";
   const options = { year: "numeric", month: "short", day: "numeric" };
   return new Date(dateString).toLocaleDateString(undefined, options);
-};
-
-// Calculate days remaining until deletion (30 days from archive date)
-const calculateRemainingDays = (archivedAt) => {
-  if (!archivedAt) return 30; // Default if no archive date
-
-  const archiveDate = new Date(archivedAt);
-  const deleteDate = new Date(archiveDate);
-  deleteDate.setDate(deleteDate.getDate() + 30);
-
-  const now = new Date();
-  const diffTime = deleteDate - now;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  return Math.max(0, diffDays); // Don't show negative days
 };
 
 const Archive = () => {
@@ -68,6 +66,21 @@ const Archive = () => {
   const [viewMode, setViewMode] = useState("list");
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Memoize the expensive calculation function
+  const calculateRemainingDays = useCallback((archivedAt) => {
+    if (!archivedAt) return 30; // Default if no archive date
+
+    const archiveDate = new Date(archivedAt);
+    const deleteDate = new Date(archiveDate);
+    deleteDate.setDate(deleteDate.getDate() + 30);
+
+    const now = new Date();
+    const diffTime = deleteDate - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return Math.max(0, diffDays); // Don't show negative days
+  }, []);
 
   // Show welcome toast if coming from task archival
   useEffect(() => {
@@ -81,45 +94,49 @@ const Archive = () => {
     }
   }, [searchParams, toast]);
 
-  // Filter only archived tasks
+  // Add performance monitoring in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.time('Archive render');
+      return () => console.timeEnd('Archive render');
+    }
+  });
+
+  // Optimize archived items calculation with better memoization
   const archivedItems = useMemo(() => {
+    if (!Array.isArray(tasks)) return [];
+    
     return tasks
       .filter((task) => task.isArchived || task.archived)
-      .map((task) => ({
-        id: task._id || task.id,
-        name: task.taskName || task.name,
-        completionDate:
-          task.dateCompleted || task.completedAt || task.updatedAt,
-        archivedAt: task.archivedAt || task.updatedAt,
-        remainingDays: calculateRemainingDays(
-          task.archivedAt || task.updatedAt
-        ),
-      }));
-  }, [tasks]);
+      .map((task) => {
+        const archivedAt = task.archivedAt || task.updatedAt;
+        return {
+          id: task._id || task.id,
+          name: task.taskName || task.name,
+          completionDate: task.dateCompleted || task.completedAt || task.updatedAt,
+          archivedAt,
+          remainingDays: calculateRemainingDays(archivedAt),
+        };
+      });
+  }, [tasks, calculateRemainingDays]);
 
+  // Optimize sorting with stable sort and better dependencies
   const sortedItems = useMemo(() => {
-    let items = [...archivedItems];
+    if (!archivedItems.length) return [];
+    
+    const items = [...archivedItems];
     switch (sortBy) {
       case "completionDateAsc":
-        items.sort(
-          (a, b) => new Date(a.completionDate) - new Date(b.completionDate)
-        );
-        break;
+        return items.sort((a, b) => new Date(a.completionDate) - new Date(b.completionDate));
       case "completionDateDesc":
-        items.sort(
-          (a, b) => new Date(b.completionDate) - new Date(a.completionDate)
-        );
-        break;
+        return items.sort((a, b) => new Date(b.completionDate) - new Date(a.completionDate));
       case "nameAsc":
-        items.sort((a, b) => a.name.localeCompare(b.name));
-        break;
+        return items.sort((a, b) => a.name.localeCompare(b.name));
       case "nameDesc":
-        items.sort((a, b) => b.name.localeCompare(a.name));
-        break;
+        return items.sort((a, b) => b.name.localeCompare(a.name));
       default:
-        break;
+        return items;
     }
-    return items;
   }, [archivedItems, sortBy]);
 
   const getSortLabel = () => {
@@ -137,16 +154,20 @@ const Archive = () => {
     }
   };
 
-  const handleRestore = (id) => {
-    handleRestoreTask(id);
-    toast({
-      title: "Task Restored",
-      description: "The task has been restored from archives.",
-      variant: "success",
-    });
-  };
+  // Throttle restore operation to prevent rapid successive calls
+  const handleRestore = useCallback(
+    throttle((id) => {
+      handleRestoreTask(id);
+      toast({
+        title: "Task Restored",
+        description: "The task has been restored from archives.",
+        variant: "success",
+      });
+    }, 1000),
+    [handleRestoreTask, toast]
+  );
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = useCallback(() => {
     if (taskToDelete) {
       handleDeleteTask(taskToDelete);
       setDeleteDialogOpen(false);
@@ -157,14 +178,14 @@ const Archive = () => {
         variant: "default",
       });
     }
-  };
+  }, [taskToDelete, handleDeleteTask, toast]);
 
-  const openDeleteDialog = (id) => {
+  const openDeleteDialog = useCallback((id) => {
     if (id) {
       setTaskToDelete(id);
       setDeleteDialogOpen(true);
     }
-  };
+  }, []);
 
   return (
     <div className="p-4 md:p-6 space-y-4">
