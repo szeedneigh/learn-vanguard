@@ -914,118 +914,127 @@ const Users = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {isLoading ? (
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-10 text-center text-sm text-gray-500"
-                  >
-                    {/* Optional: Add a spinner icon here */}
-                    Loading students...
-                  </td>
-                </tr>
-              ) : sortedAndFilteredStudents.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-10 text-center text-sm text-gray-500"
-                  >
-                    {searchQuery || filterOption !== "all"
-                      ? "No students match your current search/filter criteria."
-                      : "No students found in this class/year."}
-                  </td>
-                </tr>
-              ) : (
-                sortedAndFilteredStudents.map((student) => (
-                  <tr
-                    key={student.id}
-                    className="hover:bg-gray-50 transition-colors duration-150 ease-in-out"
-                  >
-                    {/* Adjusted padding for table cells */}
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {student.id}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {student.name}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {student.email}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {student.role?.toLowerCase() === "pio" ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                          Public Information Officer
-                        </span>
-                      ) : (
-                        <span className="text-gray-600">Student</span> // Use a dash for no role
-                      )}
-                    </td>
-                    {/* Only show Actions cell for admin users */}
-                    {isAdmin && user?.role?.toLowerCase() === "admin" && (
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex items-center gap-1 border border-gray-300 hover:bg-gray-100"
-                              disabled={isActionLoading} // Disable actions trigger while another action is loading
-                            >
-                              <span className="hidden sm:inline">Actions</span>
-                              <MoreHorizontal
-                                className="h-4 w-4"
-                                aria-hidden="true"
-                              />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="border border-gray-200 shadow-md"
-                          >
-                            {/* Show "Assign PIO" if not already PIO and there's no other PIO */}
-                            {student.role !== "pio" &&
-                              student.role !== "PIO" &&
-                              !sortedAndFilteredStudents.some(
-                                (s) => s.role === "pio" || s.role === "PIO"
-                              ) && (
-                                <DropdownMenuItem
-                                  onClick={() => openAssignRoleModal(student)} // Use specific handler
-                                  className="cursor-pointer hover:bg-gray-100 text-sm"
-                                  disabled={isActionLoading} // Disable during any action loading state
-                                >
-                                  Assign Public Information Officer Role
-                                </DropdownMenuItem>
-                              )}
-
-                            {/* Show "Revert to Student" option only for PIO users */}
-                            {(student.role === "pio" ||
-                              student.role === "PIO") && (
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStudentToAssignRole(student);
-                                  setShowAssignRoleModal(true);
-                                }}
-                                className="cursor-pointer hover:bg-gray-100 text-sm"
-                                disabled={isActionLoading}
-                              >
-                                Revert to Student
-                              </DropdownMenuItem>
-                            )}
-
-                            <DropdownMenuItem
-                              onClick={() => openRemoveModal(student)} // Use specific handler
-                              className="cursor-pointer hover:bg-red-50 text-red-600 text-sm"
-                              disabled={isActionLoading} // Disable during any action loading state
-                            >
-                              Remove Student
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+              {(() => {
+                // Calculate dynamic colSpan based on whether Actions column is shown
+                const colSpan = isAdmin && user?.role?.toLowerCase() === "admin" ? 5 : 4;
+                
+                if (isLoading) {
+                  return (
+                    <tr>
+                      <td
+                        colSpan={colSpan}
+                        className="px-6 py-10 text-center text-sm text-gray-500"
+                      >
+                        {/* Optional: Add a spinner icon here */}
+                        Loading students...
                       </td>
-                    )}
-                  </tr>
-                ))
-              )}
+                    </tr>
+                  );
+                } else if (sortedAndFilteredStudents.length === 0) {
+                  return (
+                    <tr>
+                      <td
+                        colSpan={colSpan}
+                        className="px-6 py-10 text-center text-sm text-gray-500"
+                      >
+                        {searchQuery || filterOption !== "all"
+                          ? "No students match your current search/filter criteria."
+                          : "No students found in this class/year."}
+                      </td>
+                    </tr>
+                  );
+                                 } else {
+                   return sortedAndFilteredStudents.map((student) => (
+                     <tr
+                       key={student.id}
+                       className="hover:bg-gray-50 transition-colors duration-150 ease-in-out"
+                     >
+                       {/* Adjusted padding for table cells */}
+                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                         {student.id}
+                       </td>
+                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                         {student.name}
+                       </td>
+                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                         {student.email}
+                       </td>
+                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                         {student.role?.toLowerCase() === "pio" ? (
+                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                             Public Information Officer
+                           </span>
+                         ) : (
+                           <span className="text-gray-600">Student</span> // Use a dash for no role
+                         )}
+                       </td>
+                       {/* Only show Actions cell for admin users */}
+                       {isAdmin && user?.role?.toLowerCase() === "admin" && (
+                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                           <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 className="flex items-center gap-1 border border-gray-300 hover:bg-gray-100"
+                                 disabled={isActionLoading} // Disable actions trigger while another action is loading
+                               >
+                                 <span className="hidden sm:inline">Actions</span>
+                                 <MoreHorizontal
+                                   className="h-4 w-4"
+                                   aria-hidden="true"
+                                 />
+                               </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent
+                               align="end"
+                               className="border border-gray-200 shadow-md"
+                             >
+                               {/* Show "Assign PIO" if not already PIO and there's no other PIO */}
+                               {student.role !== "pio" &&
+                                 student.role !== "PIO" &&
+                                 !sortedAndFilteredStudents.some(
+                                   (s) => s.role === "pio" || s.role === "PIO"
+                                 ) && (
+                                   <DropdownMenuItem
+                                     onClick={() => openAssignRoleModal(student)} // Use specific handler
+                                     className="cursor-pointer hover:bg-gray-100 text-sm"
+                                     disabled={isActionLoading} // Disable during any action loading state
+                                   >
+                                     Assign Public Information Officer Role
+                                   </DropdownMenuItem>
+                                 )}
+
+                               {/* Show "Revert to Student" option only for PIO users */}
+                               {(student.role === "pio" ||
+                                 student.role === "PIO") && (
+                                 <DropdownMenuItem
+                                   onClick={() => {
+                                     setStudentToAssignRole(student);
+                                     setShowAssignRoleModal(true);
+                                   }}
+                                   className="cursor-pointer hover:bg-gray-100 text-sm"
+                                   disabled={isActionLoading}
+                                 >
+                                   Revert to Student
+                                 </DropdownMenuItem>
+                               )}
+
+                               <DropdownMenuItem
+                                 onClick={() => openRemoveModal(student)} // Use specific handler
+                                 className="cursor-pointer hover:bg-red-50 text-red-600 text-sm"
+                                 disabled={isActionLoading} // Disable during any action loading state
+                               >
+                                 Remove Student
+                               </DropdownMenuItem>
+                             </DropdownMenuContent>
+                           </DropdownMenu>
+                         </td>
+                       )}
+                     </tr>
+                   ));
+                 }
+               })()}
             </tbody>
           </table>
         </div>{" "}
