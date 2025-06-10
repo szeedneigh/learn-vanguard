@@ -45,11 +45,29 @@ const Button = React.forwardRef(({
   children,
   ...props 
 }, ref) => {
-  const Comp = asChild ? Slot : "button"
   const effectiveVariant = loading ? "loading" : variant;
   
+  if (asChild) {
+    const child = React.Children.only(children);
+    const enhancedChild = React.cloneElement(child, {
+      className: cn(buttonVariants({ variant: effectiveVariant, size }), child.props.className, className),
+      disabled: loading || props.disabled || child.props.disabled,
+      'aria-busy': loading,
+      ref,
+      ...props,
+      children: loading ? (
+        <span>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {child.props.children}
+        </span>
+      ) : child.props.children
+    });
+    
+    return enhancedChild;
+  }
+  
   return (
-    (<Comp
+    <button
       className={cn(buttonVariants({ variant: effectiveVariant, size, className }))}
       ref={ref}
       disabled={loading || props.disabled}
@@ -58,7 +76,7 @@ const Button = React.forwardRef(({
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
       {children}
-    </Comp>)
+    </button>
   );
 })
 Button.displayName = "Button"
