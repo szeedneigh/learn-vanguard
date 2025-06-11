@@ -12,10 +12,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { usePermission } from "@/context/PermissionContext";
 import { Loader2, AlertCircle } from "lucide-react";
-import { dashboardRoutes, hasRoutePermission } from "@/lib/navigation";
+import { dashboardRoutes } from "@/lib/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import PropTypes from "prop-types";
-import { ROLES } from "@/lib/constants";
 import { normalizeRole, checkApiConnection, API_BASE_URL } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +30,7 @@ const routeComponents = {
   students: Users,
 };
 
-// Layout component that wraps authorized content
+// OPTIMIZED Layout component with proper CSS Grid and scroll containment
 const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [apiStatus, setApiStatus] = useState({
@@ -111,19 +110,88 @@ const DashboardLayout = ({ children }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar
-          onMenuClick={toggleSidebar}
-          isWebSocketConnected={isConnected}
-          connectionStatus={connectionStatus}
-        />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-100">
-          {children}
-          <Toaster />
-        </main>
+    // Fixed viewport container with overflow hidden
+    <div className="h-screen w-full overflow-hidden bg-gray-50">
+      {/* 
+        OPTIMIZED CSS Grid Layout:
+        - Sidebar column: auto-width (sizes to content)
+        - Main content column: 1fr (takes remaining space)
+        - Single row: 1fr (full height)
+        - This ensures sidebar stays fixed and main content scrolls independently
+      */}
+      <div 
+        className="grid h-full w-full"
+        style={{ 
+          gridTemplateColumns: 'auto 1fr',
+          gridTemplateRows: '1fr'
+        }}
+      >
+        {/* 
+          Sidebar Container - Grid cell with proper constraints
+          - relative positioning within grid cell
+          - z-index for proper layering
+          - overflow handled by Sidebar component internally
+        */}
+        <div className="relative z-10 h-full">
+          <Sidebar 
+            isOpen={isSidebarOpen} 
+            onClose={() => setIsSidebarOpen(false)} 
+          />
+        </div>
+        
+        {/* 
+          Main Content Container - Grid cell with scroll containment
+          - flex column layout for header + scrollable content
+          - min-w-0 prevents flex items from overflowing
+          - overflow-hidden ensures proper scroll containment
+        */}
+        <div className="flex flex-col min-w-0 h-full overflow-hidden">
+          {/* 
+            Topbar - Fixed height header
+            - flex-shrink-0 prevents compression
+            - relative z-index for proper layering
+          */}
+          <header className="flex-shrink-0 z-20 relative">
+            <Topbar
+              onMenuClick={toggleSidebar}
+              isWebSocketConnected={isConnected}
+              connectionStatus={connectionStatus}
+            />
+          </header>
+          
+          {/* 
+            Main Content Area - Scrollable container
+            - flex-1 takes remaining height after header
+            - overflow-y-auto provides vertical scrolling
+            - scroll-smooth for better UX
+            - proper background for content area
+          */}
+          <main className="flex-1 overflow-y-auto bg-gray-100 scroll-smooth">
+            {/* 
+              Content wrapper with consistent padding
+              - min-h-full ensures content fills available height
+              - proper padding for all screen sizes
+            */}
+            <div className="p-4 sm:p-6 min-h-full">
+              {/* 
+                Children container with width constraint
+                - w-full ensures full width usage
+                - Contains actual page content
+              */}
+              <div className="w-full">
+                {children}
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
+      
+      {/* 
+        Toast notifications - positioned outside main layout
+        - Portal-ed to body to avoid layout interference
+        - Proper z-index for visibility
+      */}
+      <Toaster />
     </div>
   );
 };
