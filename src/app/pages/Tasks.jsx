@@ -143,7 +143,21 @@ const Tasks = () => {
   // Handler functions
   const handleTaskSubmit = (taskData) => {
     if (editingTask) {
-      updateTask({ taskId: editingTask.id, taskData });
+      // Make sure we have a valid ID by using either editingTask.id or editingTask._id
+      const taskId = editingTask.id || editingTask._id;
+      console.log("Editing task with ID:", taskId, "Data:", taskData);
+
+      if (!taskId) {
+        console.error("Cannot update task: Invalid task ID", editingTask);
+        toast({
+          title: "Error",
+          description: "Failed to update task: Invalid task ID",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      updateTask({ taskId, taskData });
     } else {
       createTask(taskData);
     }
@@ -699,7 +713,12 @@ const Tasks = () => {
                                   status: mapStatusForDisplay(task.taskStatus),
                                 }}
                                 onEdit={() => {
-                                  setEditingTask(task);
+                                  console.log("Editing task:", task);
+                                  const taskWithId = {
+                                    ...task,
+                                    id: task._id || task.id, // Ensure ID is set properly
+                                  };
+                                  setEditingTask(taskWithId);
                                   setIsModalOpen(true);
                                 }}
                                 onDelete={() =>

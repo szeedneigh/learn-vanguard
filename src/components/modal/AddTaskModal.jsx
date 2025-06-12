@@ -36,12 +36,29 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
   const normalizeTaskData = useCallback((task) => {
     if (!task) return null;
 
+    console.log("Normalizing task data:", task);
+
+    // Format date to YYYY-MM-DD for input[type="date"]
+    let formattedDueDate = "";
+    if (task.dueDate || task.taskDeadline) {
+      const dateStr = task.dueDate || task.taskDeadline;
+      try {
+        // Parse the date and format it as YYYY-MM-DD
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          formattedDueDate = date.toISOString().split("T")[0];
+        }
+      } catch (error) {
+        console.error("Error formatting date:", error);
+      }
+    }
+
     // Convert backend format to frontend format
     return {
       id: task.id || task._id,
       name: task.name || task.taskName || "",
       description: task.description || task.taskDescription || "",
-      dueDate: task.dueDate || task.taskDeadline || "",
+      dueDate: formattedDueDate,
       // Normalize the priority format
       priority:
         task.priority ||

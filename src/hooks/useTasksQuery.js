@@ -114,6 +114,17 @@ export const useUpdateTask = () => {
 
   return useMutation({
     mutationFn: ({ taskId, taskData }) => {
+      // Ensure we have a valid task ID
+      if (!taskId && taskData.id) {
+        taskId = taskData.id;
+      }
+
+      console.log("Updating task with ID:", taskId, "and data:", taskData);
+
+      if (!taskId) {
+        throw new Error("Task ID is required for updating a task");
+      }
+
       // Map the form data to the API expected format
       const apiTaskData = {};
 
@@ -157,14 +168,14 @@ export const useUpdateTask = () => {
 
       return updateTask(taskId, apiTaskData);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
 
       toast({
         title: "Success",
-        description: data.message || "Task updated successfully",
+        description: "Task updated successfully",
       });
     },
     onError: (error) => {
@@ -186,14 +197,14 @@ export const useDeleteTask = () => {
 
   return useMutation({
     mutationFn: (taskId) => deleteTask(taskId),
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
 
       toast({
         title: "Success",
-        description: data.message || "Task deleted successfully",
+        description: "Task deleted successfully",
       });
     },
     onError: (error) => {
@@ -231,7 +242,7 @@ export const useUpdateTaskStatus = () => {
       }
       return updateTask(taskId, updateData);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
