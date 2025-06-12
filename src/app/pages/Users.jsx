@@ -412,11 +412,19 @@ const Users = () => {
       // React Query will automatically refetch via invalidation
     } catch (error) {
       console.error("Error assigning PIO role:", error);
-      // Don't close modal on error - let user see the error
-    } finally {
-      setIsProcessing(false);
+      // Close modal after a short delay to allow error display, then refetch
+      setTimeout(() => {
+        closeAssignRoleModal();
+        // Optionally refetch to ensure data consistency
+        refetch().catch((refetchError) => {
+          console.error(
+            "Error refetching after PIO assignment error:",
+            refetchError
+          );
+        });
+      }, 2000);
     }
-  }, [studentToAssignRole, isProcessing, assignPIO, currentProgram.id, selectedYear, closeAssignRoleModal, toast]);
+  };
 
   const handleRemoveStudent = useCallback(async () => {
     if (!studentToRemove || isProcessing) return;
@@ -446,11 +454,19 @@ const Users = () => {
       // React Query will automatically refetch via invalidation
     } catch (error) {
       console.error("Error removing student:", error);
-      // Don't close modal on error - let user see the error
-    } finally {
-      setIsProcessing(false);
+      // Close modal after a short delay to allow error display, then refetch
+      setTimeout(() => {
+        closeRemoveModal();
+        // Optionally refetch to ensure data consistency
+        refetch().catch((refetchError) => {
+          console.error(
+            "Error refetching after student removal error:",
+            refetchError
+          );
+        });
+      }, 2000);
     }
-  }, [studentToRemove, isProcessing, removeUser, currentProgram.id, selectedYear, closeRemoveModal, toast]);
+  };
 
   const handleRevertRole = useCallback(async () => {
     if (!studentToRevertRole || isProcessing) return;
@@ -630,7 +646,7 @@ const Users = () => {
               disabled={isLoading}
             >
               <SelectTrigger className="w-full sm:w-36 border-gray-300 shadow-sm">
-                <SelectValue placeholder="Filter By" />
+                <SelectValue placeholder="Filter By Role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Students</SelectItem>

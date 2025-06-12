@@ -326,7 +326,30 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
                   src={user.avatarUrl}
                   alt={user.name || "User avatar"}
                   className="w-8 h-8 rounded-lg object-cover shadow-sm"
-                  onError={handleAvatarError}
+                  key={user.avatarUrl}
+                  onError={(e) => {
+                    // If avatar fails to load, replace with initials
+                    e.target.onerror = null;
+                    e.target.style.display = "none";
+                    // Create a fallback div with initials
+                    const parent = e.target.parentNode;
+                    if (!parent.querySelector(".avatar-fallback")) {
+                      const fallback = document.createElement("div");
+                      fallback.className =
+                        "w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-sm avatar-fallback";
+                      const span = document.createElement("span");
+                      span.className = "text-white text-sm font-semibold";
+                      span.textContent = user
+                        ? getUserInitials(
+                            user.firstName,
+                            user.lastName,
+                            user.name
+                          )
+                        : "";
+                      fallback.appendChild(span);
+                      parent.appendChild(fallback);
+                    }
+                  }}
                 />
               ) : (
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">

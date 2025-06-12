@@ -26,9 +26,13 @@ export const useTasks = (toast) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: queryKeys.tasks,
-    queryFn: getTasks,
-    select: (data) => ({ data: data?.data || [] }),
+    queryKey: [queryKeys.tasks, { showArchived }],
+    queryFn: async () => {
+      // Include archived=true parameter when showArchived is true
+      const params = showArchived ? { archived: "true" } : {};
+      return getTasks(params);
+    },
+    select: (data) => data?.data || [],
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
@@ -80,7 +84,7 @@ export const useTasks = (toast) => {
         if (!old?.data) return { data: [newTask.data || newTask] };
         return {
           ...old,
-          data: old.data.map(task => 
+          data: old.data.map((task) =>
             task._id === context.tempId || task.id === context.tempId
               ? newTask.data || newTask
               : task
@@ -122,8 +126,8 @@ export const useTasks = (toast) => {
         if (!old?.data) return old;
         return {
           ...old,
-          data: old.data.map(task => 
-            (task._id === taskId || task.id === taskId) 
+          data: old.data.map((task) =>
+            task._id === taskId || task.id === taskId
               ? { ...task, ...taskData, updatedAt: new Date().toISOString() }
               : task
           ),
@@ -166,8 +170,8 @@ export const useTasks = (toast) => {
         if (!old?.data) return old;
         return {
           ...old,
-          data: old.data.filter(task => 
-            task._id !== taskId && task.id !== taskId
+          data: old.data.filter(
+            (task) => task._id !== taskId && task.id !== taskId
           ),
         };
       });
@@ -260,22 +264,28 @@ export const useTasks = (toast) => {
   // Memoized filtered tasks with debounced search
   const filteredTasks = useMemo(() => {
     if (!Array.isArray(tasks)) return [];
-    
+
     const searchQueryLower = searchQuery.toLowerCase().trim();
-    
+
     return tasks.filter((task) => {
       if (!task) return false;
 
-      // Archive filter
-      const isArchived = task.isArchived || task.archived;
-      if (showArchived !== isArchived) return false;
+      // Skip archive filter when showing archived tasks explicitly
+      if (!showArchived) {
+        // Only show non-archived tasks when not in archive view
+        const isArchived = task.isArchived === true || task.archived === true;
+        if (isArchived) return false;
+      }
 
       // Search filter
       if (searchQueryLower) {
         const taskName = (task.taskName || task.name || "").toLowerCase();
         const description = (task.description || "").toLowerCase();
-        
-        if (!taskName.includes(searchQueryLower) && !description.includes(searchQueryLower)) {
+
+        if (
+          !taskName.includes(searchQueryLower) &&
+          !description.includes(searchQueryLower)
+        ) {
           return false;
         }
       }
