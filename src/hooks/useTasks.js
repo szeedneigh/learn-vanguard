@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import {
@@ -20,7 +20,7 @@ export const useTasks = (toast) => {
 
   // Fetch tasks with better error handling
   const {
-    data: tasksData = { data: [] },
+    data: tasks = [],
     isLoading,
     isError,
     error,
@@ -28,14 +28,29 @@ export const useTasks = (toast) => {
   } = useQuery({
     queryKey: [queryKeys.tasks, { showArchived }],
     queryFn: async () => {
-      // Include archived=true parameter when showArchived is true
-      const params = showArchived ? { archived: "true" } : {};
-      return getTasks(params);
+      try {
+        // Include archived=true parameter when showArchived is true
+        const params = showArchived
+          ? { archived: "true" }
+          : { archived: "false" };
+        console.log("useTasks: Fetching tasks with params:", params);
+        const result = await getTasks(params);
+        console.log(
+          "useTasks: Fetched tasks:",
+          result?.data?.length || 0,
+          "items"
+        );
+        return result;
+      } catch (err) {
+        console.error("useTasks: Error fetching tasks:", err);
+        throw err;
+      }
     },
     select: (data) => data?.data || [],
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: showArchived ? 5000 : 10 * 60 * 1000, // 5 seconds for archive, 10 minutes for normal view
+    refetchOnWindowFocus: true, // Always refetch on window focus
+    refetchOnMount: true, // Always refetch when component mounts
     retry: (failureCount, error) => {
       // Don't retry on 401/403 errors
       if (error?.status === 401 || error?.status === 403) {
@@ -45,8 +60,11 @@ export const useTasks = (toast) => {
     },
   });
 
-  // Extract tasks array from the data object for easier use
-  const tasks = tasksData.data;
+  // Watch for changes to showArchived and invalidate cache when it changes
+  useEffect(() => {
+    // Invalidate the tasks cache when switching between archived and non-archived views
+    queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+  }, [showArchived, queryClient]);
 
   // Optimized mutations with proper cache updates
   const createTaskMutation = useMutation({
@@ -136,7 +154,7 @@ export const useTasks = (toast) => {
 
       return { previousTasks };
     },
-    onSuccess: () => {
+    onSuccess: (data, { taskId, taskData }) => {
       toast({
         title: "Task Updated",
         description: "Task updated successfully!",
@@ -211,9 +229,18 @@ export const useTasks = (toast) => {
 
   const handleDeleteTask = useCallback(
     (taskId) => {
-      deleteTaskMutation.mutate(taskId);
+      // Invalidate cache before and after deletion
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+
+      return deleteTaskMutation.mutateAsync(taskId).then((result) => {
+        // Force a refetch after deletion with a small delay
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+        }, 300);
+        return result;
+      });
     },
-    [deleteTaskMutation]
+    [deleteTaskMutation, queryClient]
   );
 
   const handleStatusChange = useCallback(
@@ -235,30 +262,53 @@ export const useTasks = (toast) => {
   const handleArchiveTask = useCallback(
     (taskId) => {
       const now = new Date().toISOString();
-      updateTaskMutation.mutate({
-        taskId,
-        taskData: {
-          isArchived: true,
-          archived: true,
-          archivedAt: now,
-        },
-      });
+
+      // First invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+
+      return updateTaskMutation
+        .mutateAsync({
+          taskId,
+          taskData: {
+            isArchived: true,
+            archived: true,
+            archivedAt: now,
+          },
+        })
+        .then((result) => {
+          // Force a refetch to ensure the UI is up-to-date
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+          }, 300);
+          return result;
+        });
     },
-    [updateTaskMutation]
+    [updateTaskMutation, queryClient]
   );
 
   const handleRestoreTask = useCallback(
     (taskId) => {
-      updateTaskMutation.mutate({
-        taskId,
-        taskData: {
-          isArchived: false,
-          archived: false,
-          archivedAt: null,
-        },
-      });
+      // First invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+
+      return updateTaskMutation
+        .mutateAsync({
+          taskId,
+          taskData: {
+            isArchived: false,
+            archived: false,
+            archivedAt: null,
+          },
+        })
+        .then((result) => {
+          // Force a refetch to ensure the UI is up-to-date
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+          }, 300);
+          return result;
+        });
     },
-    [updateTaskMutation]
+    [updateTaskMutation, queryClient]
   );
 
   // Memoized filtered tasks with debounced search

@@ -31,7 +31,7 @@ export default function Events() {
 
   // Get user context for role-based permissions
   const { user } = useContext(AuthContext);
-  const isStudent = user?.role === ROLES.STUDENT;
+  const isStudent = user?.role?.toUpperCase() === ROLES.STUDENT;
 
   // Keep selectedDate in sync with currentDate
   useEffect(() => {
