@@ -143,6 +143,7 @@ export const ROLE_PERMISSIONS = {
     // Task permissions - limited
     PERMISSIONS.VIEW_TASKS,
     PERMISSIONS.COMPLETE_TASK,
+    PERMISSIONS.EDIT_TASK,
 
     // Event permissions - read only
     PERMISSIONS.VIEW_EVENTS,

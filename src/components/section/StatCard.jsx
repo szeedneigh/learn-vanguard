@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 import { memo } from "react";
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 
 const StatCard = memo(({ title, value, icon, loading = false }) => (
   <motion.div
-    whileHover={{ 
+    whileHover={{
       scale: 1.02,
-      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)"
+      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
     }}
     whileTap={{ scale: 0.98 }}
     transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -34,9 +34,9 @@ StatCard.propTypes = {
   title: PropTypes.string.isRequired,
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   icon: PropTypes.node.isRequired,
-  loading: PropTypes.bool
+  loading: PropTypes.bool,
 };
 
 StatCard.displayName = "StatCard";
 
-export default StatCard; 
+export default StatCard;

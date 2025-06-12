@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 import { useUsersPage, useSearchUsers } from "@/hooks/useUsersQuery";
 import { useAuth } from "@/context/AuthContext";
@@ -79,30 +79,14 @@ const Users = () => {
     programsData[0].id
   );
   const [selectedYear, setSelectedYear] = useState("1");
-  
-  // Pagination state for large lists
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50; // Limit to 50 items per page for performance
 
-  // Modal states
+  // Modal states - only keep the Add Student modal state
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
-  const [showRevertRoleModal, setShowRevertRoleModal] = useState(false);
-  const [showRemoveModal, setShowRemoveModal] = useState(false);
-  const [studentToAssignRole, setStudentToAssignRole] = useState(null);
-  const [studentToRevertRole, setStudentToRevertRole] = useState(null);
-  const [studentToRemove, setStudentToRemove] = useState(null);
 
   // Add student modal states
   const [addStudentSearchQuery, setAddStudentSearchQuery] = useState("");
   const [studentToAdd, setStudentToAdd] = useState(null);
   const [addStudentError, setAddStudentError] = useState("");
-
-  // CRITICAL FIX: Add processing state to prevent multiple simultaneous operations
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  // Add this state to track if any modal is open
-  const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
 
   // React Query hooks
   const {
@@ -147,189 +131,274 @@ const Users = () => {
     user?.normalizedRole?.toLowerCase() === "admin" ||
     user?.role === "ADMIN";
 
-  // OPTIMIZED: Filter and sort students with proper memoization
-  const filteredAndSortedStudents = useMemo(() => {
-    // Early return for empty students array
-    if (!students || students.length === 0) {
-      return [];
-    }
+  // Filter and sort students
+  const filteredAndSortedStudents = students
+    .filter((student) => {
+      // Exclude admin users from the list
+      if (student.role === "admin") {
+        return false;
+      }
 
-    // Pre-compute search term to avoid repeated toLowerCase calls
-    const searchTerm = searchQuery.toLowerCase();
+      // Search filter - handle both name formats and studentNumber
+      const fullName =
+        student.firstName && student.lastName
+          ? `${student.firstName} ${student.lastName}`.toLowerCase()
+          : (student.name || "").toLowerCase();
 
-    return students
-      .filter((student) => {
-        // Exclude admin users from the list
-        if (student.role === "admin") {
-          return false;
-        }
+      const studentNumber = (student.studentNumber || student.id || "")
+        .toString()
+        .toLowerCase();
+      const emailAddress = (student.email || "").toLowerCase();
+      const searchTerm = searchQuery.toLowerCase();
 
-        // Search filter - handle both name formats and studentNumber
-        const fullName =
-          student.firstName && student.lastName
-            ? `${student.firstName} ${student.lastName}`.toLowerCase()
-            : (student.name || "").toLowerCase();
+      const searchMatch =
+        fullName.includes(searchTerm) ||
+        studentNumber.includes(searchTerm) ||
+        emailAddress.includes(searchTerm);
 
-        const studentNumber = (student.studentNumber || student.id || "")
-          .toString()
-          .toLowerCase();
-        const emailAddress = (student.email || "").toLowerCase();
+      // Role filter - apply only if a specific filter is selected
+      let roleMatch = true;
+      if (filterOption === "pio") {
+        roleMatch = student.role === "pio";
+      } else if (filterOption === "student") {
+        roleMatch = !student.role || student.role === "student";
+      }
 
-        // Apply search filter only if there's a search query
-        const searchMatch = !searchQuery.trim() || 
-          fullName.includes(searchTerm) ||
-          studentNumber.includes(searchTerm) ||
-          emailAddress.includes(searchTerm);
+      return searchMatch && roleMatch;
+    })
+    .sort((a, b) => {
+      // Sort by role first (PIOs at the top)
+      if (a.role === "pio" && b.role !== "pio") return -1;
+      if (a.role !== "pio" && b.role === "pio") return 1;
 
-        // Role filter - apply only if a specific filter is selected
-        let roleMatch = true;
-        if (filterOption === "pio") {
-          roleMatch = student.role === "pio";
-        } else if (filterOption === "student") {
-          roleMatch = !student.role || student.role === "student";
-        }
-
-        return searchMatch && roleMatch;
-      })
-      .sort((a, b) => {
-        // Sort by role first (PIOs at the top)
-        if (a.role === "pio" && b.role !== "pio") return -1;
-        if (a.role !== "pio" && b.role === "pio") return 1;
-
-        // Then sort by name
-        const nameA =
-          a.firstName && a.lastName
-            ? `${a.firstName} ${a.lastName}`
-            : a.name || "";
-        const nameB =
-          b.firstName && b.lastName
-            ? `${b.firstName} ${b.lastName}`
-            : b.name || "";
-              return nameA.localeCompare(nameB);
+      // Then sort by name
+      const nameA =
+        a.firstName && a.lastName
+          ? `${a.firstName} ${a.lastName}`
+          : a.name || "";
+      const nameB =
+        b.firstName && b.lastName
+          ? `${b.firstName} ${b.lastName}`
+          : b.name || "";
+      return nameA.localeCompare(nameB);
     });
-  }, [students, searchQuery, filterOption]); // Proper dependencies for memoization
-
-  // PERFORMANCE: Paginate filtered results to prevent UI freezing
-  const paginatedStudents = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredAndSortedStudents.slice(startIndex, endIndex);
-  }, [filteredAndSortedStudents, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredAndSortedStudents.length / itemsPerPage);
-  const hasMultiplePages = totalPages > 1;
 
   // Event handlers
-  const handleProgramChange = useCallback((programId) => {
+  const handleProgramChange = (programId) => {
     if (programId !== selectedProgramId) {
       setSelectedProgramId(programId);
       setSelectedYear("1");
       setSearchQuery("");
       setFilterOption("all");
-      setCurrentPage(1); // Reset pagination
     }
-  }, [selectedProgramId]);
+  };
 
-  const handleYearChange = useCallback((year) => {
+  const handleYearChange = (year) => {
     if (year !== selectedYear) {
       setSelectedYear(year);
       setSearchQuery("");
       setFilterOption("all");
-      setCurrentPage(1); // Reset pagination
     }
-  }, [selectedYear]);
+  };
 
-  // Reset pagination when search/filter changes
-  const handleSearchChange = useCallback((value) => {
-    setSearchQuery(value);
-    setCurrentPage(1);
-  }, []);
-
-  const handleFilterChange = useCallback((value) => {
-    setFilterOption(value);
-    setCurrentPage(1);
-  }, []);
-
-  const handleNavigate = useCallback((section) => {
+  const handleNavigate = (section) => {
     console.log("Simulating navigation to: " + section);
     if (section === "students_summary") {
       alert(
         "Navigate to Students Summary/Analytics Page (Implementation Needed)"
       );
     }
-  }, []);
+  };
 
   // Modal handlers
-  const openAddStudentModal = useCallback(() => {
-    if (isCurrentUserPIO || isProcessing || isAnyModalOpen) return;
-    
-    setIsAnyModalOpen(true);
+  const openAddStudentModal = () => {
+    // Don't open modal if user is PIO
+    if (isCurrentUserPIO) return;
+
     setShowAddModal(true);
     setAddStudentSearchQuery("");
     setStudentToAdd(null);
     setAddStudentError("");
-  }, [isCurrentUserPIO, isProcessing, isAnyModalOpen]);
+  };
 
-  const closeAddModal = useCallback(() => {
+  const closeAddModal = () => {
     setShowAddModal(false);
-    setIsAnyModalOpen(false);
     // Reset state immediately without setTimeout
     setAddStudentSearchQuery("");
     setStudentToAdd(null);
     setAddStudentError("");
-  }, []);
+  };
 
-  const openAssignRoleModal = useCallback((student) => {
-    // Don't open modal if user is PIO or if processing
-    if (isCurrentUserPIO || isProcessing) return;
+  const openAssignRoleModal = (student) => {
+    // Don't open modal if user is PIO
+    if (isCurrentUserPIO) return;
 
-    setStudentToAssignRole(student);
-    setShowAssignRoleModal(true);
-  }, [isCurrentUserPIO, isProcessing]);
+    const studentName =
+      student.firstName && student.lastName
+        ? `${student.firstName} ${student.lastName}`
+        : student.name;
 
-  const closeAssignRoleModal = useCallback(() => {
-    if (isProcessing) return;
-    
-    setShowAssignRoleModal(false);
-    // Reset state immediately without setTimeout
-    setStudentToAssignRole(null);
-  }, [isProcessing]);
+    toast({
+      title: "Assign Public Information Officer Role?",
+      description: `Are you sure you want to assign ${studentName} as a Public Information Officer?`,
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => {
+              assignPIO({
+                studentId: student.id || student._id,
+                program: currentProgram.id,
+                yearLevel: selectedYear,
+              })
+                .then(() => {
+                  toast({
+                    title: "Success",
+                    description: `${studentName} is now a Public Information Officer`,
+                    variant: "default",
+                  });
+                  refetch();
+                })
+                .catch((error) => {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to assign PIO role",
+                    variant: "destructive",
+                  });
+                });
+            }}
+          >
+            Yes
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Do nothing, toast will dismiss
+            }}
+          >
+            No
+          </Button>
+        </div>
+      ),
+    });
+  };
 
-  const openRemoveModal = useCallback((student) => {
-    // Don't open modal if user is PIO or if processing
-    if (isCurrentUserPIO || isProcessing) return;
+  const openRemoveModal = (student) => {
+    // Don't open modal if user is PIO
+    if (isCurrentUserPIO) return;
 
-    setStudentToRemove(student);
-    setShowRemoveModal(true);
-  }, [isCurrentUserPIO, isProcessing]);
+    const studentName =
+      student.firstName && student.lastName
+        ? `${student.firstName} ${student.lastName}`
+        : student.name;
 
-  const closeRemoveModal = useCallback(() => {
-    if (isProcessing) return;
-    
-    setShowRemoveModal(false);
-    // Reset state immediately without setTimeout
-    setStudentToRemove(null);
-  }, [isProcessing]);
+    toast({
+      title: "Remove Student?",
+      description: `Are you sure you want to remove ${studentName} from ${currentProgram.name} - Year ${selectedYear}? This action cannot be undone.`,
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => {
+              removeUser({
+                studentId: student.id || student._id,
+                program: currentProgram.id,
+                yearLevel: selectedYear,
+              })
+                .then(() => {
+                  toast({
+                    title: "Success",
+                    description: `${studentName} has been removed from ${currentProgram.name} - Year ${selectedYear}`,
+                    variant: "default",
+                  });
+                  refetch();
+                })
+                .catch((error) => {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to remove student",
+                    variant: "destructive",
+                  });
+                });
+            }}
+          >
+            Remove
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Do nothing, toast will dismiss
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      ),
+    });
+  };
 
-  const openRevertRoleModal = useCallback((student) => {
-    // Don't open modal if user is PIO or if processing
-    if (isCurrentUserPIO || isProcessing) return;
+  const openRevertRoleModal = (student) => {
+    // Don't open modal if user is PIO
+    if (isCurrentUserPIO) return;
 
-    setStudentToRevertRole(student);
-    setShowRevertRoleModal(true);
-  }, [isCurrentUserPIO, isProcessing]);
+    const studentName =
+      student.firstName && student.lastName
+        ? `${student.firstName} ${student.lastName}`
+        : student.name;
 
-  const closeRevertRoleModal = useCallback(() => {
-    if (isProcessing) return;
-    
-    setShowRevertRoleModal(false);
-    // Reset state immediately without setTimeout
-    setStudentToRevertRole(null);
-  }, [isProcessing]);
+    toast({
+      title: "Revert to Student Role?",
+      description: `Are you sure you want to revert ${studentName} back to a regular student?`,
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => {
+              revertPIO({
+                studentId: student.id || student._id,
+                program: currentProgram.id,
+                yearLevel: selectedYear,
+              })
+                .then(() => {
+                  toast({
+                    title: "Success",
+                    description: `${studentName} is now a regular student`,
+                    variant: "default",
+                  });
+                  refetch();
+                })
+                .catch((error) => {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to revert PIO role",
+                    variant: "destructive",
+                  });
+                });
+            }}
+          >
+            Yes
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Do nothing, toast will dismiss
+            }}
+          >
+            No
+          </Button>
+        </div>
+      ),
+    });
+  };
 
-  const handleSelectSearchResult = useCallback((student) => {
-    if (isProcessing) return;
-    
+  const handleSelectSearchResult = (student) => {
     setStudentToAdd(student);
     // Use the appropriate name format for the search query
     const displayName =
@@ -337,18 +406,14 @@ const Users = () => {
         ? `${student.firstName} ${student.lastName}`
         : student.name;
     setAddStudentSearchQuery(displayName);
-  }, [isProcessing]);
+  };
 
-  const handleAddStudent = useCallback(async () => {
-    if (!studentToAdd || isProcessing) {
-      if (!studentToAdd) {
-        setAddStudentError("Please select a student first");
-      }
+  const handleAddStudent = async () => {
+    if (!studentToAdd) {
+      setAddStudentError("Please select a student first");
       return;
     }
 
-    setIsProcessing(true);
-    
     try {
       // Clear any previous errors
       setAddStudentError("");
@@ -360,162 +425,27 @@ const Users = () => {
         yearLevel: selectedYear,
       });
 
-      // Close modal immediately
+      // Close modal and refetch data on success
       closeAddModal();
+      refetch();
 
       // Show success toast
       toast({
-        title: "Student Added",
+        title: "Success",
         description: `${
           studentToAdd.firstName && studentToAdd.lastName
             ? `${studentToAdd.firstName} ${studentToAdd.lastName}`
             : studentToAdd.name
         } has been added to ${currentProgram.name} - Year ${selectedYear}`,
+        variant: "default",
       });
-
-      // React Query will automatically refetch via invalidation
     } catch (error) {
       console.error("Error adding student:", error);
       setAddStudentError(
         error.message || "Failed to add student. Please try again."
       );
-    } finally {
-      setIsProcessing(false);
     }
-  }, [studentToAdd, isProcessing, addUser, currentProgram.id, selectedYear, closeAddModal, toast]);
-
-  const handleAssignRole = useCallback(async () => {
-    if (!studentToAssignRole || isProcessing) return;
-
-    setIsProcessing(true);
-
-    try {
-      await assignPIO({
-        studentId: studentToAssignRole.id || studentToAssignRole._id,
-        program: currentProgram.id,
-        yearLevel: selectedYear,
-      });
-
-      // Close modal immediately - no setTimeout needed
-      closeAssignRoleModal();
-
-      // Show success toast
-      toast({
-        title: "Role Assigned",
-        description: `${
-          studentToAssignRole.firstName && studentToAssignRole.lastName
-            ? `${studentToAssignRole.firstName} ${studentToAssignRole.lastName}`
-            : studentToAssignRole.name
-        } is now a Public Information Officer`,
-      });
-
-      // React Query will automatically refetch via invalidation
-    } catch (error) {
-      console.error("Error assigning PIO role:", error);
-      // Close modal after a short delay to allow error display, then refetch
-      setTimeout(() => {
-        closeAssignRoleModal();
-        // Optionally refetch to ensure data consistency
-        refetch().catch((refetchError) => {
-          console.error(
-            "Error refetching after PIO assignment error:",
-            refetchError
-          );
-        });
-            }, 2000);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [studentToAssignRole, isProcessing, assignPIO, currentProgram.id, selectedYear, closeAssignRoleModal, toast, refetch]);
-
-  const handleRemoveStudent = useCallback(async () => {
-    if (!studentToRemove || isProcessing) return;
-
-    setIsProcessing(true);
-
-    try {
-      await removeUser({
-        studentId: studentToRemove.id || studentToRemove._id,
-        program: currentProgram.id,
-        yearLevel: selectedYear,
-      });
-
-      // Close modal immediately
-      closeRemoveModal();
-
-      // Show success toast
-      toast({
-        title: "Student Removed",
-        description: `${
-          studentToRemove.firstName && studentToRemove.lastName
-            ? `${studentToRemove.firstName} ${studentToRemove.lastName}`
-            : studentToRemove.name
-        } has been removed from ${currentProgram.name} - Year ${selectedYear}`,
-      });
-
-      // React Query will automatically refetch via invalidation
-    } catch (error) {
-      console.error("Error removing student:", error);
-      // Close modal after a short delay to allow error display, then refetch
-      setTimeout(() => {
-        closeRemoveModal();
-        // Optionally refetch to ensure data consistency
-        refetch().catch((refetchError) => {
-          console.error(
-            "Error refetching after student removal error:",
-            refetchError
-          );
-        });
-      }, 2000);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [studentToRemove, isProcessing, removeUser, currentProgram.id, selectedYear, closeRemoveModal, toast, refetch]);
-
-  const handleRevertRole = useCallback(async () => {
-    if (!studentToRevertRole || isProcessing) return;
-
-    setIsProcessing(true);
-
-    try {
-      await revertPIO({
-        studentId: studentToRevertRole.id || studentToRevertRole._id,
-        program: currentProgram.id,
-        yearLevel: selectedYear,
-      });
-
-      // Close modal first
-      closeRevertRoleModal();
-
-      // Show success toast
-      toast({
-        title: "Role Reverted",
-        description: `${
-          studentToRevertRole.firstName && studentToRevertRole.lastName
-            ? `${studentToRevertRole.firstName} ${studentToRevertRole.lastName}`
-            : studentToRevertRole.name
-        } is now a regular student`,
-      });
-
-      // React Query will automatically refetch via invalidation
-    } catch (error) {
-      console.error("Error reverting PIO role:", error);
-      // Error will be shown in the modal via the revertPIOError state
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [studentToRevertRole, isProcessing, revertPIO, currentProgram.id, selectedYear, closeRevertRoleModal, toast]);
-
-  // Add this to prevent focus conflicts
-  const handleDropdownOpenChange = useCallback((open, student) => {
-    if (!open) {
-      // When dropdown closes, ensure proper focus management
-      setTimeout(() => {
-        // You can focus a specific element if needed
-        // document.getElementById('some-id')?.focus();
-      }, 0);
-    }
-  }, []);
+  };
 
   // Error fallback UI
   if (error) {
@@ -638,15 +568,15 @@ const Users = () => {
               id="student-search"
               placeholder="Search name, ID, email..."
               className="pl-9 border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                          value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               disabled={isLoading}
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <Select
-                          value={filterOption}
-            onValueChange={handleFilterChange}
+              value={filterOption}
+              onValueChange={setFilterOption}
               disabled={isLoading}
             >
               <SelectTrigger className="w-full sm:w-36 border-gray-300 shadow-sm">
@@ -738,7 +668,7 @@ const Users = () => {
                     </td>
                   </tr>
                 ) : (
-                  paginatedStudents.map((student) => (
+                  filteredAndSortedStudents.map((student) => (
                     <tr
                       key={student._id || student.id}
                       className="hover:bg-gray-50 transition-colors duration-150 ease-in-out"
@@ -765,32 +695,25 @@ const Users = () => {
                       </td>
                       {isCurrentUserAdmin && (
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                          <DropdownMenu onOpenChange={(open) => handleDropdownOpenChange(open, student)}>
+                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 className="h-8 w-8 p-0 focus:ring-0"
-                                disabled={isProcessing}
-                                aria-label={`Actions for ${
-                                  student.firstName && student.lastName
-                                    ? `${student.firstName} ${student.lastName}`
-                                    : student.name
-                                }`}
+                                disabled={false}
                               >
                                 <span className="sr-only">Open menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent 
-                              align="end"
-                            >
+                            <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
                               {student.role !== "pio" && (
                                 <DropdownMenuItem
                                   onClick={() => openAssignRoleModal(student)}
                                   className="cursor-pointer"
-                                  disabled={isProcessing}
+                                  disabled={false}
                                 >
                                   Assign Public Information Officer
                                 </DropdownMenuItem>
@@ -800,7 +723,7 @@ const Users = () => {
                                 <DropdownMenuItem
                                   onClick={() => openRevertRoleModal(student)}
                                   className="cursor-pointer"
-                                  disabled={isProcessing}
+                                  disabled={false}
                                 >
                                   Revert to Student
                                 </DropdownMenuItem>
@@ -811,7 +734,7 @@ const Users = () => {
                               <DropdownMenuItem
                                 onClick={() => openRemoveModal(student)}
                                 className="cursor-pointer text-red-600"
-                                disabled={isProcessing}
+                                disabled={false}
                               >
                                 Remove Student
                               </DropdownMenuItem>
@@ -827,103 +750,15 @@ const Users = () => {
           </div>
         </div>
 
-        {/* Pagination Controls - Only show if multiple pages */}
-        {hasMultiplePages && (
-          <div className="bg-white px-6 py-3 flex items-center justify-between border-t border-gray-200 rounded-b-lg">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing{' '}
-                  <span className="font-medium">
-                    {((currentPage - 1) * itemsPerPage) + 1}
-                  </span>{' '}
-                  to{' '}
-                  <span className="font-medium">
-                    {Math.min(currentPage * itemsPerPage, filteredAndSortedStudents.length)}
-                  </span>{' '}
-                  of{' '}
-                  <span className="font-medium">{filteredAndSortedStudents.length}</span>{' '}
-                  students
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  
-                  {/* Page numbers */}
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(pageNumber => {
-                      // Show first page, last page, current page, and pages around current page
-                      return pageNumber === 1 || 
-                             pageNumber === totalPages || 
-                             Math.abs(pageNumber - currentPage) <= 1;
-                    })
-                    .map((pageNumber, index, array) => {
-                      // Add ellipsis if there's a gap
-                      const showEllipsis = index > 0 && pageNumber - array[index - 1] > 1;
-                      return (
-                        <React.Fragment key={pageNumber}>
-                          {showEllipsis && (
-                            <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                              ...
-                            </span>
-                          )}
-                          <button
-                            onClick={() => setCurrentPage(pageNumber)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                              currentPage === pageNumber
-                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                            }`}
-                          >
-                            {pageNumber}
-                          </button>
-                        </React.Fragment>
-                      );
-                    })}
-                  
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        )}
-
         <Dialog
           open={showAddModal}
           onOpenChange={(open) => {
-            if (!isProcessing) {
+            if (!isAssigningPIO) {
               setShowAddModal(open);
               if (!open) {
-                closeAddModal();
+                setStudentToAdd(null);
+                setAddStudentSearchQuery("");
+                setAddStudentError("");
               }
             }
           }}
@@ -959,7 +794,7 @@ const Users = () => {
                       if (studentToAdd) setStudentToAdd(null);
                     }}
                     className="border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    disabled={!!studentToAdd || isProcessing}
+                    disabled={!!studentToAdd || isAssigningPIO}
                   />
                   {isSearchingStudents && (
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
@@ -1020,7 +855,7 @@ const Users = () => {
                       setAddStudentSearchQuery("");
                     }}
                     className="text-blue-600 hover:bg-blue-100 disabled:opacity-50"
-                    disabled={isProcessing}
+                    disabled={isAssigningPIO}
                   >
                     Change
                   </Button>
@@ -1046,230 +881,16 @@ const Users = () => {
                 variant="outline"
                 onClick={closeAddModal}
                 className="w-full sm:w-auto border-gray-300"
-                disabled={isProcessing}
+                disabled={isAssigningPIO}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleAddStudent}
                 className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={isProcessing || !studentToAdd}
+                disabled={isAssigningPIO || !studentToAdd}
               >
-                {isProcessing ? "Adding..." : "Add Student"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={showAssignRoleModal}
-          onOpenChange={(open) => {
-            // Allow closing the modal when not processing
-            if (!isProcessing) {
-              setShowAssignRoleModal(open);
-              if (!open) {
-                closeAssignRoleModal();
-              }
-            }
-          }}
-        >
-          <DialogContent
-            className="sm:max-w-md"
-            aria-describedby="assign-role-description"
-          >
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
-                Assign Public Information Officer Role
-              </DialogTitle>
-              <DialogDescription id="assign-role-description">
-                You are about to assign a student as the Public Information
-                Officer for this class.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 text-gray-600">
-              <div className="mb-4">
-                Are you sure you want to assign{" "}
-                <span className="font-medium">
-                  {studentToAssignRole?.firstName &&
-                  studentToAssignRole?.lastName
-                    ? `${studentToAssignRole.firstName} ${studentToAssignRole.lastName}`
-                    : studentToAssignRole?.name}
-                </span>{" "}
-                ({studentToAssignRole?.studentNumber || studentToAssignRole?.id}
-                ) as a Public Information Officer?
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm mb-4">
-                <strong>Important:</strong> Only one Public Information Officer
-                can be assigned per year level. If a PIO already exists for this
-                year, you must first revert their role or remove them before
-                assigning a new PIO.
-              </div>
-            </div>
-
-            {/* Show error in the modal if there is one */}
-            {assignPIOError && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm">
-                {assignPIOError.message ||
-                  assignPIOError.error ||
-                  "Failed to assign PIO role"}
-              </div>
-            )}
-
-            <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={closeAssignRoleModal}
-                className="w-full sm:w-auto border-gray-300"
-                disabled={isProcessing}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAssignRole}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={isProcessing}
-              >
-                {isProcessing
-                  ? "Assigning..."
-                  : "Assign Public Information Officer Role"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={showRemoveModal}
-          onOpenChange={(open) => {
-            // Allow closing the modal when not processing
-            if (!isProcessing) {
-              setShowRemoveModal(open);
-              if (!open) {
-                closeRemoveModal();
-              }
-            }
-          }}
-        >
-          <DialogContent
-            className="sm:max-w-md"
-            aria-describedby="remove-student-description"
-          >
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold text-red-700">
-                Remove Student
-              </DialogTitle>
-              <DialogDescription id="remove-student-description">
-                This action will remove the student from this class.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 text-gray-600">
-              Are you sure you want to remove{" "}
-              <span className="font-medium">
-                {studentToRemove?.firstName && studentToRemove?.lastName
-                  ? `${studentToRemove.firstName} ${studentToRemove.lastName}`
-                  : studentToRemove?.name}
-              </span>{" "}
-              ({studentToRemove?.studentNumber || studentToRemove?.id}) from{" "}
-              {currentProgram.name} - Year {selectedYear}? This action cannot be
-              undone.
-            </div>
-
-            {/* Show error in the modal if there is one */}
-            {removeUserError && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm">
-                {removeUserError.message ||
-                  removeUserError.error ||
-                  "Failed to remove student"}
-              </div>
-            )}
-
-            <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={closeRemoveModal}
-                className="w-full sm:w-auto border-gray-300"
-                disabled={isProcessing}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleRemoveStudent}
-                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
-                disabled={isProcessing}
-              >
-                {isProcessing ? "Removing..." : "Remove Student"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={showRevertRoleModal}
-          onOpenChange={(open) => {
-            // Allow closing the modal when not processing
-            if (!isProcessing) {
-              setShowRevertRoleModal(open);
-              if (!open) {
-                closeRevertRoleModal();
-              }
-            }
-          }}
-        >
-          <DialogContent
-            className="sm:max-w-md"
-            aria-describedby="revert-role-description"
-          >
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
-                Revert Public Information Officer to Student
-              </DialogTitle>
-              <DialogDescription id="revert-role-description">
-                This action will remove the Public Information Officer role from
-                this student.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 text-gray-600">
-              <div className="mb-4">
-                Are you sure you want to revert{" "}
-                <span className="font-medium">
-                  {studentToRevertRole?.firstName &&
-                  studentToRevertRole?.lastName
-                    ? `${studentToRevertRole.firstName} ${studentToRevertRole.lastName}`
-                    : studentToRevertRole?.name}
-                </span>{" "}
-                ({studentToRevertRole?.studentNumber || studentToRevertRole?.id}
-                ) back to a regular student?
-              </div>
-              <div>
-                This will remove their Public Information Officer privileges for{" "}
-                {currentProgram.name} - Year {selectedYear}.
-              </div>
-            </div>
-
-            {/* Show error in the modal if there is one */}
-            {revertPIOError && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm">
-                {revertPIOError.message ||
-                  revertPIOError.error ||
-                  "Failed to revert PIO role"}
-              </div>
-            )}
-
-            <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={closeRevertRoleModal}
-                className="w-full sm:w-auto border-gray-300"
-                disabled={isProcessing}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleRevertRole}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={isProcessing}
-              >
-                {isProcessing ? "Reverting..." : "Revert to Student"}
+                {isAssigningPIO ? "Adding..." : "Add Student"}
               </Button>
             </DialogFooter>
           </DialogContent>

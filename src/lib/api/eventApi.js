@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { format, isValid, parseISO } from "date-fns";
 
 /**
  * Event Management API Service
@@ -7,44 +8,105 @@ import apiClient from "./client";
 
 /**
  * Get events with optional filters
- * @param {Object} filters - Optional filters (startDate, endDate, course, yearLevel, etc.)
- * @returns {Promise<Object>} Events data
+ * @param {Object} filters - Optional filters like course, yearLevel, startDate, endDate
+ * @returns {Promise} - API response
  */
 export const getEvents = async (filters = {}) => {
   try {
-    // Build query params
-    const params = new URLSearchParams();
-    if (filters.startDate) params.append("startDate", filters.startDate);
-    if (filters.endDate) params.append("endDate", filters.endDate);
-    if (filters.course) params.append("course", filters.course);
-    if (filters.yearLevel) params.append("yearLevel", filters.yearLevel);
-    if (filters.archived !== undefined)
-      params.append("archived", filters.archived);
+    // Ensure consistent date format in filters
+    const formattedFilters = { ...filters };
 
-    // Add userFiltered parameter to rely on backend filtering for students
-    if (filters.userFiltered) params.append("userFiltered", "true");
+    // Format date filters consistently if they exist
+    if (formattedFilters.startDate) {
+      try {
+        // Handle both Date objects and string dates
+        const date =
+          typeof formattedFilters.startDate === "string"
+            ? parseISO(formattedFilters.startDate)
+            : formattedFilters.startDate;
 
-    const url = `/events${params.toString() ? `?${params.toString()}` : ""}`;
+        if (isValid(date)) {
+          // Use UTC date to avoid timezone issues
+          formattedFilters.startDate = format(date, "yyyy-MM-dd");
+        }
+        console.log("Formatted startDate:", formattedFilters.startDate);
+      } catch (err) {
+        console.error("Error formatting startDate:", err);
+      }
+    }
 
+    if (formattedFilters.endDate) {
+      try {
+        // Handle both Date objects and string dates
+        const date =
+          typeof formattedFilters.endDate === "string"
+            ? parseISO(formattedFilters.endDate)
+            : formattedFilters.endDate;
+
+        if (isValid(date)) {
+          // Use UTC date to avoid timezone issues
+          formattedFilters.endDate = format(date, "yyyy-MM-dd");
+        }
+        console.log("Formatted endDate:", formattedFilters.endDate);
+      } catch (err) {
+        console.error("Error formatting endDate:", err);
+      }
+    }
+
+    // Log the request for debugging
+    const url = `/events${formatQueryParams(formattedFilters)}`;
     console.log("Fetching events with URL:", url);
+    console.log("Filters:", formattedFilters);
+
     const response = await apiClient.get(url);
     console.log("Events response:", response.data);
 
-    return {
-      data: response.data,
-      success: true,
-    };
+    // Convert dates to proper format in the response
+    if (Array.isArray(response.data)) {
+      response.data = response.data.map((event) => {
+        if (event.scheduleDate) {
+          try {
+            // Convert to local date for consistent display
+            const date = new Date(event.scheduleDate);
+
+            // Add formatted date strings for easier comparison
+            event._formattedDate = format(date, "yyyy-MM-dd");
+            event._localDate = format(date, "yyyy-MM-dd");
+            event._displayTime = format(date, "h:mm a");
+          } catch (err) {
+            console.error("Error formatting event date in response:", err);
+          }
+        }
+        return event;
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error("Error fetching events:", error);
-    return {
-      data: [],
-      success: false,
-      error:
-        error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        "Failed to fetch events",
-    };
+    throw error;
   }
+};
+
+/**
+ * Format query parameters for API requests
+ * @param {Object} params - Query parameters
+ * @returns {String} - Formatted query string
+ */
+const formatQueryParams = (params) => {
+  if (!params || Object.keys(params).length === 0) return "";
+
+  const queryString = Object.entries(params)
+    .filter(
+      ([_, value]) => value !== undefined && value !== null && value !== ""
+    )
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+    )
+    .join("&");
+
+  return queryString ? `?${queryString}` : "";
 };
 
 /**
