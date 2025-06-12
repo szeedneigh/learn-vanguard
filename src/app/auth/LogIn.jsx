@@ -5,9 +5,10 @@ import { EyeIcon, EyeOffIcon, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Lock } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import GoogleRegistration from "./GoogleRegistration";
 import { getCurrentUserToken } from "@/config/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 const smoothTransition = {
   type: "spring",
@@ -287,6 +288,11 @@ export default function LogIn() {
       } else if (result?.inProgress) {
         // Redirect is in progress, show a message
         setApiError("Redirecting to Google sign-in...");
+      } else if (result?.tokenExpired) {
+        // Handle token expiration specifically
+        setApiError(
+          "Your session has expired. Please sign in with Google again."
+        );
       } else {
         setApiError(
           result?.error || "Google sign-in failed. Please try again."
@@ -348,7 +354,6 @@ export default function LogIn() {
               {showGoogleRegistration ? (
                 <GoogleRegistration
                   email={googleRegistrationData.email}
-                  idToken={googleRegistrationData.idToken}
                   onSuccess={handleGoogleRegistrationSuccess}
                   onCancel={handleGoogleRegistrationCancel}
                 />

@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as authService from "../../services/authService";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../hooks/use-toast";
+import { getCurrentUserToken } from "@/config/firebase";
 
 const smoothTransition = {
   type: "spring",
@@ -455,9 +456,10 @@ const SignUp = () => {
           formData.email && !localStorage.getItem("signupTempToken");
 
         if (isGoogleRegistration) {
-          // Handle Google registration completion
-          const idToken = localStorage.getItem("googleIdToken");
-          if (!idToken) {
+          // Get a fresh Firebase token instead of using the stored one
+          const freshToken = await getCurrentUserToken();
+
+          if (!freshToken) {
             toast({
               title: "Session Expired",
               description:
@@ -473,14 +475,14 @@ const SignUp = () => {
           }
 
           const completeData = {
-            idToken,
+            idToken: freshToken, // Use fresh token instead of stored one
             studentNo: formData.studentNo,
             course: formData.course,
             yearLevel: formData.yearLevel,
             email: formData.email,
           };
 
-          console.log("Completing Google registration", {
+          console.log("Completing Google registration with fresh token", {
             ...completeData,
             idToken: "[REDACTED]",
           });
@@ -498,7 +500,23 @@ const SignUp = () => {
             });
             navigate("/dashboard");
           } else {
-            // Handle errors
+            // Check for token expiration specifically
+            if (result.tokenExpired) {
+              toast({
+                title: "Session Expired",
+                description:
+                  "Your Google sign-in session has expired. Please try again.",
+                variant: "destructive",
+              });
+              setErrors({
+                form: "Google sign-in session expired. Please try again.",
+              });
+              setStep(1);
+              setIsLoading(false);
+              return;
+            }
+
+            // Handle other errors
             let formErrorMessage =
               result.error ||
               "Registration failed. Please check your details and try again.";
@@ -633,7 +651,7 @@ const SignUp = () => {
         setIsLoading(false);
       }
     },
-    [formData, validateStep, navigate, toast]
+    [formData, validateStep, navigate, toast, getCurrentUserToken]
   );
 
   const handleGoogleSignUp = async (e) => {
@@ -997,7 +1015,7 @@ const SignUp = () => {
                           whileTap={{ scale: 0.98 }}
                         >
                           Terms and Conditions & Privacy Policy
-                          <span className="absolute bottom-0 left-0 w-full h-px bg-current origin-left transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100" />
+                          <span className="absolute bottom-0 left-0 w-full h-0.5 bg-current origin-left transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100" />
                         </motion.button>
                       </label>
                     </div>

@@ -359,20 +359,6 @@ const Home = () => {
                     </h2>
                     <div className="flex gap-2">
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          console.log(
-                            "Force refetching events for:",
-                            dateString
-                          );
-                          refetchSelectedDayEvents();
-                        }}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      >
-                        Refresh
-                      </Button>
-                      <Button
                         variant="ghost"
                         size="sm"
                         asChild

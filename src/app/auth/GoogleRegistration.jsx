@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GraduationCap, BookOpen, Calendar, Check } from "lucide-react";
 import PropTypes from "prop-types";
 import { authService } from "@/services/authService";
+import { getCurrentUserToken } from "@/config/firebase";
 
 // Reuse components from SignUp.jsx
 const FloatingLabelInput = React.memo(
@@ -191,7 +192,7 @@ SelectInput.propTypes = {
   error: PropTypes.string,
 };
 
-const GoogleRegistration = ({ email, idToken, onSuccess, onCancel }) => {
+const GoogleRegistration = ({ email, onSuccess, onCancel }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -284,9 +285,26 @@ const GoogleRegistration = ({ email, idToken, onSuccess, onCancel }) => {
     setErrors({});
 
     try {
+      // Get a fresh Firebase token to avoid token expiration issues
+      const freshToken = await getCurrentUserToken();
+
+      if (!freshToken) {
+        toast({
+          title: "Authentication Error",
+          description:
+            "Unable to get authentication token. Please try signing in with Google again.",
+          variant: "destructive",
+        });
+        setErrors({
+          form: "Authentication session expired. Please try again.",
+        });
+        if (onCancel) onCancel();
+        return;
+      }
+
       // Call API to complete Google registration
       const result = await authService.completeGoogleRegistration({
-        idToken,
+        idToken: freshToken, // Use fresh token instead of passed prop
         studentNumber: formData.studentNo,
         course: formData.course,
         yearLevel: formData.yearLevel,
@@ -493,7 +511,6 @@ const GoogleRegistration = ({ email, idToken, onSuccess, onCancel }) => {
 
 GoogleRegistration.propTypes = {
   email: PropTypes.string.isRequired,
-  idToken: PropTypes.string.isRequired,
   onSuccess: PropTypes.func,
   onCancel: PropTypes.func,
 };

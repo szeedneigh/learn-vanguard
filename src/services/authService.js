@@ -207,6 +207,19 @@ export const loginWithGoogle = async (useRedirect = false) => {
         message: apiError.message,
       });
 
+      // Handle token expiration specifically
+      if (
+        apiError.response?.status === 401 &&
+        apiError.response?.data?.tokenExpired
+      ) {
+        console.log("Firebase token expired, requesting user to sign in again");
+        return {
+          success: false,
+          tokenExpired: true,
+          error: "Your session has expired. Please sign in with Google again.",
+        };
+      }
+
       // Check if this is a "needs registration" response
       if (
         apiError.response?.status === 400 &&
@@ -361,12 +374,25 @@ export const completeGoogleRegistration = async (registrationData) => {
     };
   } catch (error) {
     console.error("Google registration failed:", error);
+
+    // Handle token expiration specifically
+    if (error.response?.status === 401 && error.response?.data?.tokenExpired) {
+      console.log(
+        "Token expired during registration, requesting user to sign in again"
+      );
+      return {
+        success: false,
+        tokenExpired: true,
+        error: "Your session has expired. Please sign in with Google again.",
+      };
+    }
+
     return {
       user: null,
       success: false,
       error:
         error.response?.data?.message ||
-        error.response?.data?.error?.message ||
+        error.response?.data?.error ||
         "Registration failed",
     };
   }
