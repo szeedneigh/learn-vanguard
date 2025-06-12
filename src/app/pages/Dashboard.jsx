@@ -12,10 +12,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { usePermission } from "@/context/PermissionContext";
 import { Loader2, AlertCircle } from "lucide-react";
-import { dashboardRoutes, hasRoutePermission } from "@/lib/navigation";
+import { dashboardRoutes } from "@/lib/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import PropTypes from "prop-types";
-import { ROLES } from "@/lib/constants";
 import { normalizeRole, checkApiConnection, API_BASE_URL } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +30,7 @@ const routeComponents = {
   students: Users,
 };
 
-// Layout component that wraps authorized content
+// OPTIMIZED Layout component with proper CSS Grid and scroll containment
 const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [apiStatus, setApiStatus] = useState({
@@ -111,19 +110,88 @@ const DashboardLayout = ({ children }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar
-          onMenuClick={toggleSidebar}
-          isWebSocketConnected={isConnected}
-          connectionStatus={connectionStatus}
-        />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-100">
-          {children}
-          <Toaster />
-        </main>
+    // Fixed viewport container with overflow hidden
+    <div className="h-screen w-full overflow-hidden bg-gray-50">
+      {/* 
+        OPTIMIZED CSS Grid Layout:
+        - Sidebar column: auto-width (sizes to content)
+        - Main content column: 1fr (takes remaining space)
+        - Single row: 1fr (full height)
+        - This ensures sidebar stays fixed and main content scrolls independently
+      */}
+      <div 
+        className="grid h-full w-full"
+        style={{ 
+          gridTemplateColumns: 'auto 1fr',
+          gridTemplateRows: '1fr'
+        }}
+      >
+        {/* 
+          Sidebar Container - Grid cell with proper constraints
+          - relative positioning within grid cell
+          - z-index for proper layering
+          - overflow handled by Sidebar component internally
+        */}
+        <div className="relative z-10 h-full">
+          <Sidebar 
+            isOpen={isSidebarOpen} 
+            onClose={() => setIsSidebarOpen(false)} 
+          />
+        </div>
+        
+        {/* 
+          Main Content Container - Grid cell with scroll containment
+          - flex column layout for header + scrollable content
+          - min-w-0 prevents flex items from overflowing
+          - overflow-hidden ensures proper scroll containment
+        */}
+        <div className="flex flex-col min-w-0 h-full overflow-hidden">
+          {/* 
+            Topbar - Fixed height header
+            - flex-shrink-0 prevents compression
+            - relative z-index for proper layering
+          */}
+          <header className="flex-shrink-0 z-20 relative">
+            <Topbar
+              onMenuClick={toggleSidebar}
+              isWebSocketConnected={isConnected}
+              connectionStatus={connectionStatus}
+            />
+          </header>
+          
+          {/* 
+            Main Content Area - Scrollable container
+            - flex-1 takes remaining height after header
+            - overflow-y-auto provides vertical scrolling
+            - scroll-smooth for better UX
+            - proper background for content area
+          */}
+          <main className="flex-1 overflow-y-auto bg-gray-100 scroll-smooth">
+            {/* 
+              Content wrapper with consistent padding
+              - min-h-full ensures content fills available height
+              - proper padding for all screen sizes
+            */}
+            <div className="p-4 sm:p-6 min-h-full">
+              {/* 
+                Children container with width constraint
+                - w-full ensures full width usage
+                - Contains actual page content
+              */}
+              <div className="w-full">
+                {children}
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
+      
+      {/* 
+        Toast notifications - positioned outside main layout
+        - Portal-ed to body to avoid layout interference
+        - Proper z-index for visibility
+      */}
+      <Toaster />
     </div>
   );
 };
@@ -147,7 +215,6 @@ const AuthorizedRoute = ({ component: Component, isAuthorized }) => {
   }, [isAuthorized, toast]);
 
   if (!isAuthorized) {
-    console.log("Route not authorized, redirecting to unauthorized");
     return <Navigate to="/unauthorized" replace />;
   }
 
@@ -171,45 +238,22 @@ const Dashboard = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
-    console.log("Dashboard: Component mounted", {
-      user,
-      authIsLoading,
-      currentPath: window.location.pathname,
-      hasToken: !!token,
-      tokenValue: token ? "exists" : "missing",
-    });
 
     if (!authIsLoading && user) {
-      console.log("Dashboard: User authenticated", {
-        role: user.role,
-        normalizedRole: normalizeRole(user.role),
-        permissions: user.permissions,
-        currentPath: window.location.pathname,
-        token: token ? "exists" : "missing",
-      });
-
       if (window.location.pathname === "/dashboard") {
         const normalizedUserRole = normalizeRole(user.role);
-        console.log(
-          "Dashboard: At root path, redirecting based on normalized role:",
-          normalizedUserRole
-        );
 
         switch (normalizedUserRole) {
           case "admin":
-            console.log("Dashboard: Redirecting admin to users page");
             navigate("/dashboard/users", { replace: true });
             break;
           case "pio":
-            console.log("Dashboard: Redirecting pio to students page");
             navigate("/dashboard/students", { replace: true });
             break;
           case "student":
-            console.log("Dashboard: Redirecting student to home page");
             navigate("/dashboard/home", { replace: true });
             break;
           default:
-            console.warn("Dashboard: Unknown user role:", normalizedUserRole);
             toast({
               title: "Invalid Role",
               description:
@@ -221,11 +265,7 @@ const Dashboard = () => {
         }
       }
     } else if (!authIsLoading && !user) {
-      console.log(
-        "Dashboard: No user found after loading, redirecting to login"
-      );
       if (token) {
-        console.warn("Dashboard: Token exists but no user data found");
         localStorage.removeItem("authToken");
       }
       navigate("/login", { replace: true });
@@ -233,7 +273,6 @@ const Dashboard = () => {
   }, [user, authIsLoading, navigate, toast]);
 
   if (authIsLoading) {
-    console.log("Dashboard: Auth is still loading");
     return (
       <div className="flex items-center justify-center h-screen bg-blue-50">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -245,15 +284,8 @@ const Dashboard = () => {
   }
 
   if (!user) {
-    console.log("Dashboard: No user found, rendering redirect");
     return <Navigate to="/login" replace />;
   }
-
-  console.log("Dashboard: Rendering routes for user:", {
-    role: user.role,
-    normalizedRole: normalizeRole(user.role),
-    pathname: window.location.pathname,
-  });
 
   return (
     <Routes>
@@ -273,18 +305,7 @@ const Dashboard = () => {
           hasAllPermissions(route.requiredPermissions ?? []);
         const isAuthorized = hasRole && hasPermissions;
 
-        console.log(`Dashboard: Route ${route.path}`, {
-          hasComponent: !!RouteComponent,
-          userRole: normalizedUserRole,
-          hasRole,
-          allowedRoles: normalizedRouteRoles,
-          hasPermissions,
-          isAuthorized,
-          requiredPermissions: route.requiredPermissions,
-        });
-
         if (!RouteComponent) {
-          console.warn(`No component found for route: ${route.path}`);
           toast({
             title: "Route Error",
             description: `No component found for route: ${route.path}`,

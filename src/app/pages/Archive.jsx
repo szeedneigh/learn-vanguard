@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -37,35 +37,93 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Utility function for throttling rapid successive calls
-function throttle(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-// Helper function to format date strings
+// Move utility functions outside component to prevent recreation
 const formatDate = (dateString) => {
   if (!dateString) return "Unknown";
   const options = { year: "numeric", month: "short", day: "numeric" };
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
+const calculateRemainingDays = (archivedAt) => {
+  if (!archivedAt) return 30;
+
+  const archiveDate = new Date(archivedAt);
+  const deleteDate = new Date(archiveDate);
+  deleteDate.setDate(deleteDate.getDate() + 30);
+
+  const now = new Date();
+  const diffTime = deleteDate - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return Math.max(0, diffDays);
+};
+
+// Custom hook for throttle with instance-specific timeout
+const useThrottle = () => {
+  const timeoutRef = useRef(null);
+  
+  const throttle = useCallback((func, wait) => {
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+        func(...args);
+      };
+      
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(later, wait);
+    };
+  }, []);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+  
+  return throttle;
+};
+
 const Archive = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const { tasks, handleRestoreTask, handleDeleteTask } = useTasks(toast);
+  const {
+    tasks,
+    handleRestoreTask,
+    handleDeleteTask,
+    setShowArchived,
+    isLoading,
+  } = useTasks(toast);
+  const throttle = useThrottle(); // Use the custom hook for instance-specific throttling
 
   const [sortBy, setSortBy] = useState("completionDateDesc");
   const [viewMode, setViewMode] = useState("list");
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Set showArchived to true when component mounts
+  useEffect(() => {
+    console.log("Archive: Setting showArchived to true");
+    setShowArchived(true);
+    return () => {
+      console.log("Archive: Setting showArchived to false (cleanup)");
+      setShowArchived(false); // Reset when unmounting
+    };
+  }, [setShowArchived]);
+
+  // Log when tasks change
+  useEffect(() => {
+    console.log(
+      "Archive: Tasks updated, count:",
+      Array.isArray(tasks) ? tasks.length : "not an array",
+      tasks
+    );
+  }, [tasks]);
 
   // Memoize the expensive calculation function
   const calculateRemainingDays = useCallback((archivedAt) => {
@@ -96,40 +154,72 @@ const Archive = () => {
 
   // Add performance monitoring in development
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.time('Archive render');
-      return () => console.timeEnd('Archive render');
+    if (typeof window !== "undefined" && window.console) {
+      console.time("Archive render");
+      return () => console.timeEnd("Archive render");
     }
   });
 
   // Optimize archived items calculation with better memoization
+  // Memoize archived items calculation with better optimization
   const archivedItems = useMemo(() => {
     if (!Array.isArray(tasks)) return [];
-    
+
+    console.log("Archive: Processing tasks data:", tasks);
+
     return tasks
-      .filter((task) => task.isArchived || task.archived)
+      .filter((task) => {
+        // Check if task is archived using both possible field names
+        const isArchived = task.isArchived === true || task.archived === true;
+        console.log(
+          `Task ${task._id || task.id}: isArchived=${isArchived}, fields:`,
+          {
+            isArchived: task.isArchived,
+            archived: task.archived,
+          }
+        );
+        return isArchived;
+      })
       .map((task) => {
         const archivedAt = task.archivedAt || task.updatedAt;
         return {
           id: task._id || task.id,
           name: task.taskName || task.name,
-          completionDate: task.dateCompleted || task.completedAt || task.updatedAt,
+          completionDate:
+            task.dateCompleted || task.completedAt || task.updatedAt,
           archivedAt,
           remainingDays: calculateRemainingDays(archivedAt),
         };
       });
-  }, [tasks, calculateRemainingDays]);
+  }, [tasks]); // Remove calculateRemainingDays from dependencies since it's now static
 
-  // Optimize sorting with stable sort and better dependencies
+  // Optimize sorting with stable sort
   const sortedItems = useMemo(() => {
     if (!archivedItems.length) return [];
+
     
+    // Use a stable sort to prevent unnecessary re-renders
     const items = [...archivedItems];
+    
     switch (sortBy) {
       case "completionDateAsc":
-        return items.sort((a, b) => new Date(a.completionDate) - new Date(b.completionDate));
+        return items.sort(
+          (a, b) => new Date(a.completionDate) - new Date(b.completionDate)
+        );
+        return items.sort((a, b) => {
+          const dateA = new Date(a.completionDate);
+          const dateB = new Date(b.completionDate);
+          return dateA - dateB;
+        });
       case "completionDateDesc":
-        return items.sort((a, b) => new Date(b.completionDate) - new Date(a.completionDate));
+        return items.sort(
+          (a, b) => new Date(b.completionDate) - new Date(a.completionDate)
+        );
+        return items.sort((a, b) => {
+          const dateA = new Date(a.completionDate);
+          const dateB = new Date(b.completionDate);
+          return dateB - dateA;
+        });
       case "nameAsc":
         return items.sort((a, b) => a.name.localeCompare(b.name));
       case "nameDesc":
@@ -139,7 +229,8 @@ const Archive = () => {
     }
   }, [archivedItems, sortBy]);
 
-  const getSortLabel = () => {
+  // Memoize sort label to prevent recalculation
+  const sortLabel = useMemo(() => {
     switch (sortBy) {
       case "completionDateAsc":
         return "Oldest First";
@@ -152,11 +243,11 @@ const Archive = () => {
       default:
         return "Sort by date";
     }
-  };
+  }, [sortBy]);
 
-  // Throttle restore operation to prevent rapid successive calls
-  const handleRestore = useCallback(
-    throttle((id) => {
+  // Memoize event handlers to prevent child re-renders
+  const handleRestore = useMemo(
+    () => throttle((id) => {
       handleRestoreTask(id);
       toast({
         title: "Task Restored",
@@ -164,7 +255,7 @@ const Archive = () => {
         variant: "success",
       });
     }, 1000),
-    [handleRestoreTask, toast]
+    [throttle, handleRestoreTask, toast]
   );
 
   const handleDeleteConfirm = useCallback(() => {
@@ -187,6 +278,17 @@ const Archive = () => {
     }
   }, []);
 
+  const handleCloseDeleteDialog = useCallback((open) => {
+    setDeleteDialogOpen(open);
+    if (!open) {
+      setTaskToDelete(null);
+    }
+  }, []);
+
+  // Memoize view mode handlers
+  const handleSetListView = useCallback(() => setViewMode("list"), []);
+  const handleSetGridView = useCallback(() => setViewMode("grid"), []);
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -194,7 +296,7 @@ const Archive = () => {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">{getSortLabel()}</Button>
+              <Button variant="outline">{sortLabel}</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
@@ -217,7 +319,7 @@ const Archive = () => {
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
               size="icon"
-              onClick={() => setViewMode("list")}
+              onClick={handleSetListView}
               className="rounded-r-none"
             >
               <List className="h-4 w-4" />
@@ -225,7 +327,7 @@ const Archive = () => {
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
               size="icon"
-              onClick={() => setViewMode("grid")}
+              onClick={handleSetGridView}
               className="rounded-l-none border-l"
             >
               <LayoutGrid className="h-4 w-4" />
@@ -241,7 +343,14 @@ const Archive = () => {
         </AlertDescription>
       </Alert>
 
-      {viewMode === "list" && (
+      {isLoading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-2 text-gray-500">Loading archived items...</span>
+        </div>
+      )}
+
+      {!isLoading && viewMode === "list" && (
         <Card>
           <Table>
             <TableHeader>
@@ -305,7 +414,7 @@ const Archive = () => {
       )}
 
       {/* Grid View Implementation */}
-      {viewMode === "grid" && (
+      {!isLoading && viewMode === "grid" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {sortedItems.length > 0 ? (
             sortedItems.map((item) => (
@@ -353,15 +462,7 @@ const Archive = () => {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={deleteDialogOpen}
-        onOpenChange={(open) => {
-          setDeleteDialogOpen(open);
-          if (!open) {
-            setTaskToDelete(null);
-          }
-        }}
-      >
+      <AlertDialog open={deleteDialogOpen} onOpenChange={handleCloseDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>

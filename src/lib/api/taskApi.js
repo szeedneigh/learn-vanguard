@@ -49,7 +49,17 @@ export const getTasks = async (filters = {}) => {
     const queryString = params.toString();
     const url = `/tasks${queryString ? `?${queryString}` : ""}`;
 
+    console.log("getTasks API call:", { url, filters });
+
     const response = await apiClient.get(url);
+    console.log("getTasks API response:", {
+      status: response.status,
+      dataLength: Array.isArray(response.data)
+        ? response.data.length
+        : "not an array",
+      data: response.data,
+    });
+
     return {
       data: response.data,
       success: true,

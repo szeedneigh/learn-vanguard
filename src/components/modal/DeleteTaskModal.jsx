@@ -24,15 +24,14 @@ import PropTypes from 'prop-types';
 const DeleteTaskModal = ({ isOpen, onClose, onConfirm, taskName }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" aria-describedby="delete-task-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-red-600">
             <AlertTriangle className="h-5 w-5" />
             Confirm Deletion
           </DialogTitle>
-          <DialogDescription className="pt-4">
-            Are you sure you want to delete <span className="font-medium text-gray-700">"{taskName}"</span>?
-            This action cannot be undone.
+          <DialogDescription id="delete-task-description">
+            This action cannot be undone. This will permanently delete the selected task from your list.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="mt-4">

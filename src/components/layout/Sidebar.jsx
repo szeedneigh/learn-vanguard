@@ -164,17 +164,20 @@ const Sidebar = ({ isOpen, onClose }) => {
 
       <div
         className={cn(
-          "flex flex-col min-h-screen bg-white shadow-xl relative z-50",
+          "flex flex-col bg-white shadow-xl relative z-50",
           "transition-all duration-300 ease-in-out",
-          // Mobile styles
+          // Mobile styles - use fixed positioning
           isMobile ? (
             cn(
               "fixed left-0 top-0 h-full",
               isOpen ? "translate-x-0" : "-translate-x-full"
             )
           ) : (
-            // Desktop styles
-            isCollapsed ? "w-20" : "w-64"
+            // Desktop styles - proper grid cell constraints
+            cn(
+              "h-full flex-shrink-0",
+              isCollapsed ? "w-20" : "w-64"
+            )
           )
         )}
         // Add touch event handlers for swipe to close
