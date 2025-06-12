@@ -352,7 +352,10 @@ const Users = () => {
         closeAssignRoleModal();
         // Optionally refetch to ensure data consistency
         refetch().catch((refetchError) => {
-          console.error("Error refetching after PIO assignment error:", refetchError);
+          console.error(
+            "Error refetching after PIO assignment error:",
+            refetchError
+          );
         });
       }, 2000);
     }
@@ -387,7 +390,10 @@ const Users = () => {
         closeRemoveModal();
         // Optionally refetch to ensure data consistency
         refetch().catch((refetchError) => {
-          console.error("Error refetching after student removal error:", refetchError);
+          console.error(
+            "Error refetching after student removal error:",
+            refetchError
+          );
         });
       }, 2000);
     }
@@ -563,7 +569,7 @@ const Users = () => {
               disabled={isLoading}
             >
               <SelectTrigger className="w-full sm:w-36 border-gray-300 shadow-sm">
-                <SelectValue placeholder="Filter By" />
+                <SelectValue placeholder="Filter By Role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Students</SelectItem>

@@ -10,7 +10,11 @@ import PopoverModal from "@/components/ui/PopoverModal";
 import toast from "react-hot-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { updateCurrentUserProfile, uploadUserAvatar } from "@/lib/api/userApi";
+import {
+  updateCurrentUserProfile,
+  uploadUserAvatar,
+  getCurrentUserProfile,
+} from "@/lib/api/userApi";
 
 const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
   const navigate = useNavigate();
@@ -22,7 +26,11 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null);
+  const [avatarUrl, setAvatarUrl] = useState(
+    user?.avatarUrl || localStorage.getItem("lastAvatarUrl") || null
+  );
+  // Add state for user profile data
+  const [profileData, setProfileData] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -31,20 +39,57 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
     email: user?.email || "",
   });
 
+  // Fetch current user profile when modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      const fetchUserProfile = async () => {
+        try {
+          const result = await getCurrentUserProfile();
+          if (result.success && result.data) {
+            setProfileData(result.data);
+            setFormData({
+              firstName: result.data.firstName || "",
+              lastName: result.data.lastName || "",
+              email: result.data.email || "",
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+        }
+      };
+
+      fetchUserProfile();
+    }
+  }, [isOpen]);
+
   // Update form data and avatar when user changes
   useEffect(() => {
     if (user) {
       setFormData({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        email: user.email || "",
+        firstName: user.firstName || profileData?.firstName || "",
+        lastName: user.lastName || profileData?.lastName || "",
+        email: user.email || profileData?.email || "",
       });
-      setAvatarUrl(user.avatarUrl || null);
+
+      // Use avatarUrl from user or localStorage
+      const avatarUrlToUse =
+        user.avatarUrl || localStorage.getItem("lastAvatarUrl") || null;
+      setAvatarUrl(avatarUrlToUse);
+
+      // Save avatar URL to localStorage if it exists
+      if (user.avatarUrl) {
+        localStorage.setItem("lastAvatarUrl", user.avatarUrl);
+      }
     }
-  }, [user]);
+  }, [user, profileData]);
 
   const handleLogout = async () => {
     try {
+      // Save current avatar URL before logout
+      if (avatarUrl) {
+        localStorage.setItem("lastAvatarUrl", avatarUrl);
+      }
+
       await logout();
       toast.success("Successfully logged out");
       navigate("/login");
@@ -106,6 +151,10 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
         toast.success("Profile picture updated successfully");
         // Update avatar URL locally instead of reloading
         setAvatarUrl(result.url);
+        // Update profile data with the new user data
+        if (result.data && result.data.user) {
+          setProfileData(result.data.user);
+        }
         // Refresh user data in context without page reload
         refreshUserData();
       } else {
@@ -128,6 +177,10 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
       if (result.success) {
         toast.success("Profile updated successfully");
         setIsEditing(false);
+        // Update profile data with the new user data
+        if (result.data) {
+          setProfileData(result.data);
+        }
         // Refresh user data in context without page reload
         refreshUserData();
       } else {
@@ -140,10 +193,18 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
   };
 
   const getDisplayName = () => {
+    if (profileData?.firstName && profileData?.lastName) {
+      return `${profileData.firstName} ${profileData.lastName}`;
+    }
     if (user?.firstName && user?.lastName) {
       return `${user.firstName} ${user.lastName}`;
     }
-    return user?.name || "Current User";
+    return user?.name || profileData?.name || "Current User";
+  };
+
+  // Get the email to display
+  const getEmail = () => {
+    return profileData?.email || user?.email || "";
   };
 
   return (
@@ -166,6 +227,7 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
                 src={avatarUrl}
                 alt="Profile"
                 className="w-20 h-20 rounded-full object-cover shadow-md border-2 border-white"
+                key={avatarUrl}
                 onError={(e) => {
                   console.error("Error loading avatar:", e);
                   // Prevent infinite error loop
@@ -233,7 +295,7 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
               <p className="text-sm text-gray-500">
                 {user ? formatUserRole(user.role) : "Role"}
               </p>
-              <p className="text-xs text-gray-500 mt-1">{user?.email || ""}</p>
+              <p className="text-xs text-gray-500 mt-1">{getEmail()}</p>
               <button
                 onClick={() => setIsEditing(true)}
                 className="mt-2 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"

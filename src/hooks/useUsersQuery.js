@@ -240,9 +240,15 @@ export const useRevertPIORole = () => {
  * @param {Object} options - React Query options
  */
 export const useUsers = (filters = {}, options = {}) => {
+  // Always include isEmailVerified=true in the filters
+  const enhancedFilters = {
+    ...filters,
+    isEmailVerified: true,
+  };
+
   return useQuery({
-    queryKey: queryKeys.users.concat([filters]),
-    queryFn: () => getUsers(filters),
+    queryKey: queryKeys.users.concat([enhancedFilters]),
+    queryFn: () => getUsers(enhancedFilters),
     select: (data) => data?.data || [],
     ...options,
   });
@@ -259,10 +265,14 @@ export const useClassStudents = (classInfo, options = {}) => {
     queryFn: async () => {
       try {
         // Get all users (both students and PIOs) for this class
-        const response = await getUsers({
+        // Only fetch verified users
+        const filters = {
           course: classInfo?.course,
           yearLevel: classInfo?.yearLevel,
-        });
+          isEmailVerified: true, // Always get verified accounts only
+        };
+
+        const response = await getUsers(filters);
 
         // Ensure consistent ID field naming
         const data = response?.data || [];
@@ -483,7 +493,7 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
       case "bsis":
         return "Bachelor of Science in Information Systems";
       case "act":
-        return "Associate in Computer Technology";
+        return "Associate of Computer Technology";
       default:
         return programId;
     }
@@ -517,8 +527,6 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
     // Also refetch when window regains focus
     refetchOnWindowFocus: true,
   });
-  // Keep this commented out for now as it might be needed in the future
-  // const allUsersQuery = useUsers({ role: "student" }, { enabled: false });
 
   // Mutations
   const assignPIOMutation = useAssignPIORole();

@@ -321,6 +321,7 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
                   src={user.avatarUrl}
                   alt={user.name || "User avatar"}
                   className="w-8 h-8 rounded-lg object-cover shadow-sm"
+                  key={user.avatarUrl}
                   onError={(e) => {
                     // If avatar fails to load, replace with initials
                     e.target.onerror = null;

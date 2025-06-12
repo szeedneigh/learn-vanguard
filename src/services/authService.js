@@ -283,106 +283,147 @@ export const completeGoogleRegistration = async (registrationData) => {
 };
 
 /**
- * Two-step signup process - Step 1: Initiate signup
+ * Initiate signup process with basic user data
  */
 export const initiateSignup = async (basicData) => {
   try {
-    const formatted = {
-      firstName: basicData.firstname || basicData.firstName,
-      lastName: basicData.lastname || basicData.lastName,
+    const response = await apiClient.post("/auth/signup/initiate", {
+      firstName: basicData.firstname,
+      lastName: basicData.lastname,
       email: basicData.email,
       password: basicData.password,
-    };
-    console.log("Signup Initiate:", { ...formatted, password: "[REDACTED]" });
-    const res = await apiClient.post("/auth/signup/initiate", formatted);
-    const { message, tempToken } = res.data;
-    if (!tempToken) throw new Error("No temporary token received");
-    localStorage.setItem("signupTempToken", tempToken);
-    return { success: true, tempToken, message: message || "Step 1 complete" };
-  } catch (error) {
-    console.error("Initiate signup failed:", error.response?.data || error);
-    const status = error.response?.status;
-    const message = error.response?.data?.message;
+    });
 
-    // Handle specific error cases
-    if (status === 409 || message === "Email already registered") {
+    console.log("Signup initiation response:", response.data);
+
+    return {
+      success: true,
+      registrationId: response.data.registrationId,
+      tempToken: response.data.tempToken || response.data.token,
+      message: response.data.message || "Registration initiated successfully",
+    };
+  } catch (error) {
+    console.error("Registration initiation failed:", error);
+
+    // Handle validation errors from backend
+    if (error.response?.status === 400 && error.response.data?.errors) {
+      const fieldErrors = {};
+
+      // Map backend field errors to frontend field names
+      error.response.data.errors.forEach((err) => {
+        // Map backend field names to frontend field names
+        let fieldName = err.field;
+        if (fieldName === "firstName") fieldName = "firstname";
+        if (fieldName === "lastName") fieldName = "lastname";
+
+        fieldErrors[fieldName] = err.message;
+      });
+
       return {
         success: false,
-        error:
-          "This email is already registered. Please try logging in instead.",
-        needsLogin: true,
-      };
-    }
-    if (status === 400) {
-      return {
-        success: false,
-        error: message || "Invalid input data.",
-        details: error.response?.data?.errors || {},
+        error: error.response.data.message || "Validation failed",
+        details: fieldErrors,
       };
     }
 
     return {
       success: false,
-      error: message || "Signup initiation failed. Please try again.",
+      error:
+        error.response?.data?.message ||
+        "Registration failed. Please try again.",
     };
   }
 };
 
 /**
- * Two-step signup process - Step 2: Complete signup
+ * Complete signup process with academic details
  */
 export const completeSignup = async (completeData) => {
   try {
-    if (!completeData.tempToken) throw new Error("Temporary token is required");
+    const mappedCourse =
+      completeData.course === "BSIS"
+        ? "Bachelor of Science in Information Systems"
+        : completeData.course === "ACT"
+        ? "Associate of Computer Technology"
+        : completeData.course;
 
-    // Create formatted data without gender
-    const formatted = {
+    const mappedYearLevel =
+      completeData.yearLevel === "1"
+        ? "First Year"
+        : completeData.yearLevel === "2"
+        ? "Second Year"
+        : completeData.yearLevel === "3"
+        ? "Third Year"
+        : completeData.yearLevel === "4"
+        ? "Fourth Year"
+        : completeData.yearLevel;
+
+    console.log("Completing signup with data:", {
+      tempToken: "REDACTED",
+      studentNumber: completeData.studentNo,
+      course: mappedCourse,
+      yearLevel: mappedYearLevel,
+    });
+
+    const response = await apiClient.post("/auth/signup/complete", {
       tempToken: completeData.tempToken,
-      studentNumber: completeData.studentNo || completeData.studentNumber,
-      course:
-        completeData.course === "BSIS"
-          ? "Bachelor of Science in Information Systems"
-          : completeData.course === "ACT"
-          ? "Associate in Computer Technology"
-          : completeData.course,
-      yearLevel:
-        {
-          1: "First Year",
-          2: "Second Year",
-          3: "Third Year",
-          4: "Fourth Year",
-        }[completeData.yearLevel] || completeData.yearLevel,
-    };
+      studentNumber: completeData.studentNo,
+      course: mappedCourse,
+      yearLevel: mappedYearLevel,
+    });
 
-    // Log the data being sent (for debugging)
-    console.log("Signup Complete:", formatted);
+    const { token, requiresEmailVerification } = response.data;
 
-    const res = await apiClient.post("/auth/signup/complete", formatted);
-    const { message, token } = res.data;
-
-    if (!token) throw new Error("No token received");
-    storeToken(token);
-
-    const userData = await getCurrentUser();
-    if (!userData || !userData.user) {
-      throw new Error("Failed to fetch user data after signup");
+    if (token) {
+      storeToken(token);
     }
-
-    const normalizedUser = normalizeUserData(userData.user);
-    console.log("Normalized user data after signup:", normalizedUser);
 
     return {
       success: true,
       token,
-      user: normalizedUser,
-      message: message || "Signup successful",
+      requiresEmailVerification,
+      message: response.data.message || "Registration completed successfully",
     };
   } catch (error) {
-    console.error("Complete signup failed:", error.response?.data || error);
+    console.error("Registration completion failed:", error);
+
+    // Handle validation errors from backend
+    if (error.response?.status === 400 && error.response.data?.errors) {
+      const fieldErrors = {};
+
+      // Map backend field errors to frontend field names
+      error.response.data.errors.forEach((err) => {
+        // Map backend field names to frontend field names
+        let fieldName = err.field;
+        if (fieldName === "studentNumber") fieldName = "studentNo";
+
+        fieldErrors[fieldName] = err.message;
+      });
+
+      return {
+        success: false,
+        error: error.response.data.message || "Validation failed",
+        details: fieldErrors,
+      };
+    }
+
+    // Handle unauthorized error (expired or invalid token)
+    if (error.response?.status === 401) {
+      return {
+        success: false,
+        error:
+          error.response?.data?.message ||
+          "Session expired or invalid. Please start the signup process again.",
+        sessionExpired: true,
+      };
+    }
+
+    // Handle other error cases
     return {
       success: false,
-      error: error.response?.data?.message || "Signup completion failed",
-      details: error.response?.data?.errors || {},
+      error:
+        error.response?.data?.message ||
+        "Registration failed. Please try again.",
     };
   }
 };
@@ -469,9 +510,31 @@ export const requestPasswordReset = async (data) => {
     };
   } catch (error) {
     console.error("Password reset request failed:", error);
+
+    // Check for specific error types
+    if (error.response?.status === 429) {
+      return {
+        success: false,
+        error:
+          error.response?.data?.message ||
+          "Too many requests. Please try again later.",
+        isRateLimited: true,
+        retryAfter: error.response?.headers?.["retry-after"] || 60,
+      };
+    }
+
+    if (error.response?.data?.code === "EMAIL_NOT_FOUND") {
+      return {
+        success: false,
+        error: "No account found with this email address.",
+      };
+    }
+
     return {
       success: false,
-      error: error.response?.data?.message || "Request failed",
+      error:
+        error.response?.data?.message ||
+        "Request failed. Please try again later.",
     };
   }
 };
@@ -486,9 +549,31 @@ export const verifyResetCode = async (data) => {
     };
   } catch (error) {
     console.error("Verify reset code failed:", error);
+
+    // Check for specific error types
+    if (
+      error.response?.status === 400 &&
+      error.response?.data?.code === "INVALID_CODE"
+    ) {
+      return {
+        success: false,
+        error: "The verification code is invalid or has expired.",
+      };
+    }
+
+    if (error.response?.status === 429) {
+      return {
+        success: false,
+        error: "Too many failed attempts. Please try again later.",
+        isRateLimited: true,
+      };
+    }
+
     return {
       success: false,
-      error: error.response?.data?.message || "Verification failed",
+      error:
+        error.response?.data?.message ||
+        "Verification failed. Please try again.",
     };
   }
 };
@@ -499,9 +584,35 @@ export const resetPassword = async (data) => {
     return { success: true, message: res.data.message };
   } catch (error) {
     console.error("Password reset failed:", error);
+
+    // Check for specific error types
+    if (
+      error.response?.status === 400 &&
+      error.response?.data?.code === "INVALID_TOKEN"
+    ) {
+      return {
+        success: false,
+        error: "Password reset session has expired. Please start over.",
+      };
+    }
+
+    if (
+      error.response?.status === 400 &&
+      error.response?.data?.code === "PASSWORD_REQUIREMENTS"
+    ) {
+      return {
+        success: false,
+        error:
+          error.response?.data?.message ||
+          "Password does not meet security requirements.",
+      };
+    }
+
     return {
       success: false,
-      error: error.response?.data?.message || "Reset failed",
+      error:
+        error.response?.data?.message ||
+        "Failed to reset password. Please try again.",
     };
   }
 };
@@ -583,6 +694,58 @@ export const isAuthenticated = () => {
   }
 };
 
+/**
+ * Verify email address
+ */
+export const verifyEmail = async (userId, verificationCode) => {
+  try {
+    const response = await apiClient.get(
+      `/auth/verify-email/${userId}/${verificationCode}`
+    );
+
+    return {
+      success: true,
+      message: response.data.message || "Email verified successfully",
+    };
+  } catch (error) {
+    console.error("Email verification failed:", error);
+    return {
+      success: false,
+      error: error.response?.data?.message || "Verification failed",
+    };
+  }
+};
+
+/**
+ * Resend verification email
+ */
+export const resendVerificationEmail = async () => {
+  try {
+    const token = localStorage.getItem("authToken");
+
+    if (!token) {
+      return {
+        success: false,
+        error: "No authentication token found",
+      };
+    }
+
+    const response = await apiClient.post("/auth/resend-verification");
+
+    return {
+      success: true,
+      message: response.data.message || "Verification email sent",
+    };
+  } catch (error) {
+    console.error("Failed to resend verification email:", error);
+    return {
+      success: false,
+      error:
+        error.response?.data?.message || "Failed to send verification email",
+    };
+  }
+};
+
 export const authService = {
   login,
   loginWithGoogle,
@@ -599,4 +762,6 @@ export const authService = {
   completeSignup,
   register,
   checkGoogleRedirectResult,
+  verifyEmail,
+  resendVerificationEmail,
 };
