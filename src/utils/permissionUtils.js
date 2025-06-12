@@ -1,4 +1,4 @@
-import { ROLE_PERMISSIONS } from '@/lib/constants';
+import { ROLE_PERMISSIONS } from "@/lib/constants";
 
 /**
  * Check if a user has a specific permission
@@ -8,15 +8,37 @@ import { ROLE_PERMISSIONS } from '@/lib/constants';
  */
 export const hasPermission = (user, permission) => {
   if (!user || !user.role || !permission) {
+    console.log(
+      `hasPermission check failed: missing user, role, or permission`,
+      {
+        hasUser: !!user,
+        hasRole: user ? !!user.role : false,
+        permission,
+      }
+    );
     return false;
   }
-  
-  const userPermissions = ROLE_PERMISSIONS[user.role];
+
+  // Normalize role to uppercase for consistent lookup
+  const normalizedRole = user.role.toUpperCase();
+  const userPermissions = ROLE_PERMISSIONS[normalizedRole];
+
   if (!userPermissions) {
+    console.log(
+      `hasPermission: No permissions found for role ${normalizedRole}`
+    );
     return false;
   }
-  
-  return userPermissions.includes(permission);
+
+  const hasPermission = userPermissions.includes(permission);
+  console.log(
+    `hasPermission: ${normalizedRole} checking for "${permission}": ${hasPermission}`,
+    {
+      availablePermissions: userPermissions,
+    }
+  );
+
+  return hasPermission;
 };
 
 /**
@@ -27,10 +49,22 @@ export const hasPermission = (user, permission) => {
  */
 export const hasAnyPermission = (user, permissions = []) => {
   if (!user || !user.role || !permissions.length) {
+    console.log(
+      `hasAnyPermission check failed: missing user, role, or permissions`,
+      {
+        hasUser: !!user,
+        hasRole: user ? !!user.role : false,
+        permissions,
+      }
+    );
     return false;
   }
-  
-  return permissions.some(permission => hasPermission(user, permission));
+
+  const result = permissions.some((permission) =>
+    hasPermission(user, permission)
+  );
+  console.log(`hasAnyPermission result:`, result);
+  return result;
 };
 
 /**
@@ -41,10 +75,25 @@ export const hasAnyPermission = (user, permissions = []) => {
  */
 export const hasAllPermissions = (user, permissions = []) => {
   if (!user || !user.role || !permissions.length) {
+    console.log(
+      `hasAllPermissions check failed: missing user, role, or permissions`,
+      {
+        hasUser: !!user,
+        hasRole: user ? !!user.role : false,
+        permissions,
+      }
+    );
     return false;
   }
-  
-  return permissions.every(permission => hasPermission(user, permission));
+
+  const result = permissions.every((permission) =>
+    hasPermission(user, permission)
+  );
+  console.log(
+    `hasAllPermissions result for [${permissions.join(", ")}]:`,
+    result
+  );
+  return result;
 };
 
 /**
@@ -54,8 +103,17 @@ export const hasAllPermissions = (user, permissions = []) => {
  */
 export const getUserPermissions = (user) => {
   if (!user || !user.role) {
+    console.log(`getUserPermissions: No user or role provided`, {
+      hasUser: !!user,
+      hasRole: user ? !!user.role : false,
+    });
     return [];
   }
-  
-  return ROLE_PERMISSIONS[user.role] || [];
-}; 
+
+  // Normalize role to uppercase for consistent lookup
+  const normalizedRole = user.role.toUpperCase();
+  const permissions = ROLE_PERMISSIONS[normalizedRole] || [];
+
+  console.log(`getUserPermissions for role ${normalizedRole}:`, permissions);
+  return permissions;
+};

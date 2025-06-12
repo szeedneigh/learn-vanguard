@@ -1,16 +1,20 @@
 import { useState, useCallback, memo, useMemo, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import PropTypes from 'prop-types';
-import {
-  ChevronLeft,
-  ChevronRight
-} from "lucide-react";
+import PropTypes from "prop-types";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { getNavigationByRole } from "@/lib/navigation";
 
 const NavigationItem = memo(({ item, isCollapsed, isActive }) => {
   const Icon = item.icon;
+
+  console.log("NavigationItem rendering:", {
+    name: item.name,
+    href: item.href,
+    isActive,
+    isCollapsed,
+  });
 
   return (
     <Link
@@ -99,24 +103,34 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, isLoading } = useAuth();
   // Convert to state variable
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
   // Track touch start position for swipe detection
   const [touchStartX, setTouchStartX] = useState(null);
+
+  console.log("Sidebar rendering:", {
+    isOpen,
+    user: user ? { role: user.role, id: user.id } : "No user",
+    isLoading,
+    isMobile,
+    pathname: location.pathname,
+  });
 
   // Effect to handle resize events
   useEffect(() => {
     const handleResize = () => {
       const newIsMobile = window.innerWidth < 768;
       setIsMobile(newIsMobile);
-      
+
       if (!newIsMobile) {
         // Reset mobile sidebar state when returning to desktop
         onClose();
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [onClose]);
 
   const handleToggle = useCallback(() => {
@@ -129,18 +143,21 @@ const Sidebar = ({ isOpen, onClose }) => {
   }, []);
 
   // Handle touch move event for swipe detection
-  const handleTouchMove = useCallback((e) => {
-    if (touchStartX === null) return;
-    
-    const touchEndX = e.touches[0].clientX;
-    const diff = touchStartX - touchEndX;
-    
-    // If swiping left (diff > 0) and the swipe is significant enough (> 50px)
-    if (diff > 50) {
-      onClose();
-      setTouchStartX(null);
-    }
-  }, [touchStartX, onClose]);
+  const handleTouchMove = useCallback(
+    (e) => {
+      if (touchStartX === null) return;
+
+      const touchEndX = e.touches[0].clientX;
+      const diff = touchStartX - touchEndX;
+
+      // If swiping left (diff > 0) and the swipe is significant enough (> 50px)
+      if (diff > 50) {
+        onClose();
+        setTouchStartX(null);
+      }
+    },
+    [touchStartX, onClose]
+  );
 
   // Reset touch tracking when touch ends without a swipe
   const handleTouchEnd = useCallback(() => {
@@ -148,14 +165,16 @@ const Sidebar = ({ isOpen, onClose }) => {
   }, []);
 
   const filteredNavigation = useMemo(() => {
-    return getNavigationByRole(user);
+    const navItems = getNavigationByRole(user);
+    console.log("Sidebar navigation items:", navItems);
+    return navItems;
   }, [user]);
 
   return (
     <>
       {/* Mobile overlay - clicking anywhere on it will close the sidebar */}
       {isMobile && isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={onClose}
           aria-hidden="true"
@@ -167,15 +186,15 @@ const Sidebar = ({ isOpen, onClose }) => {
           "flex flex-col min-h-screen bg-white shadow-xl relative z-50",
           "transition-all duration-300 ease-in-out",
           // Mobile styles
-          isMobile ? (
-            cn(
-              "fixed left-0 top-0 h-full",
-              isOpen ? "translate-x-0" : "-translate-x-full"
-            )
-          ) : (
-            // Desktop styles
-            isCollapsed ? "w-20" : "w-64"
-          )
+          isMobile
+            ? cn(
+                "fixed left-0 top-0 h-full",
+                isOpen ? "translate-x-0" : "-translate-x-full"
+              )
+            : // Desktop styles
+            isCollapsed
+            ? "w-20"
+            : "w-64"
         )}
         // Add touch event handlers for swipe to close
         onTouchStart={isMobile ? handleTouchStart : undefined}
@@ -183,21 +202,25 @@ const Sidebar = ({ isOpen, onClose }) => {
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
       >
         {/* Removed the X button for mobile */}
-        
+
         {/* Add a subtle swipe indicator for mobile */}
         {isMobile && (
           <div className="absolute right-0 top-1/2 h-24 w-1 bg-gray-300 rounded-l opacity-30" />
         )}
 
         {/* Only show toggle button on desktop */}
-        {!isMobile && <ToggleButton isCollapsed={isCollapsed} onClick={handleToggle} />}
+        {!isMobile && (
+          <ToggleButton isCollapsed={isCollapsed} onClick={handleToggle} />
+        )}
 
         {/* Header Section with Gradient Background */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600">
           <div
             className={cn(
               "flex items-center h-[76px]",
-              isCollapsed && !isMobile ? "justify-center px-4" : "px-6 space-x-3"
+              isCollapsed && !isMobile
+                ? "justify-center px-4"
+                : "px-6 space-x-3"
             )}
           >
             <div
@@ -214,6 +237,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                   "rounded-xl",
                   isCollapsed && !isMobile ? "w-12 h-12" : "w-10 h-10"
                 )}
+                onError={(e) => {
+                  console.error("Logo image failed to load:", e);
+                  // Fallback to text if image fails to load
+                  e.target.style.display = "none";
+                  e.target.parentNode.innerHTML =
+                    '<div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold">LV</div>';
+                }}
               />
             </div>
             {(!isCollapsed || isMobile) && (
@@ -228,13 +258,17 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* Navigation Section - remains unchanged */}
         <nav
-          className={cn("flex-1", isCollapsed && !isMobile ? "px-2 py-4" : "p-4", "space-y-2")}
+          className={cn(
+            "flex-1",
+            isCollapsed && !isMobile ? "px-2 py-4" : "p-4",
+            "space-y-2"
+          )}
         >
           {isLoading ? (
-             <div className="flex justify-center items-center h-full text-gray-500">
-               Loading Nav...
-             </div>
-          ) : (
+            <div className="flex justify-center items-center h-full text-gray-500">
+              Loading Nav...
+            </div>
+          ) : filteredNavigation.length > 0 ? (
             filteredNavigation.map((item) => (
               <NavigationItem
                 key={item.href}
@@ -243,6 +277,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                 isActive={location.pathname === item.href}
               />
             ))
+          ) : (
+            <div className="flex flex-col items-center justify-center h-32 text-gray-500 text-center p-4">
+              <p className="mb-2">No navigation items available</p>
+              <p className="text-xs">Role: {user?.role || "Unknown"}</p>
+            </div>
           )}
         </nav>
       </div>
@@ -252,7 +291,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
 Sidebar.propTypes = {
   isOpen: PropTypes.bool,
-  onClose: PropTypes.func
+  onClose: PropTypes.func,
 };
 
 export default memo(Sidebar);

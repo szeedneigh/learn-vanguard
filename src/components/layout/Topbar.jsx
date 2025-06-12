@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, memo, useRef, useEffect } from "react";
-import { Bell, Search, X, Menu } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfileModal from "../modal/ProfileModal";
 import NotificationPopup from "../modal/NotificationPopup";
@@ -14,60 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 import { getUserInitials } from "@/utils/userUtils";
 import { useToast } from "@/hooks/use-toast";
 
-const SearchInput = memo(
-  ({ searchValue, isSearchFocused, onSearchChange, onFocus, onBlur }) => (
-    <div
-      className={cn(
-        "relative flex items-center transition-all duration-300",
-        isSearchFocused ? "w-96" : "w-64"
-      )}
-    >
-      <Search
-        className={cn(
-          "absolute left-3 transition-colors duration-200",
-          isSearchFocused ? "text-blue-500" : "text-gray-400",
-          "h-4 w-4"
-        )}
-      />
-      <input
-        type="text"
-        value={searchValue}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Search anything..."
-        className={cn(
-          "pl-10 pr-10 py-2.5 w-full",
-          "rounded-xl bg-gray-50",
-          "text-sm text-gray-900 placeholder:text-gray-400",
-          "transition-all duration-200",
-          "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white",
-          "hover:bg-gray-100 focus:hover:bg-white"
-        )}
-        onFocus={onFocus}
-        onBlur={onBlur}
-      />
-      {searchValue && (
-        <button
-          onClick={() => onSearchChange("")}
-          className="absolute right-3 p-1 hover:bg-gray-200 rounded-full transition-colors duration-200"
-        >
-          <X className="h-3 w-3 text-gray-400" />
-        </button>
-      )}
-    </div>
-  )
-);
-
-SearchInput.propTypes = {
-  searchValue: PropTypes.string.isRequired,
-  isSearchFocused: PropTypes.bool.isRequired,
-  onSearchChange: PropTypes.func.isRequired,
-  onFocus: PropTypes.func.isRequired,
-  onBlur: PropTypes.func.isRequired,
-};
-
-const Topbar = memo(({ onSearch, onMenuClick }) => {
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+const Topbar = memo(({ onMenuClick }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -77,6 +24,20 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
   const notificationButtonRef = useRef(null);
   const profileButtonRef = useRef(null);
   const { toast } = useToast();
+
+  console.log("Topbar rendering:", {
+    user: user
+      ? {
+          role: user.role,
+          id: user.id,
+          name:
+            user.name ||
+            `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        }
+      : "No user",
+    isMobile,
+    onMenuClick: !!onMenuClick,
+  });
 
   // Check if we're on mobile
   useEffect(() => {
@@ -95,6 +56,7 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
     setIsLoading(true);
     try {
       const result = await getUserNotifications();
+      console.log("Topbar: notifications fetched", result);
       if (result.success && Array.isArray(result.data)) {
         // Transform the notifications to match our UI format
         const formattedNotifications = result.data.map((notification) => {
@@ -152,21 +114,6 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
 
     return () => clearInterval(intervalId);
   }, [fetchNotifications]);
-
-  const handleSearch = useCallback(
-    (value) => {
-      setSearchValue(value);
-
-      const timeoutId = setTimeout(() => {
-        if (onSearch) {
-          onSearch(value.trim());
-        }
-      }, 300);
-
-      return () => clearTimeout(timeoutId);
-    },
-    [onSearch]
-  );
 
   const handleMarkAsRead = useCallback(
     async (notificationId) => {
@@ -237,8 +184,6 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
     [notifications, handleMarkAsRead, handleDeleteNotification]
   );
 
-  const handleSearchFocus = useCallback(() => setIsSearchFocused(true), []);
-  const handleSearchBlur = useCallback(() => setIsSearchFocused(false), []);
   const toggleProfile = useCallback(() => setShowProfile((prev) => !prev), []);
   const toggleNotifications = useCallback(() => {
     setShowNotifications((prev) => !prev);
@@ -266,19 +211,8 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
           )}
         </div>
 
-        {/* Right side - Search, notifications, profile */}
+        {/* Right side - Notifications, profile */}
         <div className="flex items-center space-x-3 sm:space-x-6">
-          {/* Hide search on small mobile screens */}
-          <div className={cn("relative", isMobile && "hidden sm:block")}>
-            <SearchInput
-              searchValue={searchValue}
-              isSearchFocused={isSearchFocused}
-              onSearchChange={handleSearch}
-              onFocus={handleSearchFocus}
-              onBlur={handleSearchBlur}
-            />
-          </div>
-
           <div className="relative">
             <button
               ref={notificationButtonRef}
@@ -373,11 +307,9 @@ const Topbar = memo(({ onSearch, onMenuClick }) => {
   );
 });
 
-SearchInput.displayName = "SearchInput";
 Topbar.displayName = "Topbar";
 
 Topbar.propTypes = {
-  onSearch: PropTypes.func,
   onMenuClick: PropTypes.func,
 };
 

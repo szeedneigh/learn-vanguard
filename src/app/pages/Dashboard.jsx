@@ -40,6 +40,12 @@ const DashboardLayout = ({ children }) => {
   });
   const { toast } = useToast();
 
+  console.log("DashboardLayout rendering:", {
+    hasChildren: !!children,
+    childrenType: children ? typeof children : "none",
+    isSidebarOpen,
+  });
+
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
   }, []);
@@ -135,6 +141,11 @@ DashboardLayout.propTypes = {
 
 const AuthorizedRoute = ({ component: Component, isAuthorized }) => {
   const { toast } = useToast();
+
+  console.log("AuthorizedRoute rendering:", {
+    component: Component?.displayName || Component?.name || "Unknown",
+    isAuthorized,
+  });
 
   useEffect(() => {
     if (!isAuthorized) {

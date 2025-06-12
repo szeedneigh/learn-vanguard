@@ -9,11 +9,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePermission } from "@/context/PermissionContext";
-import { PERMISSIONS } from "@/lib/constants";
+import { useAuth } from "@/context/AuthContext";
+import { PERMISSIONS, ROLES } from "@/lib/constants";
 import PropTypes from "prop-types";
 
 const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
   const { hasPermission } = usePermission();
+  const { user } = useAuth();
 
   // Extract properties from task, handling different formats
   const taskId = task._id || task.id; // Handle both MongoDB _id and regular id
@@ -24,6 +26,8 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
   const taskPriority = task.priority || task.taskPriority || "";
   const taskCompletedAt = task.completedAt || task.dateCompleted || "";
   const taskIsArchived = task.isArchived || task.archived || false;
+  // Extract all possible user ID fields for ownership check
+  const taskUserId = task.userId || task.creatorId || task.assigneeId;
 
   // Normalize status to handle different formats from backend
   const normalizeStatus = (status) => {
@@ -120,9 +124,48 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
   const isCompleted = normalizedStatus === "Completed";
 
   // Permission checks
-  const canEditTask = hasPermission(PERMISSIONS.EDIT_TASK);
-  const canDeleteTask = hasPermission(PERMISSIONS.DELETE_TASK);
-  const canManageArchive = hasPermission(PERMISSIONS.MANAGE_ARCHIVE);
+  const hasEditPermission = hasPermission(PERMISSIONS.EDIT_TASK);
+  const hasDeletePermission = hasPermission(PERMISSIONS.DELETE_TASK);
+  const hasArchivePermission = hasPermission(PERMISSIONS.MANAGE_ARCHIVE);
+
+  // Check if the task belongs to the current user
+  const isOwnTask = user && taskUserId && user.id === taskUserId;
+
+  // Normalize user role for case-insensitive comparison
+  const userRole = user?.role?.toUpperCase();
+
+  // Admin and PIO can edit all tasks, students can only edit their own tasks
+  const canEditTask =
+    userRole === ROLES.ADMIN ||
+    userRole === ROLES.PIO ||
+    (userRole === ROLES.STUDENT && hasEditPermission && isOwnTask);
+
+  // Only admin and PIO can delete tasks
+  const canDeleteTask =
+    hasDeletePermission && (userRole === ROLES.ADMIN || userRole === ROLES.PIO);
+
+  // Admin and PIO can archive any task, students can archive their own completed tasks
+  const canManageArchive =
+    (hasArchivePermission &&
+      (userRole === ROLES.ADMIN || userRole === ROLES.PIO)) ||
+    (hasArchivePermission &&
+      userRole === ROLES.STUDENT &&
+      isOwnTask &&
+      isCompleted);
+
+  // Debug archive permissions
+  if (isCompleted) {
+    console.log("Archive permission check:", {
+      taskId: taskId,
+      taskName: taskName,
+      hasArchivePermission,
+      userRole,
+      isOwnTask,
+      isCompleted,
+      canManageArchive,
+      hasOnArchiveProp: !!onArchive,
+    });
+  }
 
   return (
     <motion.div
@@ -194,40 +237,38 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
           )}
         </div>
 
-        {(canEditTask || canDeleteTask || canManageArchive) && (
-          <div className="flex justify-end pt-2 border-t mt-3">
-            {isCompleted && canManageArchive && onArchive ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onArchive(taskId)}
-                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 w-full justify-center"
-              >
-                <Archive className="w-4 h-4 mr-2" />
-                Move to Archive
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                {canEditTask && (
-                  <button
-                    onClick={() => onEdit()}
-                    className="text-gray-400 hover:text-blue-600 transition-colors"
-                  >
-                    <Edit size={18} />
-                  </button>
-                )}
-                {canDeleteTask && (
-                  <button
-                    onClick={() => onDelete()}
-                    className="text-gray-400 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex justify-end pt-2 border-t mt-3">
+          {isCompleted && canManageArchive && onArchive ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onArchive(taskId)}
+              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 w-full justify-center"
+            >
+              <Archive className="w-4 h-4 mr-2" />
+              Move to Archive
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              {canEditTask && (
+                <button
+                  onClick={() => onEdit()}
+                  className="text-gray-400 hover:text-blue-600 transition-colors"
+                >
+                  <Edit size={18} />
+                </button>
+              )}
+              {canDeleteTask && (
+                <button
+                  onClick={() => onDelete()}
+                  className="text-gray-400 hover:text-red-600 transition-colors"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       <div
         className={`w-full py-2 text-center text-xs font-semibold ${statusColor} ${
@@ -248,21 +289,23 @@ TaskCard.propTypes = {
     taskName: PropTypes.string,
     description: PropTypes.string,
     taskDescription: PropTypes.string,
+    dueDate: PropTypes.string,
+    taskDeadline: PropTypes.string,
     status: PropTypes.string,
     taskStatus: PropTypes.string,
     priority: PropTypes.string,
     taskPriority: PropTypes.string,
-    dueDate: PropTypes.string,
-    taskDeadline: PropTypes.string,
     completedAt: PropTypes.string,
     dateCompleted: PropTypes.string,
     isArchived: PropTypes.bool,
     archived: PropTypes.bool,
+    userId: PropTypes.string,
+    creatorId: PropTypes.string,
+    assigneeId: PropTypes.string,
   }).isRequired,
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   onArchive: PropTypes.func,
-  onHighPriority: PropTypes.func,
 };
 
 export default TaskCard;

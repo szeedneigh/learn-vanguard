@@ -27,38 +27,10 @@ import { ROLES } from "@/lib/constants";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import toast from "react-hot-toast";
 import BreadcrumbNavigation from "@/components/section/resources/BreadcrumbNavigation";
-import AnalyticsView from "@/components/section/resources/AnalyticsView";
 import CourseView from "@/components/section/resources/CourseView";
 import SubjectList from "@/components/section/resources/SubjectList";
 import ViewSubject from "@/components/section/resources/ViewSubject";
 import FloatingUploadButton from "@/components/section/resources/FloatingUploadButton";
-
-const staticFiles = [
-  {
-    name: "Course Syllabus.pdf",
-    size: "2.5 MB",
-    uploadDate: "2024-12-15",
-    downloads: 145,
-  },
-  {
-    name: "Assignment Guidelines.docx",
-    size: "1.8 MB",
-    uploadDate: "2024-12-20",
-    downloads: 89,
-  },
-  {
-    name: "Lecture Notes - Week 1.pptx",
-    size: "5.2 MB",
-    uploadDate: "2025-01-08",
-    downloads: 234,
-  },
-  {
-    name: "Project Requirements.pdf",
-    size: "3.1 MB",
-    uploadDate: "2025-01-12",
-    downloads: 167,
-  },
-];
 
 export default function Resources() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,7 +45,6 @@ export default function Resources() {
   const [currentYear, setCurrentYear] = useState(null);
   const [currentSemester, setCurrentSemester] = useState(null);
   const [currentSubject, setCurrentSubject] = useState(null);
-  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const { user } = useContext(AuthContext);
 
@@ -435,7 +406,6 @@ export default function Resources() {
         setCurrentSemester(null);
       }
       setCurrentSubject(null);
-      setShowAnalytics(false);
     },
     [
       programsData,
@@ -443,7 +413,6 @@ export default function Resources() {
       setCurrentYear,
       setCurrentSemester,
       setCurrentSubject,
-      setShowAnalytics,
     ]
   );
 
@@ -551,9 +520,10 @@ export default function Resources() {
     }
 
     // Convert to string if it's an object ID
-    const idToDelete = typeof announcementId === 'object' && announcementId._id 
-      ? announcementId._id 
-      : announcementId;
+    const idToDelete =
+      typeof announcementId === "object" && announcementId._id
+        ? announcementId._id
+        : announcementId;
 
     console.log(`Deleting announcement with ID: ${idToDelete}`);
 
@@ -656,7 +626,6 @@ export default function Resources() {
       <div className="max-w-7xl mx-auto space-y-6">
         {programsData && programsData.length > 0 && (
           <BreadcrumbNavigation
-            setShowAnalytics={setShowAnalytics}
             currentProgram={currentProgramName}
             currentYear={currentYear}
             currentSemester={currentSemester}
@@ -670,9 +639,7 @@ export default function Resources() {
           />
         )}
 
-        {showAnalytics ? (
-          <AnalyticsView staticFiles={staticFiles} />
-        ) : currentSubject ? (
+        {currentSubject ? (
           <ViewSubject
             currentSubject={currentSubject}
             searchTerm={searchTerm}
