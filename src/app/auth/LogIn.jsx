@@ -5,10 +5,9 @@ import { EyeIcon, EyeOffIcon, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Lock } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/context/AuthContext";
 import GoogleRegistration from "./GoogleRegistration";
 import { getCurrentUserToken } from "@/config/firebase";
-import { useToast } from "@/hooks/use-toast";
 
 const smoothTransition = {
   type: "spring",

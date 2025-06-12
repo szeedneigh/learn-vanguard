@@ -305,7 +305,7 @@ const GoogleRegistration = ({ email, onSuccess, onCancel }) => {
       // Call API to complete Google registration
       const result = await authService.completeGoogleRegistration({
         idToken: freshToken, // Use fresh token instead of passed prop
-        studentNumber: formData.studentNo,
+        studentNo: formData.studentNo, // This will be mapped to studentNumber in the service
         course: formData.course,
         yearLevel: formData.yearLevel,
       });
@@ -319,10 +319,22 @@ const GoogleRegistration = ({ email, onSuccess, onCancel }) => {
         if (onSuccess) {
           onSuccess(result);
         } else {
-          // Wait a moment to ensure auth state is updated
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 500);
+          // Check if email verification is required
+          if (result.requiresEmailVerification) {
+            toast({
+              title: "Email Verification Required",
+              description: "Please check your email to verify your account.",
+            });
+            // Wait a moment to ensure auth state is updated
+            setTimeout(() => {
+              navigate("/verify-email");
+            }, 500);
+          } else {
+            // Wait a moment to ensure auth state is updated
+            setTimeout(() => {
+              navigate("/dashboard");
+            }, 500);
+          }
         }
       } else {
         setErrors({

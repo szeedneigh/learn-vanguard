@@ -353,7 +353,7 @@ export const completeGoogleRegistration = async (registrationData) => {
     // Format the data for the backend
     const formattedData = {
       idToken: registrationData.idToken,
-      studentNumber: registrationData.studentNo,
+      studentNumber: registrationData.studentNo, // Important: map studentNo to studentNumber
       course: mappedCourse,
       yearLevel: mappedYearLevel,
     };
@@ -363,15 +363,29 @@ export const completeGoogleRegistration = async (registrationData) => {
       idToken: "REDACTED",
     });
 
-    const response = await apiClient.post("/auth/firebase", formattedData);
-    const { message, token, user } = response.data;
-    if (token) storeToken(token);
-    return {
-      user,
-      token,
-      success: true,
-      message: message || "Registration completed successfully",
-    };
+    try {
+      const response = await apiClient.post("/auth/firebase", formattedData);
+      const { message, token, user, requiresEmailVerification } = response.data;
+      if (token) storeToken(token);
+      return {
+        user,
+        token,
+        success: true,
+        requiresEmailVerification,
+        message: message || "Registration completed successfully",
+      };
+    } catch (error) {
+      console.error("Google registration failed:", error);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      console.error("Sent request data:", {
+        ...formattedData,
+        idToken: "[REDACTED]",
+      });
+
+      // Re-throw to be handled by outer catch
+      throw error;
+    }
   } catch (error) {
     console.error("Google registration failed:", error);
 

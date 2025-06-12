@@ -498,7 +498,17 @@ const SignUp = () => {
               title: "Registration Successful",
               description: "Your account has been created successfully.",
             });
-            navigate("/dashboard");
+
+            // Check if email verification is required
+            if (result.requiresEmailVerification) {
+              toast({
+                title: "Email Verification Required",
+                description: "Please check your email to verify your account.",
+              });
+              navigate("/verify-email");
+            } else {
+              navigate("/dashboard");
+            }
           } else {
             // Check for token expiration specifically
             if (result.tokenExpired) {
