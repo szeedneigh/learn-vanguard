@@ -23,7 +23,6 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
   const taskStatus = task.status || task.taskStatus || "";
   const taskPriority = task.priority || task.taskPriority || "";
   const taskCompletedAt = task.completedAt || task.dateCompleted || "";
-  const taskIsArchived = task.isArchived || task.archived || false;
 
   // Normalize status to handle different formats from backend
   const normalizeStatus = (status) => {
@@ -72,7 +71,7 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
   const statusColor = getStatusColor(normalizedStatus);
 
   // Map backend priority format to frontend format
-  const normalizedPriority = taskPriority.includes("Priority")
+  const normalizedPriority = typeof taskPriority === "string" && taskPriority.includes("Priority")
     ? taskPriority.replace(" Priority", "")
     : taskPriority;
 
@@ -86,24 +85,7 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
     Low: { text: "Low Priority", color: "text-green-600", bg: "bg-green-100" },
   };
 
-  const statusDisplayInfo = {
-    "Not Started": {
-      text: "Not Started",
-      bg: "bg-gray-500",
-      textColor: "text-white",
-    },
-    "In Progress": {
-      text: "In Progress",
-      bg: "bg-blue-500",
-      textColor: "text-white",
-    },
-    "On Hold": { text: "On Hold", bg: "bg-amber-500", textColor: "text-white" },
-    Completed: {
-      text: "Completed",
-      bg: "bg-green-500",
-      textColor: "text-white",
-    },
-  };
+
 
   const currentPriority = priorityDisplay[normalizedPriority] || {
     text: normalizedPriority || "Unknown",
@@ -111,11 +93,7 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
     bg: "bg-gray-100",
   };
 
-  const currentStatus = statusDisplayInfo[normalizedStatus] || {
-    text: normalizedStatus,
-    bg: "bg-gray-400",
-    textColor: "text-white",
-  };
+
 
   const isCompleted = normalizedStatus === "Completed";
 
@@ -210,7 +188,7 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
               <div className="flex gap-2">
                 {canEditTask && (
                   <button
-                    onClick={() => onEdit()}
+                    onClick={() => onEdit(taskId)}
                     className="text-gray-400 hover:text-blue-600 transition-colors"
                   >
                     <Edit size={18} />
@@ -218,7 +196,7 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
                 )}
                 {canDeleteTask && (
                   <button
-                    onClick={() => onDelete()}
+                    onClick={() => onDelete(taskId)}
                     className="text-gray-400 hover:text-red-600 transition-colors"
                   >
                     <Trash2 size={18} />
