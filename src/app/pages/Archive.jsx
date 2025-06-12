@@ -99,7 +99,6 @@ const Archive = () => {
     setShowArchived,
     isLoading,
   } = useTasks(toast);
-  const { tasks, handleRestoreTask, handleDeleteTask } = useTasks(toast);
   const throttle = useThrottle(); // Use the custom hook for instance-specific throttling
 
   const [sortBy, setSortBy] = useState("completionDateDesc");
