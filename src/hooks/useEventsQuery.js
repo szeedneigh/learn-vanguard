@@ -17,8 +17,18 @@ import { useToast } from "@/hooks/use-toast";
 export const useEvents = (filters = {}, options = {}) => {
   return useQuery({
     queryKey: queryKeys.events.concat([filters]),
-    queryFn: () => getEvents(filters),
-    select: (data) => data?.data || [],
+    queryFn: async () => {
+      const response = await getEvents(filters);
+      // Log the raw response for debugging
+      console.log(`Raw API response for ${JSON.stringify(filters)}:`, response);
+      return response;
+    },
+    select: (response) => {
+      const events = response?.data || [];
+      // Log the selected data
+      console.log(`Selected ${events.length} events from response`);
+      return events;
+    },
     ...options,
   });
 };

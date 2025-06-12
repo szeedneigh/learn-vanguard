@@ -19,7 +19,7 @@ export const useTasks = (filters = {}, options = {}) => {
   console.log("useTasks hook called with filters:", filters);
 
   return useQuery({
-    queryKey: queryKeys.tasks.concat([JSON.stringify(filters)]),
+    queryKey: queryKeys.tasks.concat([filters]),
     queryFn: () => getTasks(filters),
     select: (data) => data?.data || [],
     ...options,
@@ -35,7 +35,19 @@ export const useTaskSummary = (options = {}) => {
     queryKey: queryKeys.taskSummary,
     queryFn: () => getTaskSummary(),
     select: (data) => data?.data || {},
+    staleTime: 10 * 1000, // 10 seconds - summary should be fresh
+    refetchOnWindowFocus: true, // Refetch when window gets focus
+    refetchOnMount: true, // Always refetch on mount
     ...options,
+    onSuccess: (response) => {
+      // If options contain an onSuccess handler, call it
+      if (options.onSuccess) {
+        options.onSuccess(response);
+      }
+
+      // Log summary data for debugging
+      console.log("Task summary data refreshed:", response);
+    },
   });
 };
 
@@ -298,20 +310,43 @@ export const useTasksPage = (filters = {}) => {
   // so we don't need to filter again here
   const filteredTasks = tasks;
 
-  // Local stats calculation (can be replaced with backend summary if needed)
+  // Local stats calculation based on backend summary data
   const localStats = {
-    total: tasks.length,
-    completed: tasks.filter((t) => t.taskStatus === "completed").length,
-    inProgress: tasks.filter((t) => t.taskStatus === "in-progress").length,
-    notStarted: tasks.filter((t) => t.taskStatus === "not-started").length,
-    onHold: tasks.filter((t) => t.taskStatus === "on-hold").length,
-    overdue: tasks.filter((t) => {
-      if (!t.taskDeadline || t.taskStatus === "completed") return false;
-      return new Date(t.taskDeadline) < new Date();
-    }).length,
-    archived: tasks.filter((t) => t.archived).length,
+    total: summary.total || tasks.length,
+    completed:
+      summary.completed ||
+      tasks.filter(
+        (t) => t.taskStatus === "Completed" || t.status === "completed"
+      ).length,
+    inProgress: tasks.filter(
+      (t) => t.taskStatus === "In progress" || t.status === "in-progress"
+    ).length,
+    notStarted: tasks.filter(
+      (t) => t.taskStatus === "Not yet started" || t.status === "not-started"
+    ).length,
+    onHold: tasks.filter(
+      (t) => t.taskStatus === "On-hold" || t.status === "on-hold"
+    ).length,
+    overdue:
+      summary.overdue ||
+      tasks.filter((t) => {
+        const isCompleted =
+          t.taskStatus === "Completed" || t.status === "completed";
+        if (isCompleted) return false;
+        const deadline = t.taskDeadline || t.dueDate;
+        if (!deadline) return false;
+        return new Date(deadline) < new Date();
+      }).length,
+    archived:
+      summary.archived ||
+      tasks.filter((t) => t.archived || t.isArchived).length,
     highPriority: tasks.filter(
-      (t) => t.taskPriority === "High" && t.taskStatus !== "completed"
+      (t) =>
+        (t.taskPriority === "High" ||
+          t.taskPriority === "High Priority" ||
+          t.priority === "High") &&
+        t.taskStatus !== "Completed" &&
+        t.status !== "completed"
     ).length,
   };
 

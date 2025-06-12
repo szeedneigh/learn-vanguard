@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +7,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { createTopic } from "@/services/topicService";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+// import { useAuth } from "@/context/AuthContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -34,10 +41,6 @@ const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
       setIsSubmitting(false);
     }
   }, [isOpen, subjectId]);
-
-  if (!isOpen) {
-    return null;
-  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -116,27 +119,19 @@ const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
     }
   };
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
+  const handleModalClose = (open) => {
+    // Only call onClose when the dialog is closing
+    if (!open) {
       onClose();
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div
-        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="modal-title" className="text-xl font-semibold mb-6">
-          Add Topic
-        </h2>
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Topic</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {errors.form && (
@@ -190,15 +185,12 @@ const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              onClick={onClose}
-              variant="outline"
-              type="button"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
+          <DialogFooter className="pt-4">
+            <DialogClose asChild>
+              <Button variant="outline" type="button" disabled={isSubmitting}>
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -213,10 +205,10 @@ const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
                 "Create Topic"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

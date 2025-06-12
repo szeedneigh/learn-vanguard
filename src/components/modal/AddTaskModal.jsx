@@ -32,26 +32,68 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
   const { toast } = useToast();
   const [errors, setErrors] = useState({});
 
-  const initialFormState = useMemo(
-    () => ({
-      id: editTask?.id || null,
-      name: editTask?.name || "",
-      description: editTask?.description || "",
-      dueDate: editTask?.dueDate || "",
-      priority: editTask?.priority || "Medium Priority",
-      status: editTask?.status || "not-started",
-      onHoldRemark: editTask?.onHoldRemark || "",
-      lastUpdated: editTask?.lastUpdated || new Date().toISOString(),
-    }),
-    [editTask]
-  );
+  // Normalize task data to handle both frontend and backend formats
+  const normalizeTaskData = useCallback((task) => {
+    if (!task) return null;
+
+    // Convert backend format to frontend format
+    return {
+      id: task.id || task._id,
+      name: task.name || task.taskName || "",
+      description: task.description || task.taskDescription || "",
+      dueDate: task.dueDate || task.taskDeadline || "",
+      // Normalize the priority format
+      priority:
+        task.priority ||
+        (task.taskPriority === "High Priority"
+          ? "High"
+          : task.taskPriority === "Medium Priority"
+          ? "Medium"
+          : task.taskPriority === "Low Priority"
+          ? "Low"
+          : "Medium"),
+      // Normalize the status format
+      status:
+        task.status ||
+        (task.taskStatus === "Not yet started"
+          ? "not-started"
+          : task.taskStatus === "In progress"
+          ? "in-progress"
+          : task.taskStatus === "On-hold"
+          ? "on-hold"
+          : task.taskStatus === "Completed"
+          ? "completed"
+          : "not-started"),
+      onHoldRemark: task.onHoldRemark || "",
+      lastUpdated:
+        task.lastUpdated || task.updatedAt || new Date().toISOString(),
+    };
+  }, []);
+
+  const initialFormState = useMemo(() => {
+    const normalizedTask = normalizeTaskData(editTask);
+
+    return (
+      normalizedTask || {
+        id: null,
+        name: "",
+        description: "",
+        dueDate: "",
+        priority: "Medium",
+        status: "not-started",
+        onHoldRemark: "",
+        lastUpdated: new Date().toISOString(),
+      }
+    );
+  }, [editTask, normalizeTaskData]);
 
   const [formData, setFormData] = useState(initialFormState);
 
   useEffect(() => {
+    console.log("Setting form data:", { initialFormState, editTask });
     setFormData(initialFormState);
     setErrors({});
-  }, [isOpen, initialFormState]);
+  }, [isOpen, initialFormState, editTask]);
 
   const validateForm = useCallback(() => {
     const newErrors = {};

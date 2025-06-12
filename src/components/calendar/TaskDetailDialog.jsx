@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { AuthContext } from "@/context/AuthContext";
 import { ROLES } from "@/lib/constants";
+import { usePermission } from "@/context/PermissionContext";
+import { PERMISSIONS } from "@/lib/constants";
 import { statusClasses, capitalize, courseColors } from "@/lib/calendarHelpers";
 
 function TaskDetailDialog({
@@ -24,6 +26,7 @@ function TaskDetailDialog({
   isDeleting,
 }) {
   const { user } = useContext(AuthContext);
+  const { hasPermission } = usePermission();
 
   if (!task) return null;
 
@@ -44,10 +47,34 @@ function TaskDetailDialog({
     }
   };
 
-  const canModify =
-    user?.role === ROLES.ADMIN ||
-    user?.role === ROLES.PIO ||
-    user?.role === ROLES.STUDENT /* && task.creatorId === user.id */;
+  // Get user context for permission checks
+  const hasEditPermission = hasPermission(PERMISSIONS.EDIT_TASK);
+  const hasDeletePermission = hasPermission(PERMISSIONS.DELETE_TASK);
+
+  // Extract task user ID for ownership check
+  const taskUserId = task?.userId || task?.creatorId || task?.assigneeId;
+  console.log("Task ownership check:", {
+    taskId: task.id,
+    taskUserId,
+    userId: user?.id,
+    isMatch: user?.id === taskUserId,
+  });
+
+  // Check if the task belongs to the current user
+  const isOwnTask = user && taskUserId && user.id === taskUserId;
+
+  // Normalize user role for case-insensitive comparison
+  const userRole = user?.role?.toUpperCase();
+
+  // Admin and PIO can edit all tasks, students can only edit their own tasks
+  const canEditTask =
+    userRole === ROLES.ADMIN ||
+    userRole === ROLES.PIO ||
+    (userRole === ROLES.STUDENT && hasEditPermission && isOwnTask);
+
+  // Only admin and PIO can delete tasks
+  const canDeleteTask =
+    hasDeletePermission && (userRole === ROLES.ADMIN || userRole === ROLES.PIO);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -90,7 +117,7 @@ function TaskDetailDialog({
           )}
         </div>
         <DialogFooter className="mt-4">
-          {canModify && (
+          {canEditTask && (
             <Button
               variant="outline"
               onClick={() => onEdit(task)}
@@ -99,7 +126,7 @@ function TaskDetailDialog({
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
           )}
-          {canModify && (
+          {canDeleteTask && (
             <Button
               variant="destructive"
               onClick={() => onDelete(task.id)}
@@ -132,6 +159,8 @@ TaskDetailDialog.propTypes = {
     course: PropTypes.string.isRequired,
     description: PropTypes.string,
     taskDescription: PropTypes.string,
+    userId: PropTypes.string,
+    assigneeId: PropTypes.string,
   }),
   open: PropTypes.bool.isRequired,
   onOpenChange: PropTypes.func.isRequired,

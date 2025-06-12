@@ -450,95 +450,173 @@ const SignUp = () => {
       setErrors({});
 
       try {
-        const tempToken = localStorage.getItem("signupTempToken");
-        if (!tempToken) {
-          toast({
-            title: "Session Expired",
-            description:
-              "Your registration session has expired. Please start over.",
-            variant: "destructive",
+        // Check if this is a Google registration or regular registration
+        const isGoogleRegistration =
+          formData.email && !localStorage.getItem("signupTempToken");
+
+        if (isGoogleRegistration) {
+          // Handle Google registration completion
+          const idToken = localStorage.getItem("googleIdToken");
+          if (!idToken) {
+            toast({
+              title: "Session Expired",
+              description:
+                "Your Google sign-in session has expired. Please try again.",
+              variant: "destructive",
+            });
+            setErrors({
+              form: "Google sign-in session expired. Please try again.",
+            });
+            setStep(1);
+            setIsLoading(false);
+            return;
+          }
+
+          const completeData = {
+            idToken,
+            studentNo: formData.studentNo,
+            course: formData.course,
+            yearLevel: formData.yearLevel,
+            email: formData.email,
+          };
+
+          console.log("Completing Google registration", {
+            ...completeData,
+            idToken: "[REDACTED]",
           });
-          setErrors({
-            form: "Registration session expired or initial step incomplete. Please start over.",
-          });
-          setStep(1);
-          setIsLoading(false);
-          return;
-        }
+          const result = await authService.completeGoogleRegistration(
+            completeData
+          );
 
-        const completeData = {
-          tempToken,
-          studentNo: formData.studentNo,
-          course: formData.course,
-          yearLevel: formData.yearLevel,
-        };
+          if (result.success) {
+            // Clear the stored Google ID token
+            localStorage.removeItem("googleIdToken");
 
-        const result = await authService.completeSignup(completeData);
-
-        if (result.success) {
-          localStorage.removeItem("signupTempToken");
-
-          // Check if email verification is required
-          if (result.requiresEmailVerification) {
             toast({
               title: "Registration Successful",
-              description: "Please check your email to verify your account.",
+              description: "Your account has been created successfully.",
             });
-            navigate("/verify-email");
+            navigate("/dashboard");
           } else {
-            toast({
-              title: "Registration Successful",
-              description: "Your account has been created. Please log in.",
-            });
-            navigate("/login");
+            // Handle errors
+            let formErrorMessage =
+              result.error ||
+              "Registration failed. Please check your details and try again.";
+            const fieldSpecificErrors = {};
+
+            if (result.details && Object.keys(result.details).length > 0) {
+              // Display specific field errors
+              Object.entries(result.details).forEach(([field, message]) => {
+                fieldSpecificErrors[field] = message;
+              });
+
+              toast({
+                title: "Registration Error",
+                description: formErrorMessage,
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "Registration Error",
+                description: formErrorMessage,
+                variant: "destructive",
+              });
+            }
+
+            setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
           }
         } else {
-          // Handle session expiration specifically
-          if (result.sessionExpired) {
+          // Handle regular registration
+          const tempToken = localStorage.getItem("signupTempToken");
+          if (!tempToken) {
             toast({
               title: "Session Expired",
               description:
                 "Your registration session has expired. Please start over.",
               variant: "destructive",
             });
-            localStorage.removeItem("signupTempToken");
-            setStep(1);
             setErrors({
-              form:
-                result.error ||
-                "Registration session expired. Please start over.",
+              form: "Registration session expired or initial step incomplete. Please start over.",
             });
+            setStep(1);
+            setIsLoading(false);
             return;
           }
 
-          // Handle other errors
-          let formErrorMessage =
-            result.error ||
-            "Registration failed. Please check your details and try again.";
-          const fieldSpecificErrors = {};
+          const completeData = {
+            tempToken,
+            studentNo: formData.studentNo,
+            course: formData.course,
+            yearLevel: formData.yearLevel,
+          };
 
-          if (result.details && Object.keys(result.details).length > 0) {
-            // Display specific field errors
-            Object.entries(result.details).forEach(([field, message]) => {
-              fieldSpecificErrors[field] = message;
-            });
+          const result = await authService.completeSignup(completeData);
 
-            // Show toast with summary of errors
-            toast({
-              title: "Registration Error",
-              description: formErrorMessage,
-              variant: "destructive",
-            });
+          if (result.success) {
+            localStorage.removeItem("signupTempToken");
+
+            // Check if email verification is required
+            if (result.requiresEmailVerification) {
+              toast({
+                title: "Registration Successful",
+                description: "Please check your email to verify your account.",
+              });
+              navigate("/verify-email");
+            } else {
+              toast({
+                title: "Registration Successful",
+                description: "Your account has been created. Please log in.",
+              });
+              navigate("/login");
+            }
           } else {
-            // General error without specific fields
-            toast({
-              title: "Registration Error",
-              description: formErrorMessage,
-              variant: "destructive",
-            });
-          }
+            // Handle session expiration specifically
+            if (result.sessionExpired) {
+              toast({
+                title: "Session Expired",
+                description:
+                  "Your registration session has expired. Please start over.",
+                variant: "destructive",
+              });
+              localStorage.removeItem("signupTempToken");
+              setStep(1);
+              setErrors({
+                form:
+                  result.error ||
+                  "Registration session expired. Please start over.",
+              });
+              return;
+            }
 
-          setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
+            // Handle other errors
+            let formErrorMessage =
+              result.error ||
+              "Registration failed. Please check your details and try again.";
+            const fieldSpecificErrors = {};
+
+            if (result.details && Object.keys(result.details).length > 0) {
+              // Display specific field errors
+              Object.entries(result.details).forEach(([field, message]) => {
+                fieldSpecificErrors[field] = message;
+              });
+
+              // Show toast with summary of errors
+              toast({
+                title: "Registration Error",
+                description: formErrorMessage,
+                variant: "destructive",
+              });
+            } else {
+              // General error without specific fields
+              toast({
+                title: "Registration Error",
+                description: formErrorMessage,
+                variant: "destructive",
+              });
+            }
+
+            setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
+          }
         }
       } catch (err) {
         console.error("Signup completion error:", err);
@@ -571,12 +649,19 @@ const SignUp = () => {
           navigate("/dashboard");
         }, 500);
       } else if (result?.needsRegistration) {
+        // Store the Google user information for step 2
         if (result.email) {
           setFormData((prev) => ({
             ...prev,
             email: result.email,
           }));
         }
+
+        // Store the idToken in localStorage for completing registration
+        if (result.idToken) {
+          localStorage.setItem("googleIdToken", result.idToken);
+        }
+
         setStep(2);
       } else {
         setErrors({

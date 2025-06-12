@@ -33,12 +33,8 @@ const TaskPreviewCard = ({ task }) => {
   );
 };
 
-// Custom validator that combines shape validation with custom logic
-const taskValidator = function (props, propName, componentName) {
-  const task = props[propName];
-  
-  // First, run the shape validation
-  const shapeValidator = PropTypes.shape({
+TaskPreviewCard.propTypes = {
+  task: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     name: PropTypes.string,
     taskName: PropTypes.string,
@@ -46,14 +42,16 @@ const taskValidator = function (props, propName, componentName) {
     taskDescription: PropTypes.string,
     dueDate: PropTypes.string,
     taskDeadline: PropTypes.string,
-  }).isRequired;
-  
-  const shapeResult = shapeValidator(props, propName, componentName);
-  if (shapeResult) {
-    return shapeResult;
+  }).isRequired,
+};
+
+// Custom validator to ensure at least one naming convention is provided
+TaskPreviewCard.propTypes.task = function (props, propName, componentName) {
+  const task = props[propName];
+  if (!task) {
+    return new Error(`${propName} is required in ${componentName}`);
   }
-  
-  // Then add custom validation logic
+
   if (!task.name && !task.taskName) {
     return new Error(
       `Either 'name' or 'taskName' is required in ${componentName}`
@@ -69,31 +67,13 @@ const taskValidator = function (props, propName, componentName) {
   return null;
 };
 
-TaskPreviewCard.propTypes = {
-  task: taskValidator,
-};
-
 const TaskList = () => {
   const { filteredTasks, isLoading, isError, error } = useTasks();
 
   const sortedTasks = [...(filteredTasks || [])].sort((a, b) => {
-    // Helper function to safely parse dates with fallback
-    const parseDate = (dateString) => {
-      if (!dateString) return new Date('9999-12-31'); // Place tasks without dates at the end
-      
-      const parsedDate = new Date(dateString);
-      // Check if the date is valid
-      if (isNaN(parsedDate.getTime())) {
-        return new Date('9999-12-31'); // Place invalid dates at the end
-      }
-      
-      return parsedDate;
-    };
-
-    const aDueDate = parseDate(a.dueDate || a.taskDeadline);
-    const bDueDate = parseDate(b.dueDate || b.taskDeadline);
-    
-    return aDueDate - bDueDate;
+    const aDueDate = a.dueDate || a.taskDeadline || new Date();
+    const bDueDate = b.dueDate || b.taskDeadline || new Date();
+    return new Date(aDueDate) - new Date(bDueDate);
   });
   const topTasks = sortedTasks.slice(0, 3);
 

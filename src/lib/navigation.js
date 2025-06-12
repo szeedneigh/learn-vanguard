@@ -85,22 +85,46 @@ export const navigationConfig = [
  */
 export const getNavigationByRole = (user) => {
   if (!user || !user.role) {
+    console.log("getNavigationByRole: No user or role provided");
     return [];
   }
 
+  // Normalize user role to uppercase for consistent comparison
+  const normalizedUserRole = user.role.toUpperCase();
+  console.log("getNavigationByRole: User role normalized:", {
+    original: user.role,
+    normalized: normalizedUserRole,
+  });
+
   return navigationConfig.filter((item) => {
+    // Normalize item roles to uppercase for comparison
+    const normalizedItemRoles = item.roles.map((role) => role.toUpperCase());
+
     // Check role access
-    const hasRoleAccess = item.roles.includes(user.role);
-    if (!hasRoleAccess) return false;
+    const hasRoleAccess = normalizedItemRoles.includes(normalizedUserRole);
+    if (!hasRoleAccess) {
+      console.log(`Navigation item ${item.name} denied: role mismatch`, {
+        userRole: normalizedUserRole,
+        allowedRoles: normalizedItemRoles,
+      });
+      return false;
+    }
 
     // No permission check needed if permissions not specified
     if (!item.permissions) return true;
 
     // Check for permissions using the ROLE_PERMISSIONS mapping
-    const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+    const userPermissions = ROLE_PERMISSIONS[normalizedUserRole] || [];
     const hasRequiredPermissions = item.permissions.every((permission) =>
       userPermissions.includes(permission)
     );
+
+    if (!hasRequiredPermissions) {
+      console.log(`Navigation item ${item.name} denied: missing permissions`, {
+        requiredPermissions: item.permissions,
+        userPermissions,
+      });
+    }
 
     return hasRequiredPermissions;
   });
@@ -174,8 +198,14 @@ export const hasRoutePermission = (user, path) => {
     return false;
   }
 
+  // Normalize roles for case-insensitive comparison
+  const normalizedUserRole = user.role.toUpperCase();
+  const normalizedRouteRoles = route.allowedRoles.map((role) =>
+    role.toUpperCase()
+  );
+
   // First check role-based access
-  const hasRoleAccess = route.allowedRoles.includes(user.role);
+  const hasRoleAccess = normalizedRouteRoles.includes(normalizedUserRole);
   if (!hasRoleAccess) {
     return false;
   }
@@ -186,7 +216,7 @@ export const hasRoutePermission = (user, path) => {
   }
 
   // Check required permissions
-  const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+  const userPermissions = ROLE_PERMISSIONS[normalizedUserRole] || [];
   return route.requiredPermissions.every((permission) =>
     userPermissions.includes(permission)
   );

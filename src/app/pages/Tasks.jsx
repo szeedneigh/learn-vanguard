@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
   ArrowUpCircle,
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import TaskModal from "@/components/modal/AddTaskModal";
-import DeleteTaskModal from "@/components/modal/DeleteTaskModal";
 import TaskCard from "@/components/section/TaskCard";
 import StatCard from "@/components/section/StatCard";
 import { useTasksPage } from "@/hooks/useTasksQuery";
@@ -45,10 +44,9 @@ const Tasks = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [taskToDelete, setTaskToDelete] = useState(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [taskToArchive, setTaskToArchive] = useState(null);
-  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [onHoldRemark, setOnHoldRemark] = useState("");
+  const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
+  const [statusChangeInfo, setStatusChangeInfo] = useState(null);
 
   // Update showArchived state based on statusFilter
   useEffect(() => {
@@ -79,6 +77,12 @@ const Tasks = () => {
     status: statusFilter !== "all" ? statusFilter : undefined,
     archived: showArchived ? "true" : "false",
   });
+
+  // Refresh summary stats when filter changes or after operations
+  useEffect(() => {
+    // Refresh stats after component mounts and when filter changes
+    refetch();
+  }, [statusFilter, searchQuery, showArchived, refetch]);
 
   const taskStatusColumns = [
     "Not Started",
@@ -148,7 +152,6 @@ const Tasks = () => {
   };
 
   const handleDeleteTask = (taskId) => {
-    // Find the task to ensure we have the correct ID
     const task = tasks.find((t) => t.id === taskId || t._id === taskId);
     if (!task) {
       console.error("Cannot delete task: Task not found", taskId);
@@ -160,21 +163,64 @@ const Tasks = () => {
       return;
     }
 
-    // Use the task's _id or id property (MongoDB uses _id)
-    const actualTaskId = task._id || task.id;
+    const taskName = task.taskName || task.name;
 
-    if (!actualTaskId) {
-      console.error("Cannot delete task: Invalid task ID", task);
-      toast({
-        title: "Error",
-        description: "Failed to delete task: Invalid task ID",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Show confirmation toast instead of modal
+    toast({
+      title: "Delete Task?",
+      description: `Are you sure you want to delete "${taskName}"? This action cannot be undone.`,
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              // Use the task's _id or id property (MongoDB uses _id)
+              const actualTaskId = task._id || task.id;
 
-    deleteTaskMutation(actualTaskId);
-    setTaskToDelete(null);
+              if (!actualTaskId) {
+                console.error("Cannot delete task: Invalid task ID", task);
+                toast({
+                  title: "Error",
+                  description: "Failed to delete task: Invalid task ID",
+                  variant: "destructive",
+                });
+                return;
+              }
+
+              deleteTaskMutation(actualTaskId)
+                .then(() => {
+                  toast({
+                    title: "Task Deleted",
+                    description: "The task has been permanently deleted.",
+                    variant: "default",
+                  });
+                  refetch();
+                })
+                .catch((error) => {
+                  console.error("Error deleting task:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to delete task. Please try again.",
+                    variant: "destructive",
+                  });
+                });
+            }}
+          >
+            Delete
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Do nothing, toast will dismiss
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      ),
+    });
   };
 
   const handleStatusChange = (taskId, newStatus, completedDate = null) => {
@@ -219,53 +265,127 @@ const Tasks = () => {
   const handleArchiveTask = (taskId) => {
     if (!taskId) {
       console.error("Cannot archive task: Task ID is undefined");
+      toast({
+        title: "Error",
+        description: "Failed to archive task: Invalid task ID",
+        variant: "destructive",
+      });
       return;
     }
 
     const task = tasks.find((t) => t.id === taskId || t._id === taskId);
     if (!task) {
       console.error("Cannot archive task: Task not found", taskId);
+      toast({
+        title: "Error",
+        description: "Failed to archive task: Task not found",
+        variant: "destructive",
+      });
       return;
     }
 
-    // Use the task's _id or id property (MongoDB uses _id)
-    const actualTaskId = task._id || task.id;
+    const taskName = task.taskName || task.name;
 
-    console.log("Archiving task:", { taskId: actualTaskId, task });
-
-    updateTask({
-      taskId: actualTaskId,
-      taskData: {
-        archived: true,
-        isArchived: true,
-        archivedAt: new Date().toISOString(),
-      },
-    });
-
+    // Show toast with confirmation buttons
     toast({
-      title: "Task Archived",
-      description: "The task has been moved to archives.",
-      variant: "default",
-    });
+      title: "Archive Task?",
+      description: `Are you sure you want to archive "${taskName}"?`,
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => {
+              // Use the task's _id or id property (MongoDB uses _id)
+              const actualTaskId = task._id || task.id;
 
-    setTaskToArchive(null);
-    setArchiveDialogOpen(false);
+              if (!actualTaskId) {
+                console.error("Cannot archive task: Invalid task ID", task);
+                toast({
+                  title: "Error",
+                  description: "Failed to archive task: Invalid task ID",
+                  variant: "destructive",
+                });
+                return;
+              }
+
+              archiveTask({
+                taskId: actualTaskId,
+                archived: true,
+              })
+                .then(() => {
+                  toast({
+                    title: "Task Archived",
+                    description: "The task has been moved to the archive.",
+                  });
+                  // Force refresh the task list and stats
+                  refetch();
+                  // If we're in the archive view, refresh immediately
+                  if (statusFilter === "archived") {
+                    setTimeout(() => refetch(), 300);
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error archiving task:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to archive task. Please try again.",
+                    variant: "destructive",
+                  });
+                });
+            }}
+          >
+            Archive
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Do nothing, toast will dismiss
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      ),
+    });
   };
 
   const openArchiveDialog = (taskId) => {
     const task = tasks.find((t) => t.id === taskId || t._id === taskId);
     if (task) {
-      setTaskToArchive(task);
-      setArchiveDialogOpen(true);
-    }
-  };
+      const taskName = task.taskName || task.name;
 
-  const handleArchiveConfirm = () => {
-    if (taskToArchive) {
-      const actualTaskId = taskToArchive._id || taskToArchive.id;
-      if (actualTaskId) {
-        handleArchiveTask(actualTaskId);
-      }
+      // Show confirmation toast instead of modal
+      toast({
+        title: "Archive Task?",
+        description: `Are you sure you want to archive "${taskName}"? You can restore it later from the Archive page.`,
+        action: (
+          <div className="flex gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                const actualTaskId = task._id || task.id;
+                if (actualTaskId) {
+                  handleArchiveTask(actualTaskId);
+                }
+              }}
+            >
+              Archive
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Do nothing, toast will dismiss
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        ),
+      });
     }
   };
 
@@ -313,31 +433,58 @@ const Tasks = () => {
       }
 
       const newApiStatus = destination.droppableId;
+      const sourceStatus = source.droppableId;
 
-      if (newApiStatus === "completed") {
+      // Get display names for the statuses for better user experience
+      const newDisplayStatus = mapStatusForDisplay(newApiStatus);
+
+      // Special handling for "On Hold" status
+      if (newApiStatus === "on-hold") {
+        setStatusChangeInfo({
+          taskId,
+          taskName: task.taskName || task.name,
+          sourceStatus,
+          newStatus: newApiStatus,
+          newDisplayStatus,
+        });
+        setOnHoldRemark("");
+        setStatusChangeDialogOpen(true);
+      } else {
+        // Show confirmation for other status changes
         toast({
-          title: "Complete Task?",
-          description: `Are you sure you want to mark "${
+          title: `Change Task Status?`,
+          description: `Are you sure you want to change "${
             task.taskName || task.name
-          }" as completed?`,
+          }" from ${mapStatusForDisplay(sourceStatus)} to ${newDisplayStatus}?`,
           action: (
             <div className="flex gap-2">
               <Button
                 variant="default"
                 size="sm"
                 onClick={() => {
-                  handleStatusChange(
-                    taskId,
-                    newApiStatus,
-                    new Date().toISOString()
-                  );
+                  if (newApiStatus === "completed") {
+                    handleStatusChange(
+                      taskId,
+                      newApiStatus,
+                      new Date().toISOString()
+                    );
+                    // Show success message for completed tasks
+                    toast({
+                      title: "🎉 Task Completed!",
+                      description: "Great job on completing this task!",
+                      variant: "success",
+                    });
+                  } else {
+                    handleStatusChange(taskId, newApiStatus);
+                    // Show regular success message for other status changes
+                    toast({
+                      title: "Status Updated",
+                      description: `Task status changed to ${newDisplayStatus}`,
+                      variant: "default",
+                    });
+                  }
                   // Force refetch to update summary stats
                   refetch();
-                  toast({
-                    title: "🎉 Task Completed!",
-                    description: "Great job on completing this task!",
-                    variant: "success",
-                  });
                 }}
               >
                 Yes
@@ -346,7 +493,7 @@ const Tasks = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  handleStatusChange(taskId, source.droppableId);
+                  handleStatusChange(taskId, sourceStatus);
                 }}
               >
                 No
@@ -354,36 +501,53 @@ const Tasks = () => {
             </div>
           ),
         });
-      } else {
-        handleStatusChange(taskId, newApiStatus);
-        // Force refetch to update summary stats
-        refetch();
       }
     }
   };
 
-  const handleDeleteConfirm = () => {
-    if (taskToDelete) {
-      // Use the task's _id or id property (MongoDB uses _id)
-      const actualTaskId = taskToDelete._id || taskToDelete.id;
+  const handleStatusChangeConfirm = () => {
+    if (!statusChangeInfo) return;
 
-      if (!actualTaskId) {
-        console.error("Cannot delete task: Invalid task ID", taskToDelete);
-        toast({
-          title: "Error",
-          description: "Failed to delete task: Invalid task ID",
-          variant: "destructive",
-        });
-        return;
-      }
+    const { taskId, newStatus, newDisplayStatus } = statusChangeInfo;
 
-      handleDeleteTask(actualTaskId);
-      toast({
-        title: "Task Deleted",
-        description: "The task has been permanently deleted.",
-        variant: "default",
+    if (newStatus === "on-hold") {
+      // Pass the onHoldRemark for On Hold status
+      updateTaskStatus({
+        taskId,
+        status: newStatus,
+        onHoldRemark,
       });
+    } else {
+      // Normal status update
+      handleStatusChange(taskId, newStatus);
     }
+
+    // Show success message
+    toast({
+      title: "Status Updated",
+      description: `Task status changed to ${newDisplayStatus}`,
+      variant: "default",
+    });
+
+    // Force refetch to update summary stats
+    refetch();
+
+    // Reset state
+    setStatusChangeDialogOpen(false);
+    setStatusChangeInfo(null);
+    setOnHoldRemark("");
+  };
+
+  const handleStatusChangeCancel = () => {
+    if (!statusChangeInfo) return;
+
+    // Revert to original status
+    handleStatusChange(statusChangeInfo.taskId, statusChangeInfo.sourceStatus);
+
+    // Reset state
+    setStatusChangeDialogOpen(false);
+    setStatusChangeInfo(null);
+    setOnHoldRemark("");
   };
 
   const handleHighPriorityClick = (taskId) => {
@@ -408,17 +572,17 @@ const Tasks = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard
               title="Total Tasks"
-              value={stats.total}
+              value={stats.total || 0}
               icon={<CheckCircle2 size={24} className="text-gray-400" />}
             />
             <StatCard
               title="Completed"
-              value={stats.completed}
+              value={stats.completed || 0}
               icon={<CheckCircle2 size={24} className="text-green-500" />}
             />
             <StatCard
               title="Overdue"
-              value={stats.overdue}
+              value={stats.overdue || 0}
               icon={<ArrowUpCircle size={24} className="text-red-500" />}
             />
             <StatCard
@@ -538,7 +702,9 @@ const Tasks = () => {
                                   setEditingTask(task);
                                   setIsModalOpen(true);
                                 }}
-                                onDelete={() => setTaskToDelete(task)}
+                                onDelete={() =>
+                                  handleDeleteTask(task._id || task.id)
+                                }
                                 onSetHighPriority={() =>
                                   handleHighPriorityClick(task._id || task.id)
                                 }
@@ -568,55 +734,57 @@ const Tasks = () => {
             mapStatusForDisplay={mapStatusForDisplay}
           />
 
-          <DeleteTaskModal
-            isOpen={!!taskToDelete}
-            onClose={() => setTaskToDelete(null)}
-            onConfirm={handleDeleteConfirm}
-            taskName={taskToDelete?.name}
-          />
-
-          {/* Archive Confirmation Dialog */}
+          {/* On Hold Status Change Dialog */}
           <AlertDialog
-            open={archiveDialogOpen}
-            onOpenChange={setArchiveDialogOpen}
+            open={statusChangeDialogOpen}
+            onOpenChange={setStatusChangeDialogOpen}
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Archive this task?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  Change Task Status to On Hold?
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This task will be moved to the archive. You can restore it
-                  later from the Archive page.
+                  {statusChangeInfo?.taskName && (
+                    <>
+                      Are you sure you want to change "
+                      {statusChangeInfo.taskName}" from{" "}
+                      {mapStatusForDisplay(statusChangeInfo.sourceStatus)} to On
+                      Hold?
+                    </>
+                  )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleArchiveConfirm}>
-                  Archive
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          {/* Delete Confirmation Dialog */}
-          <AlertDialog
-            open={deleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this task?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the
-                  task from the system.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteConfirm}
-                  className="bg-red-600 hover:bg-red-700"
+              <div className="py-4">
+                <label
+                  htmlFor="onHoldRemark"
+                  className="block text-sm font-medium mb-2"
                 >
-                  Delete
+                  Reason for On Hold (max 30 characters):
+                </label>
+                <Input
+                  id="onHoldRemark"
+                  value={onHoldRemark}
+                  onChange={(e) => setOnHoldRemark(e.target.value)}
+                  maxLength={30}
+                  className="w-full"
+                  placeholder="Enter reason..."
+                />
+                {onHoldRemark.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {onHoldRemark.length}/30 characters
+                  </p>
+                )}
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={handleStatusChangeCancel}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleStatusChangeConfirm}
+                  disabled={onHoldRemark.trim() === ""}
+                >
+                  Confirm
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

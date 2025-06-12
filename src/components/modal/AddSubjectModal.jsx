@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { createSubject } from "@/services/programService";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -45,10 +53,6 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
       setIsSubmitting(false);
     }
   }, [isOpen]);
-
-  if (!isOpen) {
-    return null;
-  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -147,27 +151,19 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
+  const handleModalClose = (open) => {
+    // Only call onClose when the dialog is closing
+    if (!open) {
       onClose();
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div
-        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="modal-title" className="text-xl font-semibold mb-6">
-          Add Subject
-        </h2>
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Subject</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {errors.form && (
@@ -252,13 +248,13 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
                   id="yearLevel"
                   className={errors.yearLevel ? "border-red-500" : ""}
                 >
-                  <SelectValue placeholder="Select Year" />
+                  <SelectValue placeholder="Select Year Level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">1st Year</SelectItem>
-                  <SelectItem value="2">2nd Year</SelectItem>
-                  <SelectItem value="3">3rd Year</SelectItem>
-                  <SelectItem value="4">4th Year</SelectItem>
+                  <SelectItem value="1">First Year</SelectItem>
+                  <SelectItem value="2">Second Year</SelectItem>
+                  <SelectItem value="3">Third Year</SelectItem>
+                  <SelectItem value="4">Fourth Year</SelectItem>
                 </SelectContent>
               </Select>
               {errors.yearLevel && (
@@ -267,58 +263,54 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="semester">
-              Semester <span className="text-red-600">*</span>
-            </Label>
-            <Select
-              defaultValue={formData.semester}
-              onValueChange={(value) => {
-                handleInputChange({
-                  target: { name: "semester", value },
-                });
-              }}
-            >
-              <SelectTrigger
-                id="semester"
-                className={errors.semester ? "border-red-500" : ""}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="semester">
+                Semester <span className="text-red-600">*</span>
+              </Label>
+              <Select
+                defaultValue={formData.semester}
+                onValueChange={(value) => {
+                  handleInputChange({
+                    target: { name: "semester", value },
+                  });
+                }}
               >
-                <SelectValue placeholder="Select Semester" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1st Semester">1st Semester</SelectItem>
-                <SelectItem value="2nd Semester">2nd Semester</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.semester && (
-              <p className="text-red-500 text-xs mt-1">{errors.semester}</p>
-            )}
+                <SelectTrigger
+                  id="semester"
+                  className={errors.semester ? "border-red-500" : ""}
+                >
+                  <SelectValue placeholder="Select Semester" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1st Semester">1st Semester</SelectItem>
+                  <SelectItem value="2nd Semester">2nd Semester</SelectItem>
+                  <SelectItem value="Summer">Summer</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.semester && (
+                <p className="text-red-500 text-xs mt-1">{errors.semester}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instructor">Instructor</Label>
+              <Input
+                id="instructor"
+                name="instructor"
+                value={formData.instructor}
+                onChange={handleInputChange}
+                placeholder="e.g. Prof. Juan Dela Cruz"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="instructor">Instructor Name</Label>
-            <Input
-              id="instructor"
-              name="instructor"
-              value={formData.instructor}
-              onChange={handleInputChange}
-              placeholder="e.g. Mr. Dan Dickenson"
-              className="bg-white"
-            />
-            <p className="text-xs text-gray-500">
-              Enter the instructor's full name
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              onClick={onClose}
-              variant="outline"
-              type="button"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
+          <DialogFooter className="pt-4">
+            <DialogClose asChild>
+              <Button variant="outline" type="button" disabled={isSubmitting}>
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -333,10 +325,10 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
                 "Create Subject"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

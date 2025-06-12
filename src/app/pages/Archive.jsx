@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -26,67 +26,14 @@ import { MoreHorizontal, List, LayoutGrid, AlertCircle } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "react-router-dom";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
 
-// Move utility functions outside component to prevent recreation
+// Helper function to format date strings
 const formatDate = (dateString) => {
   if (!dateString) return "Unknown";
   const options = { year: "numeric", month: "short", day: "numeric" };
   return new Date(dateString).toLocaleDateString(undefined, options);
-};
-
-const calculateRemainingDays = (archivedAt) => {
-  if (!archivedAt) return 30;
-
-  const archiveDate = new Date(archivedAt);
-  const deleteDate = new Date(archiveDate);
-  deleteDate.setDate(deleteDate.getDate() + 30);
-
-  const now = new Date();
-  const diffTime = deleteDate - now;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  return Math.max(0, diffDays);
-};
-
-// Custom hook for throttle with instance-specific timeout
-const useThrottle = () => {
-  const timeoutRef = useRef(null);
-  
-  const throttle = useCallback((func, wait) => {
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-        func(...args);
-      };
-      
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = setTimeout(later, wait);
-    };
-  }, []);
-  
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-  
-  return throttle;
 };
 
 const Archive = () => {
@@ -98,23 +45,56 @@ const Archive = () => {
     handleDeleteTask,
     setShowArchived,
     isLoading,
+    refetch,
   } = useTasks(toast);
-  const throttle = useThrottle(); // Use the custom hook for instance-specific throttling
+  const queryClient = useQueryClient();
 
   const [sortBy, setSortBy] = useState("completionDateDesc");
   const [viewMode, setViewMode] = useState("list");
-  const [taskToDelete, setTaskToDelete] = useState(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Set showArchived to true when component mounts
   useEffect(() => {
     console.log("Archive: Setting showArchived to true");
     setShowArchived(true);
+
+    // Force refetch tasks with archived=true
+    const fetchArchivedTasks = async () => {
+      try {
+        console.log("Archive: Explicitly fetching archived tasks");
+        // First invalidate any existing cached data
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+
+        // Then perform a refetch
+        await refetch();
+
+        // Add a small delay and refetch again to ensure we get the latest data
+        // This helps when a task was just archived and redirected here
+        setTimeout(async () => {
+          console.log("Archive: Refetching archived tasks after delay");
+          queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+          await refetch();
+        }, 1000);
+      } catch (error) {
+        console.error("Error fetching archived tasks:", error);
+      }
+    };
+
+    fetchArchivedTasks();
+
+    // Set up an interval to refetch data every few seconds while the page is open
+    const refreshInterval = setInterval(() => {
+      console.log("Archive: Periodic refresh of archived tasks");
+      refetch().catch((err) =>
+        console.error("Error in refresh interval:", err)
+      );
+    }, 10000); // Refresh every 10 seconds
+
     return () => {
       console.log("Archive: Setting showArchived to false (cleanup)");
       setShowArchived(false); // Reset when unmounting
+      clearInterval(refreshInterval); // Clear the refresh interval
     };
-  }, [setShowArchived]);
+  }, [setShowArchived, refetch, queryClient]);
 
   // Log when tasks change
   useEffect(() => {
@@ -161,65 +141,78 @@ const Archive = () => {
   });
 
   // Optimize archived items calculation with better memoization
-  // Memoize archived items calculation with better optimization
   const archivedItems = useMemo(() => {
-    if (!Array.isArray(tasks)) return [];
+    if (!Array.isArray(tasks)) {
+      console.log("Archive: tasks is not an array:", tasks);
+      return [];
+    }
 
     console.log("Archive: Processing tasks data:", tasks);
 
-    return tasks
-      .filter((task) => {
-        // Check if task is archived using both possible field names
-        const isArchived = task.isArchived === true || task.archived === true;
-        console.log(
-          `Task ${task._id || task.id}: isArchived=${isArchived}, fields:`,
-          {
-            isArchived: task.isArchived,
-            archived: task.archived,
-          }
-        );
-        return isArchived;
-      })
-      .map((task) => {
-        const archivedAt = task.archivedAt || task.updatedAt;
-        return {
+    // Ensure we're only showing archived tasks
+    const filtered = tasks.filter((task) => {
+      // Check if task is archived using both possible field names
+      const isArchived = task.isArchived === true || task.archived === true;
+
+      // Log each task for debugging
+      console.log(
+        `Task ${task._id || task.id}: isArchived=${isArchived}, name=${
+          task.taskName || task.name
+        }, fields:`,
+        {
           id: task._id || task.id,
           name: task.taskName || task.name,
-          completionDate:
-            task.dateCompleted || task.completedAt || task.updatedAt,
-          archivedAt,
-          remainingDays: calculateRemainingDays(archivedAt),
-        };
-      });
-  }, [tasks]); // Remove calculateRemainingDays from dependencies since it's now static
+          isArchived: task.isArchived,
+          archived: task.archived,
+        }
+      );
 
-  // Optimize sorting with stable sort
+      return isArchived;
+    });
+
+    console.log(
+      `Archive: Found ${filtered.length} archived tasks out of ${tasks.length} total tasks`
+    );
+
+    // If we don't have any archived tasks but we should be showing archived tasks,
+    // this might indicate a caching issue - force a refetch
+    if (filtered.length === 0 && tasks.length > 0) {
+      console.log(
+        "Archive: No archived tasks found but tasks exist - might need to refetch"
+      );
+      // Use setTimeout to avoid React state updates during render
+      setTimeout(() => {
+        refetch().catch((err) => console.error("Error refetching:", err));
+      }, 500);
+    }
+
+    return filtered.map((task) => {
+      const archivedAt = task.archivedAt || task.updatedAt;
+      return {
+        id: task._id || task.id,
+        name: task.taskName || task.name,
+        completionDate:
+          task.dateCompleted || task.completedAt || task.updatedAt,
+        archivedAt,
+        remainingDays: calculateRemainingDays(archivedAt),
+      };
+    });
+  }, [tasks, calculateRemainingDays, refetch]);
+
+  // Optimize sorting with stable sort and better dependencies
   const sortedItems = useMemo(() => {
     if (!archivedItems.length) return [];
 
-    
-    // Use a stable sort to prevent unnecessary re-renders
     const items = [...archivedItems];
-    
     switch (sortBy) {
       case "completionDateAsc":
         return items.sort(
           (a, b) => new Date(a.completionDate) - new Date(b.completionDate)
         );
-        return items.sort((a, b) => {
-          const dateA = new Date(a.completionDate);
-          const dateB = new Date(b.completionDate);
-          return dateA - dateB;
-        });
       case "completionDateDesc":
         return items.sort(
           (a, b) => new Date(b.completionDate) - new Date(a.completionDate)
         );
-        return items.sort((a, b) => {
-          const dateA = new Date(a.completionDate);
-          const dateB = new Date(b.completionDate);
-          return dateB - dateA;
-        });
       case "nameAsc":
         return items.sort((a, b) => a.name.localeCompare(b.name));
       case "nameDesc":
@@ -229,8 +222,7 @@ const Archive = () => {
     }
   }, [archivedItems, sortBy]);
 
-  // Memoize sort label to prevent recalculation
-  const sortLabel = useMemo(() => {
+  const getSortLabel = () => {
     switch (sortBy) {
       case "completionDateAsc":
         return "Oldest First";
@@ -243,51 +235,115 @@ const Archive = () => {
       default:
         return "Sort by date";
     }
-  }, [sortBy]);
+  };
 
-  // Memoize event handlers to prevent child re-renders
-  const handleRestore = useMemo(
-    () => throttle((id) => {
-      handleRestoreTask(id);
-      toast({
-        title: "Task Restored",
-        description: "The task has been restored from archives.",
-        variant: "success",
-      });
-    }, 1000),
-    [throttle, handleRestoreTask, toast]
-  );
+  // Restore task handler with improved refetching
+  const handleRestoreClick = (taskId) => {
+    toast({
+      title: "Restore Task?",
+      description: "Are you sure you want to restore this task?",
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => {
+              // Call the restore task function
+              handleRestoreTask(taskId)
+                .then(() => {
+                  // Show success message
+                  toast({
+                    title: "Task Restored",
+                    description: "Task has been restored successfully.",
+                    variant: "default",
+                  });
 
-  const handleDeleteConfirm = useCallback(() => {
-    if (taskToDelete) {
-      handleDeleteTask(taskToDelete);
-      setDeleteDialogOpen(false);
-      setTaskToDelete(null);
-      toast({
-        title: "Task Deleted",
-        description: "The task has been permanently deleted.",
-        variant: "default",
-      });
-    }
-  }, [taskToDelete, handleDeleteTask, toast]);
+                  // Force refetch after a short delay to update the UI
+                  setTimeout(() => {
+                    refetch().catch((err) =>
+                      console.error("Error refetching after restore:", err)
+                    );
+                  }, 500);
+                })
+                .catch((error) => {
+                  console.error("Error restoring task:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to restore task. Please try again.",
+                    variant: "destructive",
+                  });
+                });
+            }}
+          >
+            Restore
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Do nothing, toast will dismiss
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      ),
+    });
+  };
 
-  const openDeleteDialog = useCallback((id) => {
-    if (id) {
-      setTaskToDelete(id);
-      setDeleteDialogOpen(true);
-    }
-  }, []);
+  // Delete task handler with improved refetching
+  const handleDeleteClick = (taskId) => {
+    toast({
+      title: "Delete Task Permanently?",
+      description: "This action cannot be undone.",
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              // Call the delete task function
+              handleDeleteTask(taskId)
+                .then(() => {
+                  // Show success message
+                  toast({
+                    title: "Task Deleted",
+                    description: "Task has been permanently deleted.",
+                    variant: "destructive",
+                  });
 
-  const handleCloseDeleteDialog = useCallback((open) => {
-    setDeleteDialogOpen(open);
-    if (!open) {
-      setTaskToDelete(null);
-    }
-  }, []);
-
-  // Memoize view mode handlers
-  const handleSetListView = useCallback(() => setViewMode("list"), []);
-  const handleSetGridView = useCallback(() => setViewMode("grid"), []);
+                  // Force refetch after a short delay to update the UI
+                  setTimeout(() => {
+                    refetch().catch((err) =>
+                      console.error("Error refetching after delete:", err)
+                    );
+                  }, 500);
+                })
+                .catch((error) => {
+                  console.error("Error deleting task:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to delete task. Please try again.",
+                    variant: "destructive",
+                  });
+                });
+            }}
+          >
+            Delete
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Do nothing, toast will dismiss
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      ),
+    });
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -296,7 +352,7 @@ const Archive = () => {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">{sortLabel}</Button>
+              <Button variant="outline">{getSortLabel()}</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
@@ -319,7 +375,7 @@ const Archive = () => {
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
               size="icon"
-              onClick={handleSetListView}
+              onClick={() => setViewMode("list")}
               className="rounded-r-none"
             >
               <List className="h-4 w-4" />
@@ -327,7 +383,7 @@ const Archive = () => {
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
               size="icon"
-              onClick={handleSetGridView}
+              onClick={() => setViewMode("grid")}
               className="rounded-l-none border-l"
             >
               <LayoutGrid className="h-4 w-4" />
@@ -386,12 +442,12 @@ const Archive = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onSelect={() => handleRestore(item.id)}
+                            onSelect={() => handleRestoreClick(item.id)}
                           >
                             Restore
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onSelect={() => openDeleteDialog(item.id)}
+                            onSelect={() => handleDeleteClick(item.id)}
                             className="text-red-600 focus:text-red-600 focus:bg-red-100/50"
                           >
                             Delete Permanently
@@ -431,11 +487,13 @@ const Archive = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => handleRestore(item.id)}>
+                      <DropdownMenuItem
+                        onSelect={() => handleRestoreClick(item.id)}
+                      >
                         Restore
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onSelect={() => openDeleteDialog(item.id)}
+                        onSelect={() => handleDeleteClick(item.id)}
                         className="text-red-600 focus:text-red-600 focus:bg-red-100/50"
                       >
                         Delete Permanently
@@ -460,28 +518,6 @@ const Archive = () => {
           )}
         </div>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={handleCloseDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              task from the system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import {
   signInWithGoogle,
   checkRedirectResult,
   onAuthStateChanged,
+  getCurrentUserToken,
 } from "@/config/firebase";
 import { ROLES } from "@/lib/constants";
 import { queryClient } from "@/lib/queryClient";
@@ -151,10 +152,12 @@ export const login = async (credentials) => {
  */
 export const loginWithGoogle = async (useRedirect = false) => {
   try {
+    console.log("Starting Google sign-in process", { useRedirect });
     const result = await signInWithGoogle(useRedirect);
 
     // If redirect is in progress, return early
     if (result.inProgress) {
+      console.log("Google sign-in redirect in progress");
       return {
         success: false,
         inProgress: true,
@@ -162,26 +165,68 @@ export const loginWithGoogle = async (useRedirect = false) => {
       };
     }
 
+    console.log("Google sign-in successful, sending idToken to backend");
     const { user: googleUser, idToken } = result;
-    const response = await apiClient.post("/auth/firebase", { idToken });
-    const { message, token, user, needsRegistration } = response.data;
 
-    if (needsRegistration) {
+    try {
+      console.log("Posting to /auth/firebase endpoint");
+      const response = await apiClient.post("/auth/firebase", { idToken });
+      console.log("Backend response received", response.data);
+
+      const { message, token, user, needsRegistration } = response.data;
+
+      if (needsRegistration) {
+        console.log("User needs to complete registration", {
+          email: googleUser.email,
+        });
+        return {
+          success: false,
+          needsRegistration: true,
+          email: googleUser.email,
+          idToken,
+          message: "Additional information required",
+        };
+      }
+
+      if (token) {
+        console.log("Storing authentication token");
+        storeToken(token);
+      }
+
       return {
-        success: false,
-        needsRegistration: true,
-        email: googleUser.email,
-        message: "Additional information required",
+        user,
+        token,
+        success: true,
+        message: message || "Google sign-in successful",
       };
-    }
+    } catch (apiError) {
+      console.error("API error during Google sign-in:", apiError);
+      console.error("API error details:", {
+        status: apiError.response?.status,
+        data: apiError.response?.data,
+        message: apiError.message,
+      });
 
-    if (token) storeToken(token);
-    return {
-      user,
-      token,
-      success: true,
-      message: message || "Google sign-in successful",
-    };
+      // Check if this is a "needs registration" response
+      if (
+        apiError.response?.status === 400 &&
+        apiError.response?.data?.needsRegistration
+      ) {
+        console.log(
+          "User needs to complete registration (from error response)"
+        );
+        return {
+          success: false,
+          needsRegistration: true,
+          email: googleUser.email,
+          idToken,
+          message:
+            apiError.response.data.message || "Additional information required",
+        };
+      }
+
+      throw apiError;
+    }
   } catch (error) {
     console.error("Google sign-in failed:", error);
 
@@ -260,7 +305,52 @@ export const checkGoogleRedirectResult = async () => {
  */
 export const completeGoogleRegistration = async (registrationData) => {
   try {
-    const response = await apiClient.post("/auth/firebase", registrationData);
+    // Make sure we have the idToken for Firebase auth
+    if (!registrationData.idToken) {
+      const tokenResult = await getCurrentUserToken();
+      if (!tokenResult) {
+        return {
+          success: false,
+          error:
+            "Unable to get authentication token. Please try signing in with Google again.",
+        };
+      }
+      registrationData.idToken = tokenResult;
+    }
+
+    // Map course and yearLevel to the format expected by the backend
+    const mappedCourse =
+      registrationData.course === "BSIS"
+        ? "Bachelor of Science in Information Systems"
+        : registrationData.course === "ACT"
+        ? "Associate of Computer Technology"
+        : registrationData.course;
+
+    const mappedYearLevel =
+      registrationData.yearLevel === "1"
+        ? "First Year"
+        : registrationData.yearLevel === "2"
+        ? "Second Year"
+        : registrationData.yearLevel === "3"
+        ? "Third Year"
+        : registrationData.yearLevel === "4"
+        ? "Fourth Year"
+        : registrationData.yearLevel;
+
+    // Format the data for the backend
+    const formattedData = {
+      idToken: registrationData.idToken,
+      studentNumber: registrationData.studentNo,
+      course: mappedCourse,
+      yearLevel: mappedYearLevel,
+    };
+
+    console.log("Completing Google registration with data:", {
+      ...formattedData,
+      idToken: "REDACTED",
+    });
+
+    const response = await apiClient.post("/auth/firebase", formattedData);
     const { message, token, user } = response.data;
     if (token) storeToken(token);
     return {
@@ -630,15 +720,24 @@ export const verifyToken = async () => {
       return null;
     }
 
-    const decoded = jwtDecode(token);
-    if (decoded.exp < Date.now() / 1000) {
-      console.warn("Token expired");
-      removeToken();
-      return null;
+    // First check client-side if token is expired to avoid unnecessary API calls
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.exp < Date.now() / 1000) {
+        console.warn("Token expired based on client-side validation");
+        removeToken();
+        return null;
+      }
+    } catch (decodeError) {
+      console.error("Failed to decode token:", decodeError);
+      // Continue to server validation as fallback
     }
 
+    // Then verify with the server
     try {
-      const response = await apiClient.get("/auth/verify");
+      const response = await apiClient.get("/auth/verify", {
+        timeout: 5000, // Add timeout to prevent hanging
+      });
       console.log("Token verification response:", response.data);
 
       if (response.data?.valid && response.data?.user) {
@@ -662,6 +761,13 @@ export const verifyToken = async () => {
         removeToken();
         return null;
       }
+
+      if (error.code === "ECONNABORTED") {
+        console.warn("Token verification request timed out");
+        // Don't remove token on timeout, could be server issue
+        return null;
+      }
+
       // For other errors (like network issues), keep the token
       console.error("Token verification request failed:", error.message);
       return null;
