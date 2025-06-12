@@ -10,6 +10,7 @@ import ForgotPassword from "./app/auth/ForgotPassword";
 import ProtectedRoute from "./app/auth/ProtectedRoute";
 import UnauthorizedPage from "./app/pages/UnauthorizedPage";
 import ErrorBoundary from "./components/error/ErrorBoundary";
+import EmailVerification from "./app/EmailVerification";
 
 function App() {
   return (
@@ -31,6 +32,13 @@ function App() {
                 <Dashboard />
               </ProtectedRoute>
             }
+          />
+
+          {/* Email verification routes */}
+          <Route path="/verify-email" element={<EmailVerification />} />
+          <Route
+            path="/verify-email/:userId/:code"
+            element={<EmailVerification />}
           />
 
           {/* Catch-all route */}

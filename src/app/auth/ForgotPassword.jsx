@@ -143,7 +143,16 @@ export default function ForgotPassword() {
       try {
         const result = await requestPasswordReset({ email: formData.email });
         if (!result.success) {
-          setError(result.error);
+          // Handle rate limiting specifically
+          if (result.isRateLimited) {
+            const retryAfter = result.retryAfter || 60;
+            setResendTimer(retryAfter);
+            setError(
+              `Too many requests. Please try again in ${retryAfter} seconds.`
+            );
+          } else {
+            setError(result.error);
+          }
         }
       } catch (err) {
         setError("Failed to resend verification code");
@@ -162,7 +171,17 @@ export default function ForgotPassword() {
         if (result.success) {
           setStep(2);
         } else {
-          setError(result.error);
+          // Handle rate limiting specifically
+          if (result.isRateLimited) {
+            const retryAfter = result.retryAfter || 60;
+            setResendTimer(retryAfter);
+            setCanResend(false);
+            setError(
+              `Too many requests. Please try again in ${retryAfter} seconds.`
+            );
+          } else {
+            setError(result.error);
+          }
         }
       } catch (err) {
         setError("Failed to send verification code");
@@ -190,7 +209,14 @@ export default function ForgotPassword() {
           setFormData((prev) => ({ ...prev, resetToken: result.resetToken }));
           setStep(3);
         } else {
-          setError(result.error || "Invalid verification code");
+          // Handle rate limiting specifically
+          if (result.isRateLimited) {
+            setCanResend(false);
+            setResendTimer(60); // Default to 60 seconds if no retry-after header
+            setError("Too many failed attempts. Please try again later.");
+          } else {
+            setError(result.error || "Invalid verification code");
+          }
         }
       } catch (err) {
         setError("Verification failed");

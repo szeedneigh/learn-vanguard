@@ -15,10 +15,10 @@ import {
   X,
 } from "lucide-react";
 import PropTypes from "prop-types";
-import { Alert, AlertDescription } from "@/components/ui/alert"; // Adjust path if necessary
-import * as authService from "@/services/authService"; // Adjust path if necessary
-import { useAuth } from "@/context/AuthContext"; // Add this import
-import { toast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import * as authService from "../../services/authService";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../hooks/use-toast";
 
 const smoothTransition = {
   type: "spring",
@@ -234,6 +234,7 @@ SelectInput.displayName = "SelectInput";
 const SignUp = () => {
   const navigate = useNavigate();
   const { loginWithGoogle } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
@@ -387,21 +388,45 @@ const SignUp = () => {
         if (result.success && result.tempToken) {
           localStorage.setItem("signupTempToken", result.tempToken);
           setStep(2);
+          toast({
+            title: "First step completed",
+            description: "Please complete your academic information",
+          });
         } else {
           let formErrorMessage = result.error || "Initial registration failed.";
           const fieldSpecificErrors = {};
+
           if (result.details && Object.keys(result.details).length > 0) {
-            for (const field in result.details) {
-              const message = Array.isArray(result.details[field])
-                ? result.details[field].join(", ")
-                : result.details[field];
-              fieldSpecificErrors[field] = message; // Assuming backend field names match frontend
-            }
+            // Display specific field errors
+            Object.entries(result.details).forEach(([field, message]) => {
+              fieldSpecificErrors[field] = message;
+            });
+
+            // Show toast with summary of errors
+            toast({
+              title: "Registration Error",
+              description: formErrorMessage,
+              variant: "destructive",
+            });
+          } else {
+            // General error without specific fields
+            toast({
+              title: "Registration Error",
+              description: formErrorMessage,
+              variant: "destructive",
+            });
           }
+
           setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
         }
       } catch (err) {
         console.error("Signup initiation error:", err);
+        toast({
+          title: "Registration Error",
+          description:
+            "A critical error occurred during registration. Please try again.",
+          variant: "destructive",
+        });
         setErrors({
           form: "A critical error occurred during initial sign-up. Please try again.",
         });
@@ -409,7 +434,7 @@ const SignUp = () => {
         setIsLoading(false);
       }
     },
-    [formData, validateStep]
+    [formData, validateStep, toast]
   );
 
   const handleSubmitStep2 = useCallback(
@@ -427,6 +452,12 @@ const SignUp = () => {
       try {
         const tempToken = localStorage.getItem("signupTempToken");
         if (!tempToken) {
+          toast({
+            title: "Session Expired",
+            description:
+              "Your registration session has expired. Please start over.",
+            variant: "destructive",
+          });
           setErrors({
             form: "Registration session expired or initial step incomplete. Please start over.",
           });
@@ -441,81 +472,90 @@ const SignUp = () => {
           course: formData.course,
           yearLevel: formData.yearLevel,
         };
-        console.log(
-          "Starting registration completion (Step 2) with data (before service call):",
-          completeData
-        );
 
         const result = await authService.completeSignup(completeData);
 
         if (result.success) {
           localStorage.removeItem("signupTempToken");
-          toast({
-            title: "Registration Successful",
-            description: "Your account has been created. Please log in.",
-          });
-          navigate("/login");
+
+          // Check if email verification is required
+          if (result.requiresEmailVerification) {
+            toast({
+              title: "Registration Successful",
+              description: "Please check your email to verify your account.",
+            });
+            navigate("/verify-email");
+          } else {
+            toast({
+              title: "Registration Successful",
+              description: "Your account has been created. Please log in.",
+            });
+            navigate("/login");
+          }
         } else {
+          // Handle session expiration specifically
+          if (result.sessionExpired) {
+            toast({
+              title: "Session Expired",
+              description:
+                "Your registration session has expired. Please start over.",
+              variant: "destructive",
+            });
+            localStorage.removeItem("signupTempToken");
+            setStep(1);
+            setErrors({
+              form:
+                result.error ||
+                "Registration session expired. Please start over.",
+            });
+            return;
+          }
+
+          // Handle other errors
           let formErrorMessage =
             result.error ||
             "Registration failed. Please check your details and try again.";
           const fieldSpecificErrors = {};
 
-          if (
-            result.details &&
-            typeof result.details === "object" &&
-            Object.keys(result.details).length > 0
-          ) {
-            for (const field in result.details) {
-              const message = Array.isArray(result.details[field])
-                ? result.details[field].join(", ")
-                : String(result.details[field]);
+          if (result.details && Object.keys(result.details).length > 0) {
+            // Display specific field errors
+            Object.entries(result.details).forEach(([field, message]) => {
+              fieldSpecificErrors[field] = message;
+            });
 
-              // Map backend field names to frontend state keys if they differ
-              let frontendFieldKey = field;
-              if (field === "studentNumber") frontendFieldKey = "studentNo";
-
-              if (
-                Object.prototype.hasOwnProperty.call(
-                  formData,
-                  frontendFieldKey
-                ) ||
-                ["terms", "tempToken", "general", "form"].includes(
-                  frontendFieldKey
-                )
-              ) {
-                fieldSpecificErrors[frontendFieldKey] = message;
-              } else {
-                // If the error field isn't directly a form field, append to general form error.
-                formErrorMessage += ` (${field}: ${message})`;
-              }
-            }
+            // Show toast with summary of errors
+            toast({
+              title: "Registration Error",
+              description: formErrorMessage,
+              variant: "destructive",
+            });
+          } else {
+            // General error without specific fields
+            toast({
+              title: "Registration Error",
+              description: formErrorMessage,
+              variant: "destructive",
+            });
           }
 
-          setErrors((prev) => ({
-            ...prev,
-            ...fieldSpecificErrors,
-            form: formErrorMessage,
-          }));
-
-          if (
-            result.error &&
-            (result.error.toLowerCase().includes("token") ||
-              result.error.toLowerCase().includes("session"))
-          ) {
-            setStep(1);
-          }
+          setErrors({ ...fieldSpecificErrors, form: formErrorMessage });
         }
       } catch (err) {
-        console.error("Registration completion error:", err);
+        console.error("Signup completion error:", err);
+        toast({
+          title: "Registration Error",
+          description:
+            "A critical error occurred while completing registration.",
+          variant: "destructive",
+        });
         setErrors({
-          form: "A critical error occurred during account creation. Please try again later.",
+          form: "A critical error occurred during registration. Please try again.",
         });
       } finally {
         setIsLoading(false);
       }
     },
-    [formData, validateStep, navigate, acceptedTerms]
+    [formData, validateStep, navigate, toast]
   );
 
   const handleGoogleSignUp = async (e) => {

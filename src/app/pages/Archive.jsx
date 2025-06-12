@@ -60,12 +60,37 @@ const formatDate = (dateString) => {
 const Archive = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const { tasks, handleRestoreTask, handleDeleteTask } = useTasks(toast);
+  const {
+    tasks,
+    handleRestoreTask,
+    handleDeleteTask,
+    setShowArchived,
+    isLoading,
+  } = useTasks(toast);
 
   const [sortBy, setSortBy] = useState("completionDateDesc");
   const [viewMode, setViewMode] = useState("list");
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Set showArchived to true when component mounts
+  useEffect(() => {
+    console.log("Archive: Setting showArchived to true");
+    setShowArchived(true);
+    return () => {
+      console.log("Archive: Setting showArchived to false (cleanup)");
+      setShowArchived(false); // Reset when unmounting
+    };
+  }, [setShowArchived]);
+
+  // Log when tasks change
+  useEffect(() => {
+    console.log(
+      "Archive: Tasks updated, count:",
+      Array.isArray(tasks) ? tasks.length : "not an array",
+      tasks
+    );
+  }, [tasks]);
 
   // Memoize the expensive calculation function
   const calculateRemainingDays = useCallback((archivedAt) => {
@@ -96,24 +121,38 @@ const Archive = () => {
 
   // Add performance monitoring in development
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.time('Archive render');
-      return () => console.timeEnd('Archive render');
+    if (typeof window !== "undefined" && window.console) {
+      console.time("Archive render");
+      return () => console.timeEnd("Archive render");
     }
   });
 
   // Optimize archived items calculation with better memoization
   const archivedItems = useMemo(() => {
     if (!Array.isArray(tasks)) return [];
-    
+
+    console.log("Archive: Processing tasks data:", tasks);
+
     return tasks
-      .filter((task) => task.isArchived || task.archived)
+      .filter((task) => {
+        // Check if task is archived using both possible field names
+        const isArchived = task.isArchived === true || task.archived === true;
+        console.log(
+          `Task ${task._id || task.id}: isArchived=${isArchived}, fields:`,
+          {
+            isArchived: task.isArchived,
+            archived: task.archived,
+          }
+        );
+        return isArchived;
+      })
       .map((task) => {
         const archivedAt = task.archivedAt || task.updatedAt;
         return {
           id: task._id || task.id,
           name: task.taskName || task.name,
-          completionDate: task.dateCompleted || task.completedAt || task.updatedAt,
+          completionDate:
+            task.dateCompleted || task.completedAt || task.updatedAt,
           archivedAt,
           remainingDays: calculateRemainingDays(archivedAt),
         };
@@ -123,13 +162,17 @@ const Archive = () => {
   // Optimize sorting with stable sort and better dependencies
   const sortedItems = useMemo(() => {
     if (!archivedItems.length) return [];
-    
+
     const items = [...archivedItems];
     switch (sortBy) {
       case "completionDateAsc":
-        return items.sort((a, b) => new Date(a.completionDate) - new Date(b.completionDate));
+        return items.sort(
+          (a, b) => new Date(a.completionDate) - new Date(b.completionDate)
+        );
       case "completionDateDesc":
-        return items.sort((a, b) => new Date(b.completionDate) - new Date(a.completionDate));
+        return items.sort(
+          (a, b) => new Date(b.completionDate) - new Date(a.completionDate)
+        );
       case "nameAsc":
         return items.sort((a, b) => a.name.localeCompare(b.name));
       case "nameDesc":
@@ -241,7 +284,14 @@ const Archive = () => {
         </AlertDescription>
       </Alert>
 
-      {viewMode === "list" && (
+      {isLoading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-2 text-gray-500">Loading archived items...</span>
+        </div>
+      )}
+
+      {!isLoading && viewMode === "list" && (
         <Card>
           <Table>
             <TableHeader>
@@ -305,7 +355,7 @@ const Archive = () => {
       )}
 
       {/* Grid View Implementation */}
-      {viewMode === "grid" && (
+      {!isLoading && viewMode === "grid" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {sortedItems.length > 0 ? (
             sortedItems.map((item) => (
