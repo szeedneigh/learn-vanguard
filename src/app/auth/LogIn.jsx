@@ -210,100 +210,35 @@ export default function LogIn() {
     setApiError(null);
   };
 
-  const handleSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-      setApiError(null);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setApiError(null);
 
-      const errors = validateForm();
-      if (Object.keys(errors).length) {
-        setFormErrors(errors);
-        return;
+    // Validate form
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    try {
+      // Call the login function with emailOrUsername and password
+      // The AuthContext will handle determining if it's an email or username
+      const result = await login(formData.emailOrUsername, formData.password);
+
+      if (result.success) {
+        navigate("/dashboard");
+      } else if (result.requiresEmailVerification) {
+        // Redirect to email verification page if email is not verified
+        navigate("/verify-email");
+      } else {
+        setApiError(result.error || "Login failed. Please try again.");
       }
-      setFormErrors({});
-
-      // Decide email vs username
-      const isEmail = formData.emailOrUsername.includes("@");
-      const email = isEmail ? formData.emailOrUsername : undefined;
-      const username = !isEmail ? formData.emailOrUsername : undefined;
-
-      try {
-        console.log("Login: Attempting login...");
-        const response = await login(email ?? username, formData.password);
-
-        // Handle case where login returns null or undefined
-        if (!response) {
-          setApiError(
-            "Authentication service is unavailable. Please try again later."
-          );
-          return;
-        }
-
-        const { success, error } = response;
-
-        if (success) {
-          console.log("Login: Login successful, waiting for user state...");
-          // Wait longer to ensure auth state is properly initialized
-          setTimeout(() => {
-            // Double check that we have a user before navigating
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-              setApiError(
-                "Login succeeded but session was not established. Please try again."
-              );
-              return;
-            }
-            console.log("Login: Navigating to dashboard...");
-            navigate("/dashboard");
-          }, 500); // Increased delay to 500ms
-        } else {
-          setApiError(
-            error ||
-              "Login failed. Please check your credentials and try again."
-          );
-        }
-      } catch (err) {
-        console.error("Login error:", err);
-
-        // Handle specific API errors
-        if (err.response) {
-          switch (err.response.status) {
-            case 404:
-              setApiError(
-                "The authentication service endpoint was not found. Please contact support."
-              );
-              break;
-            case 401:
-              setApiError(
-                "Invalid credentials. Please check your email/username and password."
-              );
-              break;
-            case 403:
-              setApiError("Your account is locked. Please contact support.");
-              break;
-            case 429:
-              setApiError("Too many login attempts. Please try again later.");
-              break;
-            default:
-              setApiError(
-                `Server error: ${
-                  err.response.data?.message || "An unexpected error occurred"
-                }`
-              );
-          }
-        } else if (err.name === "NetworkError" || !navigator.onLine) {
-          setApiError(
-            "Unable to connect to the server. Please check your internet connection."
-          );
-        } else if (err.name === "TimeoutError") {
-          setApiError("The request timed out. Please try again.");
-        } else {
-          setApiError("An unexpected error occurred. Please try again later.");
-        }
-      }
-    },
-    [login, formData, navigate]
-  );
+    } catch (error) {
+      console.error("Login error:", error);
+      setApiError("An unexpected error occurred. Please try again later.");
+    }
+  };
 
   // Add Google sign-in handler
   const handleGoogleSignIn = async (e) => {
@@ -559,7 +494,7 @@ export default function LogIn() {
             style={{ backgroundImage: `url('/images/LVauthbg.png')` }}
           >
             <motion.div
-              className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-blue-600/20 to-blue-600/10 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-gradient-to-br from-blue-600/60 via-blue-600/60 to-blue-600/50 backdrop-blur-[2px]"
               animate={{ opacity: [0.8, 1] }}
               transition={{
                 duration: 8,

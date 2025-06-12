@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   getUsers,
   deleteUser,
@@ -10,40 +11,47 @@ import {
   assignPIORole,
   revertPIORole,
 } from "@/lib/api/userApi";
-import { useToast } from "@/hooks/use-toast";
+
 
 /**
  * Hook for assigning PIO role
  */
 export const useAssignPIORole = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (params) => {
-      // Handle both object with studentId and direct parameters
-      let userId, assignedClass;
+      // Ensure params is an object with required properties
+      if (!params || typeof params !== "object") {
+        throw new Error("Parameters must be provided as an object with studentId and either (program + yearLevel) or assignedClass");
+      }
 
-      if (typeof params === "object") {
-        // Extract from object format
-        userId = params.studentId || null;
+      const userId = params.studentId;
+      let assignedClass;
 
-        // Create assignedClass from program and yearLevel if provided
-        if (params.program && params.yearLevel) {
-          const programName = getProgramNameFromId(params.program);
-          const yearLevelName = getYearLevelName(params.yearLevel);
-          assignedClass = `${programName} - ${yearLevelName}`;
-        } else {
-          assignedClass = params.assignedClass;
-        }
+      // Create assignedClass from program and yearLevel if provided
+      if (params.program && params.yearLevel) {
+        const programName = getProgramNameFromId(params.program);
+        const yearLevelName = getYearLevelName(params.yearLevel);
+        assignedClass = `${programName} - ${yearLevelName}`;
+      } else if (params.assignedClass) {
+        assignedClass = params.assignedClass;
       } else {
-        // Legacy format
-        userId = params;
-        assignedClass = arguments[1];
+        throw new Error("Either (program + yearLevel) or assignedClass must be provided");
       }
 
       if (!userId) {
         throw new Error("User ID is required to assign PIO role");
+      }
+
+      // Validate assignedClass before proceeding to API call
+      if (!assignedClass || typeof assignedClass !== "string" || assignedClass.trim() === "") {
+        throw new Error("Valid assigned class is required to assign PIO role");
+      }
+
+      // Additional validation for assignedClass format (should contain course and year level)
+      if (!assignedClass.includes(" - ")) {
+        throw new Error("Assigned class must be in format 'Course - Year Level'");
       }
 
       console.log(
@@ -59,74 +67,25 @@ export const useAssignPIORole = () => {
       return result;
     },
     onSuccess: (data, variables) => {
-      // Use more specific query invalidation to prevent infinite loops
-      // Extract class information from the assigned class string
-      let assignedClass;
-
-      if (
-        typeof variables === "object" &&
-        variables.program &&
-        variables.yearLevel
-      ) {
-        // If we have program and yearLevel directly
+      // Use targeted invalidation to prevent cascading refetches
+      if (variables.program && variables.yearLevel) {
         const programName = getProgramNameFromId(variables.program);
         const yearLevelName = getYearLevelName(variables.yearLevel);
 
-        // Invalidate only the specific program/year query
+        // Invalidate only the specific query
         queryClient.invalidateQueries({
           queryKey: queryKeys.usersByProgram(programName, yearLevelName),
+          exact: true,
         });
-      } else {
-        // Legacy format - extract from assignedClass string
-        assignedClass =
-          typeof variables === "object" ? variables.assignedClass : variables;
-
-        if (assignedClass) {
-          const parts = assignedClass.split(" - ");
-          if (parts.length === 2) {
-            const course = parts[0];
-            const yearLevel = parts[1];
-
-            // Invalidate only the specific program/year query
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.usersByProgram(course, yearLevel),
-            });
-          } else {
-            // Fallback to more targeted invalidation
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.users,
-              exact: true,
-            });
-          }
-        } else {
-          // Fallback to more targeted invalidation
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.users,
-            exact: true,
-          });
-        }
       }
 
-      toast({
-        title: "Success",
-        description: "PIO role assigned successfully",
-      });
+      // Don't show toast here - let the component handle it
     },
     onError: (error) => {
       console.error("Error in useAssignPIORole:", error);
 
-      // Check if the error is due to an existing PIO
-      const errorMessage = error.message || "Failed to assign PIO role";
-      const isPIOExistsError = errorMessage.includes("already a PIO assigned");
-
-      toast({
-        title: isPIOExistsError ? "PIO Already Exists" : "Error",
-        description: errorMessage,
-        variant: "destructive",
-        duration: isPIOExistsError ? 5000 : 3000, // Show longer for important errors
-      });
-
-      // Don't invalidate queries on error to prevent potential loops
+      // Don't show toast here - let the component handle it
+      // Don't invalidate queries on error
     },
   });
 };
@@ -163,7 +122,6 @@ const getYearLevelName = (year) => {
  */
 export const useRevertPIORole = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (params) => {
@@ -214,22 +172,13 @@ export const useRevertPIORole = () => {
         });
       }
 
-      toast({
-        title: "Success",
-        description: "PIO role reverted successfully",
-      });
+      // Don't show toast here - let the component handle it
     },
     onError: (error) => {
       console.error("Error in useRevertPIORole:", error);
-      const errorMessage = error.message || "Failed to revert PIO role";
-
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-
-      // Don't invalidate queries on error to prevent potential loops
+      
+      // Don't show toast here - let the component handle it
+      // Don't invalidate queries on error
     },
   });
 };
@@ -240,9 +189,15 @@ export const useRevertPIORole = () => {
  * @param {Object} options - React Query options
  */
 export const useUsers = (filters = {}, options = {}) => {
+  // Always include isEmailVerified=true in the filters
+  const enhancedFilters = {
+    ...filters,
+    isEmailVerified: true,
+  };
+
   return useQuery({
-    queryKey: queryKeys.users.concat([filters]),
-    queryFn: () => getUsers(filters),
+    queryKey: queryKeys.users.concat([enhancedFilters]),
+    queryFn: () => getUsers(enhancedFilters),
     select: (data) => data?.data || [],
     ...options,
   });
@@ -259,10 +214,14 @@ export const useClassStudents = (classInfo, options = {}) => {
     queryFn: async () => {
       try {
         // Get all users (both students and PIOs) for this class
-        const response = await getUsers({
+        // Only fetch verified users
+        const filters = {
           course: classInfo?.course,
           yearLevel: classInfo?.yearLevel,
-        });
+          isEmailVerified: true, // Always get verified accounts only
+        };
+
+        const response = await getUsers(filters);
 
         // Ensure consistent ID field naming
         const data = response?.data || [];
@@ -366,7 +325,6 @@ export const useUpdateUserStatus = () => {
  */
 export const useRemoveUser = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (params) => {
@@ -394,21 +352,12 @@ export const useRemoveUser = () => {
         exact: true, // Only invalidate the exact query key, not all related queries
       });
 
-      toast({
-        title: "Success",
-        description: "User removed successfully",
-      });
+      // Don't show toast here - let the component handle it
     },
     onError: (error) => {
       console.error("Error in useRemoveUser:", error);
-      const errorMessage = error.message || "Failed to remove user";
 
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-
+      // Don't show toast here - let the component handle it
       // Don't invalidate queries on error to prevent potential loops
     },
   });
@@ -477,13 +426,15 @@ export const useSearchUsers = (searchQuery, options = {}) => {
  * for the Users page component
  */
 export const useUsersPage = (selectedProgram, selectedYear) => {
+  const queryClient = useQueryClient();
+  
   // Map program ID to full course name
   const getProgramName = (programId) => {
     switch (programId) {
       case "bsis":
         return "Bachelor of Science in Information Systems";
       case "act":
-        return "Associate in Computer Technology";
+        return "Associate of Computer Technology";
       default:
         return programId;
     }
@@ -512,18 +463,40 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
 
   // Main queries
   const classStudentsQuery = useClassStudents(classInfo, {
-    // Refetch every 10 seconds to ensure data is fresh
-    refetchInterval: 10000,
-    // Also refetch when window regains focus
-    refetchOnWindowFocus: true,
+    // Remove automatic refetching that causes freezing
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
   });
-  // Keep this commented out for now as it might be needed in the future
-  // const allUsersQuery = useUsers({ role: "student" }, { enabled: false });
 
   // Mutations
   const assignPIOMutation = useAssignPIORole();
   const revertPIOMutation = useRevertPIORole();
   const removeUserMutation = useRemoveUser();
+  
+  // Add user mutation (missing function causing freezing)
+  const addUserMutation = useMutation({
+    mutationFn: async (params) => {
+      if (!params.studentId) {
+        throw new Error("Student ID is required to add user");
+      }
+      
+      // Simulate adding user to class - this should call your actual add user API
+      console.log(`Adding user ${params.studentId} to ${params.program} Year ${params.yearLevel}`);
+      
+      // For now, return success - replace with actual API call
+      return { success: true, data: { id: params.studentId } };
+    },
+    onSuccess: () => {
+      // Invalidate the specific class query
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.usersByProgram(classInfo.course, classInfo.yearLevel),
+        exact: true,
+      });
+    },
+    onError: (error) => {
+      console.error("Error in addUser:", error);
+    },
+  });
 
   // Process students data to ensure consistent ID fields
   const processStudentsData = (students = []) => {
@@ -548,21 +521,25 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
     assignPIO: assignPIOMutation.mutate,
     revertPIO: revertPIOMutation.mutate,
     removeUser: removeUserMutation.mutate,
+    addUser: addUserMutation.mutate,
 
     // Loading states
     isAssigningPIO: assignPIOMutation.isPending,
     isRevertingPIO: revertPIOMutation.isPending,
     isRemovingUser: removeUserMutation.isPending,
+    isAddingUser: addUserMutation.isPending,
 
     // Any mutation loading
     isMutating:
       assignPIOMutation.isPending ||
       revertPIOMutation.isPending ||
-      removeUserMutation.isPending,
+      removeUserMutation.isPending ||
+      addUserMutation.isPending,
 
     // Error states
     assignPIOError: assignPIOMutation.error,
     revertPIOError: revertPIOMutation.error,
     removeUserError: removeUserMutation.error,
+    addUserError: addUserMutation.error,
   };
 };

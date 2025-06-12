@@ -19,7 +19,7 @@ export const useTasks = (filters = {}, options = {}) => {
   console.log("useTasks hook called with filters:", filters);
 
   return useQuery({
-    queryKey: queryKeys.tasks.concat([filters]),
+    queryKey: queryKeys.tasks.concat([JSON.stringify(filters)]),
     queryFn: () => getTasks(filters),
     select: (data) => data?.data || [],
     ...options,

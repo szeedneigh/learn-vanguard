@@ -24,8 +24,9 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [firebaseUser, setFirebaseUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setLoading] = useState(true);
+  const [isEmailVerified, setIsEmailVerified] = useState(true);
   const [firebaseAvailable, setFirebaseAvailable] =
     useState(firebaseInitialized);
   const initializationInProgress = useRef(false);
@@ -57,16 +58,29 @@ export const AuthProvider = ({ children }) => {
       if (!response) {
         setUser(null);
         setIsAuthenticated(false);
+        setIsEmailVerified(true);
         return;
+      }
+
+      // Check if we need to restore avatar URL from localStorage
+      const lastAvatarUrl = localStorage.getItem("lastAvatarUrl");
+      if (
+        lastAvatarUrl &&
+        (!response.user.avatarUrl || response.user.avatarUrl === "")
+      ) {
+        response.user.avatarUrl = lastAvatarUrl;
+        console.log("AuthContext: Restored avatar URL from localStorage");
       }
 
       // Set user state from verification response
       setUser(response.user);
       setIsAuthenticated(true);
+      setIsEmailVerified(response.user.isEmailVerified);
     } catch (error) {
       console.error("AuthContext: Auth initialization error:", error);
       setUser(null);
       setIsAuthenticated(false);
+      setIsEmailVerified(true);
     } finally {
       setLoading(false);
       initializationInProgress.current = false;
@@ -90,6 +104,7 @@ export const AuthProvider = ({ children }) => {
       if (result.success && result.user) {
         setUser(result.user);
         setIsAuthenticated(true);
+        setIsEmailVerified(result.user.isEmailVerified);
 
         // Invalidate and refetch user-related queries
         queryClient.invalidateQueries(queryKeys.auth);
@@ -165,23 +180,52 @@ export const AuthProvider = ({ children }) => {
   }, [firebaseAvailable]);
 
   // Login with email and password
-  const login = async (email, password) => {
+  const login = async (emailOrUsername, password) => {
     try {
       console.log("AuthContext: Starting login process...");
       setLoading(true);
 
-      const result = await authService.login({ email, password });
+      // Determine if the input is an email or username
+      const isEmail = emailOrUsername.includes("@");
+
+      // Create credentials object with the appropriate field
+      const credentials = {
+        password: password,
+      };
+
+      // Set either email or username field based on the input format
+      if (isEmail) {
+        credentials.email = emailOrUsername;
+      } else {
+        credentials.username = emailOrUsername;
+      }
+
+      const result = await authService.login(credentials);
       console.log("AuthContext: Login result:", {
         success: result.success,
         hasUser: !!result.user,
       });
 
       if (result.success && result.user) {
+        // Check if we have a saved avatar URL
+        const lastAvatarUrl = localStorage.getItem("lastAvatarUrl");
+        if (
+          lastAvatarUrl &&
+          (!result.user.avatarUrl || result.user.avatarUrl === "")
+        ) {
+          result.user.avatarUrl = lastAvatarUrl;
+          console.log("Login: Restored avatar URL from localStorage");
+        } else if (result.user.avatarUrl) {
+          // Save the new avatar URL
+          localStorage.setItem("lastAvatarUrl", result.user.avatarUrl);
+        }
+
         // Important: Set user state before returning
         await Promise.all([
           (async () => {
             setUser(result.user);
             setIsAuthenticated(true);
+            setIsEmailVerified(result.user.isEmailVerified);
             localStorage.setItem("authToken", result.token);
           })(),
           // Invalidate and refetch user-related queries
@@ -197,6 +241,14 @@ export const AuthProvider = ({ children }) => {
         });
 
         return { success: true, user: result.user };
+      } else if (result.requiresEmailVerification) {
+        // Handle unverified email case
+        setIsEmailVerified(false);
+        return {
+          success: false,
+          requiresEmailVerification: true,
+          error: result.error || "Please verify your email before logging in",
+        };
       } else {
         toast({
           title: "Login Failed",
@@ -492,6 +544,12 @@ export const AuthProvider = ({ children }) => {
       console.log("AuthContext: Starting logout process...");
       setLoading(true);
 
+      // Save avatar URL before logout if available
+      const avatarUrl = user?.avatarUrl;
+      if (avatarUrl) {
+        localStorage.setItem("lastAvatarUrl", avatarUrl);
+      }
+
       const result = await authService.logout();
       if (result.success) {
         // Clear local state
@@ -605,6 +663,16 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.verifyToken();
 
       if (response && response.user) {
+        // Check if we need to restore avatar URL from localStorage
+        const lastAvatarUrl = localStorage.getItem("lastAvatarUrl");
+        if (
+          lastAvatarUrl &&
+          (!response.user.avatarUrl || response.user.avatarUrl === "")
+        ) {
+          response.user.avatarUrl = lastAvatarUrl;
+          console.log("refreshUserData: Restored avatar URL from localStorage");
+        }
+
         setUser(response.user);
 
         // Invalidate and refetch user-related queries
@@ -617,12 +685,81 @@ export const AuthProvider = ({ children }) => {
     }
   }, [isAuthenticated]);
 
+  const resendVerificationEmail = async () => {
+    try {
+      setLoading(true);
+      const result = await authService.resendVerificationEmail();
+      if (result.success) {
+        toast({
+          title: "Email Sent",
+          description:
+            "Verification email has been sent. Please check your inbox.",
+        });
+      } else {
+        toast({
+          title: "Failed to Send",
+          description: result.error || "Failed to send verification email.",
+          variant: "destructive",
+        });
+      }
+      return result;
+    } catch (error) {
+      console.error("Failed to resend verification email:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send verification email.",
+        variant: "destructive",
+      });
+      return {
+        success: false,
+        error: "Failed to send verification email",
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyEmail = async (userId, code) => {
+    try {
+      setLoading(true);
+      const result = await authService.verifyEmail(userId, code);
+
+      if (result.success && user) {
+        // Update email verification status if the current user is being verified
+        if (user.id === userId) {
+          setIsEmailVerified(true);
+          setUser({ ...user, isEmailVerified: true });
+          toast({
+            title: "Success",
+            description: "Your email has been verified successfully.",
+          });
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Email verification failed:", error);
+      toast({
+        title: "Verification Failed",
+        description: "Failed to verify your email address.",
+        variant: "destructive",
+      });
+      return {
+        success: false,
+        error: "Failed to verify email",
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     // State
     user,
     firebaseUser,
-    loading,
+    isLoading,
     isAuthenticated,
+    isEmailVerified,
 
     // Authentication methods
     login,
@@ -645,6 +782,8 @@ export const AuthProvider = ({ children }) => {
     getPermissions,
     refreshAuth: initializeAuth, // Expose refresh function
     refreshUserData, // Add the new function to the context value
+    resendVerificationEmail,
+    verifyEmail,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
