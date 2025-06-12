@@ -559,7 +559,7 @@ export default function LogIn() {
             style={{ backgroundImage: `url('/images/LVauthbg.png')` }}
           >
             <motion.div
-              className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-blue-600/20 to-blue-600/10 backdrop-blur-[2px]"
+              className="absolute inset-0 bg-gradient-to-br from-blue-600/60 via-blue-600/60 to-blue-600/50 backdrop-blur-[2px]"
               animate={{ opacity: [0.8, 1] }}
               transition={{
                 duration: 8,
