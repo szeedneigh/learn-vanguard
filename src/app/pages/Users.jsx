@@ -422,9 +422,11 @@ const Users = () => {
             refetchError
           );
         });
-      }, 2000);
+            }, 2000);
+    } finally {
+      setIsProcessing(false);
     }
-  };
+  }, [studentToAssignRole, isProcessing, assignPIO, currentProgram.id, selectedYear, closeAssignRoleModal, toast, refetch]);
 
   const handleRemoveStudent = useCallback(async () => {
     if (!studentToRemove || isProcessing) return;
@@ -465,8 +467,10 @@ const Users = () => {
           );
         });
       }, 2000);
+    } finally {
+      setIsProcessing(false);
     }
-  };
+  }, [studentToRemove, isProcessing, removeUser, currentProgram.id, selectedYear, closeRemoveModal, toast, refetch]);
 
   const handleRevertRole = useCallback(async () => {
     if (!studentToRevertRole || isProcessing) return;
