@@ -40,18 +40,12 @@ const Tasks = () => {
 
   // Local state for UI
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [onHoldRemark, setOnHoldRemark] = useState("");
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [statusChangeInfo, setStatusChangeInfo] = useState(null);
-
-  // Update showArchived state based on statusFilter
-  useEffect(() => {
-    setShowArchived(statusFilter === "archived");
-  }, [statusFilter]);
 
   // React Query hook for all task operations
   const {
@@ -74,15 +68,14 @@ const Tasks = () => {
     isMutating,
   } = useTasksPage({
     search: searchQuery,
-    status: statusFilter !== "all" ? statusFilter : undefined,
     archived: showArchived ? "true" : "false",
   });
 
-  // Refresh summary stats when filter changes or after operations
+  // Refresh summary stats when search changes or after operations
   useEffect(() => {
-    // Refresh stats after component mounts and when filter changes
+    // Refresh stats after component mounts and when search changes
     refetch();
-  }, [statusFilter, searchQuery, showArchived, refetch]);
+  }, [searchQuery, showArchived, refetch]);
 
   const taskStatusColumns = [
     "Not Started",
@@ -121,23 +114,16 @@ const Tasks = () => {
     return statusMap[displayStatus] || displayStatus;
   };
 
-  // Filter tasks for display based on search and status
+  // Filter tasks for display based on search and archived status
   const filteredTasks = tasks.filter((task) => {
     const searchMatch =
       !searchQuery ||
       task.taskName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.taskDescription?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Handle archived filter separately
-    if (statusFilter === "archived") {
-      return searchMatch && (task.isArchived || task.archived);
-    } else {
-      const statusMatch =
-        statusFilter === "all" ||
-        mapStatusForDisplay(task.taskStatus) === statusFilter;
-
-      return searchMatch && statusMatch && !(task.isArchived || task.archived);
-    }
+    // Only show archived tasks when showArchived is true
+    const archiveMatch = showArchived ? (task.isArchived || task.archived) : !(task.isArchived || task.archived);
+    return searchMatch && archiveMatch;
   });
 
   // Handler functions
@@ -335,7 +321,7 @@ const Tasks = () => {
                   // Force refresh the task list and stats
                   refetch();
                   // If we're in the archive view, refresh immediately
-                  if (statusFilter === "archived") {
+                  if (showArchived) {
                     setTimeout(() => refetch(), 300);
                   }
                 })
@@ -617,19 +603,6 @@ const Tasks = () => {
               />
             </div>
             <div className="flex items-center gap-3">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-auto md:w-[180px] bg-white shadow-sm rounded-md border-gray-300">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Not Started">Not Started</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                  <SelectItem value="On Hold">On Hold</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
               <Button
                 onClick={() => {
                   setEditingTask(null);
