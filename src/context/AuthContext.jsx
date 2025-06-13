@@ -205,6 +205,7 @@ export const AuthProvider = ({ children }) => {
     firebaseAvailable,
     login,
     logout,
+    refreshUserData: () => queryClient.invalidateQueries(["user"]),
     loginWithGoogle:
       typeof authService.loginWithGoogle === "function"
         ? authService.loginWithGoogle
