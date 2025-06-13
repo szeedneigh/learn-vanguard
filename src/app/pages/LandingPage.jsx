@@ -117,10 +117,10 @@ const LandingPage = () => {
         {/* About Section */}
         <section className="container mx-auto px-4 mt-12 md:mt-24">
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-6 md:mb-8 text-center animate-fade-in-up" style={{ "--delay": "0ms" }}>
-            About Student Resource Hub
+            About Learn Vanguard
           </h2>
           <p className="text-white/80 max-w-3xl mx-auto text-center text-base md:text-lg lg:text-xl animate-fade-in-up" style={{ "--delay": "200ms" }}>
-            Student Resource Hub is a comprehensive platform designed to support
+            Learn Vanguard is a comprehensive platform designed to support
             students throughout their academic journey. We provide personalized
             learning paths, a vast library of study materials, advanced progress
             tracking tools, and a vibrant community for peer and mentor support.
@@ -136,7 +136,7 @@ const LandingPage = () => {
           </h2>
           <p className="text-white/80 mb-6 md:mb-8 text-base md:text-lg animate-fade-in-up" style={{ "--delay": "200ms" }}>
             Join thousands of students who are already achieving their goals
-            with Student Resource Hub.
+            with Learn Vanguard.
           </p>
           <div className="animate-fade-in-up" style={{ "--delay": "400ms" }}>
             <Link to="/signup">
@@ -154,7 +154,7 @@ const LandingPage = () => {
         {/* Footer */}
         <footer className="mt-12 md:mt-24 py-4 md:py-8 bg-blue-900/50 text-white/80 text-center">
           <p className="text-sm md:text-base animate-fade-in-up" style={{ "--delay": "0ms" }}>
-            © {new Date().getFullYear()} Student Resource Hub. All rights
+            © {new Date().getFullYear()} Learn Vanguard. All rights
             reserved.
           </p>
         </footer>
