@@ -205,6 +205,10 @@ export const AuthProvider = ({ children }) => {
     firebaseAvailable,
     login,
     logout,
+    loginWithGoogle:
+      typeof authService.loginWithGoogle === "function"
+        ? authService.loginWithGoogle
+        : () => Promise.reject(new Error("loginWithGoogle not implemented")),
     // ... other methods ...
   };
 
