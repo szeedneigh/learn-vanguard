@@ -16,6 +16,8 @@ const storeToken = (token) => {
     return false;
   }
   try {
+    // Clear any existing token first
+    localStorage.removeItem("authToken");
     localStorage.setItem("authToken", token);
     return true;
   } catch (error) {
@@ -77,6 +79,9 @@ export const login = async (credentials) => {
       password: "[REDACTED]",
     });
 
+    // Clear any existing token before login attempt
+    removeToken();
+
     const response = await apiClient.post("/auth/login", credentials);
     console.log("Login response:", {
       status: response.status,
@@ -116,6 +121,9 @@ export const login = async (credentials) => {
       };
     }
 
+    // Update React Query cache with user data
+    queryClient.setQueryData(["user"], normalizedUser);
+
     return {
       success: true,
       token,
@@ -123,6 +131,9 @@ export const login = async (credentials) => {
     };
   } catch (error) {
     console.error("Login failed:", error.response?.data || error);
+
+    // Clear token on login failure
+    removeToken();
 
     if (error.response?.status === 401) {
       return {
@@ -616,7 +627,18 @@ export const getCurrentUser = async () => {
 export const logout = async () => {
   try {
     console.log("Logging out user...");
-    await apiClient.post("/auth/logout");
+    const token = localStorage.getItem("authToken");
+
+    if (token) {
+      try {
+        await apiClient.post("/auth/logout");
+      } catch (error) {
+        console.warn("Logout API call failed:", error);
+        // Continue with local logout even if API call fails
+      }
+    }
+
+    // Always remove token and clear user data
     removeToken();
     return { success: true };
   } catch (error) {
@@ -785,7 +807,7 @@ export const verifyToken = async () => {
       if (response.data?.valid && response.data?.user) {
         const normalizedUser = normalizeUserData(response.data.user);
         // Update cached user data
-        queryClient.setQueryData(["auth", "user"], normalizedUser);
+        queryClient.setQueryData(["user"], normalizedUser);
         return {
           valid: true,
           user: normalizedUser,

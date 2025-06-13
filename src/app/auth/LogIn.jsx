@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { motion, AnimatePresence } from "framer-motion";
 import { EyeIcon, EyeOffIcon, ArrowLeft } from "lucide-react";
@@ -178,7 +178,13 @@ PasswordInput.propTypes = {
  */
 export default function LogIn() {
   const navigate = useNavigate();
-  const { login, loginWithGoogle, isLoading: authIsLoading } = useAuth();
+  const {
+    login,
+    loginWithGoogle,
+    isLoading: authIsLoading,
+    user,
+    loading,
+  } = useAuth();
   const [formErrors, setFormErrors] = useState({});
   const [apiError, setApiError] = useState(null);
   const [formData, setFormData] = useState({
@@ -191,6 +197,12 @@ export default function LogIn() {
     email: "",
     idToken: "",
   });
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const validateForm = () => {
     const errors = {};

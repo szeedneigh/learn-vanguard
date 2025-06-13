@@ -395,7 +395,7 @@ const Home = () => {
                     mode="single"
                     selected={selectedDate}
                     onSelect={handleDateSelect}
-                    className="rounded-lg [&_.rdp-button.bg-primary]:!text-white [&_.rdp-button[aria-selected='true']]:!text-white"
+                    className="rounded-lg [&_.rdp-day_selected]:!bg-blue-600 [&_.rdp-day_selected]:!text-white [&_.rdp-day_selected]:!hover:bg-blue-700 [&_.rdp-day_selected]:!hover:text-white [&_.rdp-day_selected.hasEvent]:!text-white"
                     disabled={isDateChanging}
                     modifiers={{
                       hasEvent: (date) => hasEventOnDate(date),
@@ -408,23 +408,14 @@ const Home = () => {
                       },
                       selected: {
                         backgroundColor: "rgb(37 99 235)",
-                        color: "white",
+                        color: "white !important",
                       },
                       "selected.hasEvent": {
                         backgroundColor: "rgb(37 99 235)",
-                        color: "white",
+                        color: "white !important",
                         textDecoration: "underline",
                         fontWeight: "bold",
                       },
-                    }}
-                    style={{
-                      "--rdp-cell-size": "40px",
-                      "--rdp-accent-color": "rgb(37 99 235)",
-                      "--rdp-background-color": "rgb(37 99 235)",
-                      "--rdp-accent-color-dark": "rgb(37 99 235)",
-                      "--rdp-background-color-dark": "rgb(37 99 235)",
-                      "--rdp-outline": "2px solid rgb(37 99 235)",
-                      "--rdp-outline-selected": "2px solid rgb(37 99 235)",
                     }}
                   />
                 </div>

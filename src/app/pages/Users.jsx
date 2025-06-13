@@ -1,18 +1,9 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
-import { useUsersPage, useSearchUsers } from "@/hooks/useUsersQuery";
+import { useUsersPage } from "@/hooks/useUsersQuery";
 import { useAuth } from "@/context/AuthContext";
-import { usePermission } from "@/context/PermissionContext";
 import { programsData } from "@/lib/constants";
-import { Search, MoreHorizontal, Plus, ChevronRight } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Search, MoreHorizontal, ChevronRight } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { PERMISSIONS } from "@/lib/constants";
 
 // Display error message component
 const ErrorMessage = ({ error, onRetry }) => {
@@ -72,25 +62,14 @@ ErrorMessage.propTypes = {
 };
 
 function Users() {
-  const { toast } = useToast();
-  // Local state for UI
+  const { toast, dismiss } = useToast();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOption, setFilterOption] = useState("all");
   const [selectedProgramId, setSelectedProgramId] = useState(
     programsData[0].id
   );
   const [selectedYear, setSelectedYear] = useState("1");
-
-  // Remove modal states since we're using toast notifications
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [studentToAdd, setStudentToAdd] = useState(null);
-  const [addStudentError, setAddStudentError] = useState("");
-  const [studentToAssignRole, setStudentToAssignRole] = useState(null);
-  const [studentToRevertRole, setStudentToRevertRole] = useState(null);
-  const [studentToRemove, setStudentToRemove] = useState(null);
-
-  // Remove add student modal states
-  const [addStudentSearchQuery, setAddStudentSearchQuery] = useState("");
 
   // React Query hooks
   const {
@@ -101,31 +80,11 @@ function Users() {
     assignPIO,
     revertPIO,
     removeUser,
-    isAssigningPIO,
-    isRevertingPIO,
-    isRemovingUser,
-    assignPIOError,
-    revertPIOError,
-    removeUserError,
   } = useUsersPage(selectedProgramId, selectedYear);
-
-  // Remove search users hook for add student modal
-  // const { data: searchResults = [], isLoading: isSearchingStudents } =
-  //   useSearchUsers(addStudentSearchQuery, {
-  //     enabled: addStudentSearchQuery.length > 2,
-  //   });
 
   // Computed values
   const currentProgram =
     programsData.find((p) => p.id === selectedProgramId) || programsData[0];
-
-  // Add user context to check current user's role
-  const { user } = useAuth();
-  const { hasPermission } = usePermission();
-
-  // Check if current user is a PIO - this will be used to disable actions
-  const isCurrentUserPIO =
-    user?.role === "pio" || user?.normalizedRole === "pio";
 
   // Check if current user is an admin - this will be used to show/hide actions
   const isCurrentUserAdmin =
@@ -185,6 +144,11 @@ function Users() {
       return nameA.localeCompare(nameB);
     });
 
+  // Compute if a PIO is already assigned for the selected year
+  const isPIOAssignedForYear = filteredAndSortedStudents.some(
+    (student) => student.role === "pio"
+  );
+
   // Event handlers
   const handleProgramChange = (programId) => {
     if (programId !== selectedProgramId) {
@@ -212,55 +176,63 @@ function Users() {
     }
   };
 
-  // Modal handlers
-  // const openAddStudentModal = () => {
-  //   // Don't open modal if user is PIO
-  //   if (isCurrentUserPIO) return;
+  // Helper to get display name
+  const getDisplayName = (student) => {
+    if (student.firstName && student.lastName)
+      return `${student.firstName} ${student.lastName}`;
+    if (student.name) return student.name;
+    return "Unknown Student";
+  };
 
-  //   setShowAddModal(true);
-  //   setAddStudentSearchQuery("");
-  //   setStudentToAdd(null);
-  //   setAddStudentError("");
-  // };
-
-  // const closeAddModal = () => {
-  //   setShowAddModal(false);
-  //   setStudentToAdd(null);
-  //   setAddStudentError("");
-  // };
-
-  const openAssignRoleModal = (student) => {
-    // Don't open modal if user is PIO
-    if (isCurrentUserPIO) return;
-
-    setStudentToAssignRole(student);
-    toast({
-      title: "Assign Public Information Officer Role?",
-      description: `Are you sure you want to assign ${
-        student.firstName && student.lastName
-          ? `${student.firstName} ${student.lastName}`
-          : student.name
-      } as a Public Information Officer for ${
-        currentProgram.name
-      } - Year ${selectedYear}?`,
+  // Implement handleAssignPIO, handleRevertPIO, and handleRemoveStudent using the correct logic
+  const handleAssignPIO = (student) => {
+    const displayName = getDisplayName(student);
+    const programName =
+      selectedProgramId === "bsis"
+        ? "Bachelor of Science in Information Systems"
+        : "Associate in Computer Technology";
+    const yearLevel = {
+      1: "First Year",
+      2: "Second Year",
+      3: "Third Year",
+      4: "Fourth Year",
+    }[selectedYear];
+    const assignedClass = `${programName} - ${yearLevel}`;
+    const { id: toastId } = toast({
+      title: "Assign as PIO?",
+      description: `Assign ${displayName} as PIO for ${assignedClass}? Only one PIO per year level is allowed.`,
+      duration: null,
       action: (
         <div className="flex gap-2">
           <Button
             variant="default"
             size="sm"
-            onClick={() => {
-              handleAssignRole();
+            onClick={async () => {
+              try {
+                await assignPIO({
+                  studentId: student.id || student._id,
+                  program: selectedProgramId,
+                  yearLevel: selectedYear,
+                });
+                toast({
+                  title: "PIO Assigned",
+                  description: `${displayName} is now a PIO for ${assignedClass}.`,
+                });
+                await refetch();
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: error.message || "Failed to assign PIO.",
+                  variant: "destructive",
+                });
+              } finally {
+                dismiss(toastId);
+              }
             }}
           >
             Assign
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setStudentToAssignRole(null);
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={() => dismiss(toastId)}>
             Cancel
           </Button>
         </div>
@@ -268,233 +240,84 @@ function Users() {
     });
   };
 
-  const openRemoveModal = (student) => {
-    // Don't open modal if user is PIO
-    if (isCurrentUserPIO) return;
+  const handleRevertPIO = (student) => {
+    const displayName = getDisplayName(student);
+    const { id: toastId } = toast({
+      title: "Revert to Student?",
+      description: `Revert ${displayName} from PIO to student?`,
+      duration: null,
+      action: (
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={async () => {
+              try {
+                await revertPIO({ studentId: student.id || student._id });
+                toast({
+                  title: "Role Reverted",
+                  description: `${displayName} is now a student again.`,
+                });
+                await refetch();
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: error.message || "Failed to revert PIO.",
+                  variant: "destructive",
+                });
+              } finally {
+                dismiss(toastId);
+              }
+            }}
+          >
+            Revert
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => dismiss(toastId)}>
+            Cancel
+          </Button>
+        </div>
+      ),
+    });
+  };
 
-    setStudentToRemove(student);
-    toast({
+  const handleRemoveStudent = (student) => {
+    const displayName = getDisplayName(student);
+    const { id: toastId } = toast({
       title: "Remove Student?",
-      description: `Are you sure you want to remove ${
-        student.firstName && student.lastName
-          ? `${student.firstName} ${student.lastName}`
-          : student.name
-      } from ${
-        currentProgram.name
-      } - Year ${selectedYear}? This action cannot be undone.`,
+      description: `Are you sure you want to remove ${displayName}? This action cannot be undone.`,
+      duration: null,
       action: (
         <div className="flex gap-2">
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => {
-              handleRemoveStudent();
+            onClick={async () => {
+              try {
+                await removeUser({ studentId: student.id || student._id });
+                toast({
+                  title: "Student Removed",
+                  description: `${displayName} has been removed.`,
+                });
+                await refetch();
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: error.message || "Failed to remove student.",
+                  variant: "destructive",
+                });
+              } finally {
+                dismiss(toastId);
+              }
             }}
           >
             Remove
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setStudentToRemove(null);
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={() => dismiss(toastId)}>
             Cancel
           </Button>
         </div>
       ),
     });
-  };
-
-  const openRevertRoleModal = (student) => {
-    // Don't open modal if user is PIO
-    if (isCurrentUserPIO) return;
-
-    setStudentToRevertRole(student);
-    toast({
-      title: "Revert Public Information Officer Role?",
-      description: `Are you sure you want to revert ${
-        student.firstName && student.lastName
-          ? `${student.firstName} ${student.lastName}`
-          : student.name
-      } back to a regular student in ${
-        currentProgram.name
-      } - Year ${selectedYear}?`,
-      action: (
-        <div className="flex gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => {
-              handleRevertRole();
-            }}
-          >
-            Revert
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setStudentToRevertRole(null);
-            }}
-          >
-            Cancel
-          </Button>
-        </div>
-      ),
-    });
-  };
-
-  const handleSelectSearchResult = (student) => {
-    setStudentToAdd(student);
-    // Use the appropriate name format for the search query
-    const displayName =
-      student.firstName && student.lastName
-        ? `${student.firstName} ${student.lastName}`
-        : student.name;
-    setAddStudentSearchQuery(displayName);
-  };
-
-  const handleAddStudent = async () => {
-    if (!studentToAdd) {
-      setAddStudentError("Please select a student first");
-      return;
-    }
-
-    try {
-      // Clear any previous errors
-      setAddStudentError("");
-
-      // Use the appropriate API call from the useUsersPage hook
-      await addUser({
-        studentId: studentToAdd.id || studentToAdd._id,
-        program: currentProgram.id,
-        yearLevel: selectedYear,
-      });
-
-      // Close modal and refetch data on success
-      // closeAddModal();
-      refetch();
-
-      // Show success toast
-      toast({
-        title: "Student Added",
-        description: `${
-          studentToAdd.firstName && studentToAdd.lastName
-            ? `${studentToAdd.firstName} ${studentToAdd.lastName}`
-            : studentToAdd.name
-        } has been added to ${currentProgram.name} - Year ${selectedYear}`,
-      });
-    } catch (error) {
-      console.error("Error adding student:", error);
-      setAddStudentError(
-        error.message || "Failed to add student. Please try again."
-      );
-    }
-  };
-
-  const handleRemoveStudent = async () => {
-    if (!studentToRemove) return;
-
-    try {
-      await removeUser({
-        studentId: studentToRemove.id || studentToRemove._id,
-        program: currentProgram.id,
-        yearLevel: selectedYear,
-      });
-
-      // Close modal and refetch data on success
-      setStudentToRemove(null);
-      refetch();
-
-      // Show success toast
-      toast({
-        title: "Student Removed",
-        description: `${
-          studentToRemove.firstName && studentToRemove.lastName
-            ? `${studentToRemove.firstName} ${studentToRemove.lastName}`
-            : studentToRemove.name
-        } has been removed from ${currentProgram.name} - Year ${selectedYear}`,
-      });
-    } catch (error) {
-      console.error("Error removing student:", error);
-      toast({
-        title: "Error",
-        description: "Failed to remove student. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleAssignRole = async () => {
-    if (!studentToAssignRole) return;
-
-    try {
-      await assignPIO({
-        studentId: studentToAssignRole.id || studentToAssignRole._id,
-        program: currentProgram.id,
-        yearLevel: selectedYear,
-      });
-
-      // Close modal and refetch data on success
-      setStudentToAssignRole(null);
-      refetch();
-
-      // Show success toast
-      toast({
-        title: "Role Assigned",
-        description: `${
-          studentToAssignRole.firstName && studentToAssignRole.lastName
-            ? `${studentToAssignRole.firstName} ${studentToAssignRole.lastName}`
-            : studentToAssignRole.name
-        } has been assigned as Public Information Officer for ${
-          currentProgram.name
-        } - Year ${selectedYear}`,
-      });
-    } catch (error) {
-      console.error("Error assigning role:", error);
-      toast({
-        title: "Error",
-        description: "Failed to assign role. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleRevertRole = async () => {
-    if (!studentToRevertRole) return;
-
-    try {
-      await revertPIO({
-        studentId: studentToRevertRole.id || studentToRevertRole._id,
-        program: currentProgram.id,
-        yearLevel: selectedYear,
-      });
-
-      // Close modal and refetch data on success
-      setStudentToRevertRole(null);
-      refetch();
-
-      // Show success toast
-      toast({
-        title: "Role Reverted",
-        description: `${
-          studentToRevertRole.firstName && studentToRevertRole.lastName
-            ? `${studentToRevertRole.firstName} ${studentToRevertRole.lastName}`
-            : studentToRevertRole.name
-        } has been reverted to a regular student in ${
-          currentProgram.name
-        } - Year ${selectedYear}`,
-      });
-    } catch (error) {
-      console.error("Error reverting role:", error);
-      toast({
-        title: "Error",
-        description: "Failed to revert role. Please try again.",
-        variant: "destructive",
-      });
-    }
   };
 
   // Error fallback UI
@@ -642,9 +465,6 @@ function Users() {
         </div>
         {/* Display errors */}
         <ErrorMessage error={error} onRetry={refetch} />
-        {assignPIOError && <ErrorMessage error={assignPIOError} />}
-        {revertPIOError && <ErrorMessage error={revertPIOError} />}
-        {removeUserError && <ErrorMessage error={removeUserError} />}
         <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
           <div className="overflow-x-auto">
             <table className="w-full min-w-full divide-y divide-gray-200">
@@ -749,9 +569,14 @@ function Users() {
 
                               {student.role !== "pio" && (
                                 <DropdownMenuItem
-                                  onClick={() => openAssignRoleModal(student)}
-                                  className="cursor-pointer"
-                                  disabled={false}
+                                  onClick={() => handleAssignPIO(student)}
+                                  className="cursor-pointer hover:bg-gray-100 text-sm"
+                                  disabled={isPIOAssignedForYear}
+                                  title={
+                                    isPIOAssignedForYear
+                                      ? "A PIO is already assigned for this year."
+                                      : undefined
+                                  }
                                 >
                                   Assign Public Information Officer
                                 </DropdownMenuItem>
@@ -759,20 +584,16 @@ function Users() {
 
                               {student.role === "pio" && (
                                 <DropdownMenuItem
-                                  onClick={() => openRevertRoleModal(student)}
-                                  className="cursor-pointer"
-                                  disabled={false}
+                                  onClick={() => handleRevertPIO(student)}
+                                  className="cursor-pointer hover:bg-gray-100 text-sm"
                                 >
                                   Revert to Student
                                 </DropdownMenuItem>
                               )}
 
-                              <DropdownMenuSeparator />
-
                               <DropdownMenuItem
-                                onClick={() => openRemoveModal(student)}
+                                onClick={() => handleRemoveStudent(student)}
                                 className="cursor-pointer text-red-600"
-                                disabled={false}
                               >
                                 Remove Student
                               </DropdownMenuItem>
