@@ -318,6 +318,11 @@ export default function ForgotPassword() {
                   <p className="text-sm text-gray-600 mb-6 px-4 text-center">
                     We've sent a 6-digit code to{" "}
                     <span className="font-medium">{formData.email}</span>
+                    <br />
+                    <span className="text-gray-500 mt-2 block">
+                      If you don't see the email in your inbox, please check
+                      your spam folder.
+                    </span>
                   </p>
                 )}
                 {step === 3 && (

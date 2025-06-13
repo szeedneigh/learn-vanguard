@@ -251,9 +251,13 @@ function EmailVerification() {
                     <h2 className="text-xl font-semibold text-gray-800 mb-2">
                       Verify Your Email
                     </h2>
-                    <p className="text-gray-500 mb-6">
+                    <p className="text-gray-500 mb-2">
                       We&apos;ve sent a verification email to your address.
                       Please check your inbox and click the verification link.
+                    </p>
+                    <p className="text-gray-500 mb-6 text-sm">
+                      If you don&apos;t see the email in your inbox, please
+                      check your spam folder.
                     </p>
 
                     <motion.button
