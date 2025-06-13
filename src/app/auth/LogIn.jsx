@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { motion, AnimatePresence } from "framer-motion";
 import { EyeIcon, EyeOffIcon, ArrowLeft } from "lucide-react";
@@ -6,8 +6,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Lock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import GoogleRegistration from "./GoogleRegistration";
-import { getCurrentUserToken } from "@/config/firebase";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const smoothTransition = {
   type: "spring",
@@ -109,7 +109,7 @@ FloatingLabelInput.propTypes = {
  */
 const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
   const [showPassword, setShowPassword] = useState(false);
-  const togglePasswordVisibility = useCallback(
+  const togglePasswordVisibility = React.useCallback(
     () => setShowPassword((prev) => !prev),
     []
   );
@@ -178,6 +178,7 @@ PasswordInput.propTypes = {
  */
 export default function LogIn() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const {
     login,
     loginWithGoogle,
@@ -192,11 +193,6 @@ export default function LogIn() {
     password: "",
   });
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [showGoogleRegistration, setShowGoogleRegistration] = useState(false);
-  const [googleRegistrationData, setGoogleRegistrationData] = useState({
-    email: "",
-    idToken: "",
-  });
 
   useEffect(() => {
     if (!loading && user) {
@@ -274,40 +270,27 @@ export default function LogIn() {
     setIsGoogleLoading(true);
 
     try {
-      // Use redirect method (true) to avoid popup blocking issues
-      const result = await loginWithGoogle(true);
+      const result = await loginWithGoogle();
 
       if (result?.success) {
-        // Wait a moment to ensure auth state is updated
+        if (result.user) {
+          queryClient.setQueryData(["user"], result.user);
+        }
         setTimeout(() => {
           navigate("/dashboard");
         }, 500);
       } else if (result?.needsRegistration) {
-        // Get the Firebase ID token for registration
-        const idToken = await getCurrentUserToken();
-
-        if (idToken && result.email) {
-          // Show the Google registration form
-          setGoogleRegistrationData({
-            email: result.email,
-            idToken: idToken,
-          });
-          setShowGoogleRegistration(true);
-        } else {
-          setApiError("Failed to get authentication token for registration.");
-        }
-      } else if (result?.inProgress) {
-        // Redirect is in progress, show a message
-        setApiError("Redirecting to Google sign-in...");
+        // Instead of showing registration form, direct user to sign up page
+        toast({
+          title: "Account Required",
+          description: "No account found for this email. Please sign up first.",
+          variant: "destructive",
+        });
+        navigate("/signup");
       } else if (result?.tokenExpired) {
-        // Handle token expiration specifically
-        setApiError(
-          "Your session has expired. Please sign in with Google again."
-        );
+        setApiError("Your session has expired. Please sign in with Google again.");
       } else {
-        setApiError(
-          result?.error || "Google sign-in failed. Please try again."
-        );
+        setApiError(result?.error || "Google sign-in failed. Please try again.");
       }
     } catch (error) {
       console.error("Google sign-in error:", error);
@@ -317,35 +300,13 @@ export default function LogIn() {
     }
   };
 
-  // Handle successful Google registration
-  const handleGoogleRegistrationSuccess = (result) => {
-    if (result.success) {
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 500);
-    } else {
-      setApiError("Registration failed. Please try again.");
-      setShowGoogleRegistration(false);
-    }
-  };
-
-  // Handle Google registration cancellation
-  const handleGoogleRegistrationCancel = () => {
-    setShowGoogleRegistration(false);
-    setGoogleRegistrationData({ email: "", idToken: "" });
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/95 via-indigo-50/95 to-violet-50/95 backdrop-blur-sm">
       <div className="flex flex-col lg:flex-row min-h-screen">
-        <motion.div
-          className="w-full lg:w-1/2 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-        >
-          {/* Back link */}
+        {/* Left Side - Login Form */}
+        <motion.div className="w-full lg:w-1/2 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-8">
           <div className="max-w-md mx-auto w-full space-y-6">
+            {/* Back link */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -360,22 +321,14 @@ export default function LogIn() {
               </Link>
             </motion.div>
 
-            {/* Form card */}
-            <AnimatePresence mode="wait">
-              {showGoogleRegistration ? (
-                <GoogleRegistration
-                  email={googleRegistrationData.email}
-                  onSuccess={handleGoogleRegistrationSuccess}
-                  onCancel={handleGoogleRegistrationCancel}
-                />
-              ) : (
-                <motion.div
-                  key="loginForm"
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.3 }}
-                >
+            {/* Main content */}
+            <motion.div
+              key="loginForm"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3 }}
+            >
                   {apiError && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -567,7 +520,7 @@ export default function LogIn() {
                               fill="#EA4335"
                             />
                           </svg>
-                          Sign in with Google
+                           Sign in with Google
                         </>
                       )}
                     </motion.button>
@@ -576,9 +529,7 @@ export default function LogIn() {
                       accounts
                     </p>
                   </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            </motion.div>
           </div>
         </motion.div>
 

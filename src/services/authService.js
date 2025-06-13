@@ -200,14 +200,19 @@ export const loginWithGoogle = async (useRedirect = false) => {
       }
 
       if (token) {
-        console.log("Storing authentication token");
+        console.log("Storing authentication token", token);
         storeToken(token);
+      } else {
+        console.error(
+          "No token received from backend after Google sign-in",
+          response.data
+        );
       }
 
       return {
         user,
         token,
-        success: true,
+        success: !!token,
         message: message || "Google sign-in successful",
       };
     } catch (apiError) {

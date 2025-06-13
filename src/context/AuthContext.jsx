@@ -209,6 +209,17 @@ export const AuthProvider = ({ children }) => {
       typeof authService.loginWithGoogle === "function"
         ? authService.loginWithGoogle
         : () => Promise.reject(new Error("loginWithGoogle not implemented")),
+    resendVerificationEmail:
+      typeof authService.resendVerificationEmail === "function"
+        ? authService.resendVerificationEmail
+        : () =>
+            Promise.reject(
+              new Error("resendVerificationEmail not implemented")
+            ),
+    verifyEmail:
+      typeof authService.verifyEmail === "function"
+        ? authService.verifyEmail
+        : () => Promise.reject(new Error("verifyEmail not implemented")),
     // ... other methods ...
   };
 
