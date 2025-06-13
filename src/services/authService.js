@@ -643,13 +643,15 @@ export const requestPasswordReset = async (data) => {
 
     // Check for specific error types
     if (error.response?.status === 429) {
+      const retryAfter =
+        parseInt(error.response?.headers?.["retry-after"]) || 300;
       return {
         success: false,
         error:
           error.response?.data?.message ||
           "Too many requests. Please try again later.",
         isRateLimited: true,
-        retryAfter: error.response?.headers?.["retry-after"] || 60,
+        retryAfter,
       };
     }
 

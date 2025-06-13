@@ -41,6 +41,9 @@ export default function ForgotPassword() {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [canResend, setCanResend] = useState(true);
   const [resendTimer, setResendTimer] = useState(0);
+  const [remainingAttempts, setRemainingAttempts] = useState(10);
+  const [rateLimitTimer, setRateLimitTimer] = useState(0);
+  const [emailRateLimitTimer, setEmailRateLimitTimer] = useState(0);
 
   // Input change handler
   const handleChange = (field) => (e) => {
@@ -133,23 +136,39 @@ export default function ForgotPassword() {
     }
   }, [resendTimer, canResend]);
 
+  useEffect(() => {
+    if (rateLimitTimer > 0) {
+      const timer = setTimeout(
+        () => setRateLimitTimer(rateLimitTimer - 1),
+        1000
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [rateLimitTimer]);
+
+  // Format time in minutes and seconds
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
   // Form submission handlers
   const handleResend = async () => {
     if (canResend) {
       setError(null);
       setCanResend(false);
-      setResendTimer(30);
+      setResendTimer(300); // Set resend timer to 5 minutes to match backend rate limit
 
       try {
         const result = await requestPasswordReset({ email: formData.email });
         if (!result.success) {
           // Handle rate limiting specifically
           if (result.isRateLimited) {
-            const retryAfter = result.retryAfter || 60;
+            const retryAfter = result.retryAfter || 300;
+            setRateLimitTimer(retryAfter);
             setResendTimer(retryAfter);
-            setError(
-              `Too many requests. Please try again in ${retryAfter} seconds.`
-            );
+            setError("Too many requests. Please wait before trying again.");
           } else {
             setError(result.error);
           }
@@ -170,14 +189,21 @@ export default function ForgotPassword() {
         const result = await requestPasswordReset({ email: formData.email });
         if (result.success) {
           setStep(2);
+          setRemainingAttempts(result.remainingAttempts || 10);
+          setCanResend(false);
+          setResendTimer(300); // Set initial resend timer to 5 minutes to match backend rate limit
         } else {
           // Handle rate limiting specifically
           if (result.isRateLimited) {
-            const retryAfter = result.retryAfter || 60;
+            const retryAfter = result.retryAfter || 300;
+            setEmailRateLimitTimer(retryAfter);
             setResendTimer(retryAfter);
+            setRateLimitTimer(retryAfter);
             setCanResend(false);
             setError(
-              `Too many requests. Please try again in ${retryAfter} seconds.`
+              `Too many requests. Please wait ${formatTime(
+                retryAfter
+              )} before trying again.`
             );
           } else {
             setError(result.error);
@@ -211,11 +237,16 @@ export default function ForgotPassword() {
         } else {
           // Handle rate limiting specifically
           if (result.isRateLimited) {
+            const retryAfter = result.retryAfter || 300;
+            setRateLimitTimer(retryAfter);
             setCanResend(false);
-            setResendTimer(60); // Default to 60 seconds if no retry-after header
-            setError("Too many failed attempts. Please try again later.");
+            setResendTimer(retryAfter);
+            setError(
+              "Too many failed attempts. Please wait before trying again."
+            );
           } else {
             setError(result.error || "Invalid verification code");
+            setRemainingAttempts(result.remainingAttempts || 0);
           }
         }
       } catch (err) {
@@ -235,7 +266,8 @@ export default function ForgotPassword() {
       setError(null);
       try {
         const result = await resetPassword({
-          resetToken: formData.resetToken,
+          email: formData.email,
+          code: formData.code,
           password: formData.newPassword,
           confirmPassword: formData.confirmPassword,
         });
@@ -252,7 +284,8 @@ export default function ForgotPassword() {
       }
     },
     [
-      formData.resetToken,
+      formData.email,
+      formData.code,
       formData.newPassword,
       formData.confirmPassword,
       navigate,
@@ -341,7 +374,15 @@ export default function ForgotPassword() {
                   >
                     <Alert variant="destructive" className="mb-4">
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{error}</AlertDescription>
+                      <AlertDescription>
+                        {error}
+                        {(rateLimitTimer > 0 || emailRateLimitTimer > 0) && (
+                          <div className="mt-1 text-sm font-medium">
+                            Time remaining:{" "}
+                            {formatTime(rateLimitTimer || emailRateLimitTimer)}
+                          </div>
+                        )}
+                      </AlertDescription>
                     </Alert>
                   </motion.div>
                 )}
@@ -374,6 +415,7 @@ export default function ForgotPassword() {
                         required
                         icon={Mail}
                         error={emailError}
+                        disabled={emailRateLimitTimer > 0}
                       />
                     </motion.div>
                   )}
@@ -392,6 +434,7 @@ export default function ForgotPassword() {
                           setFormData((prev) => ({ ...prev, code: newCode }))
                         }
                         onComplete={handleCodeSubmit}
+                        remainingAttempts={remainingAttempts}
                       />
                       <div className="text-center text-sm">
                         <motion.button
