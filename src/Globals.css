@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -67,6 +67,49 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Poppins', sans-serif;
+    font-family: "Poppins", sans-serif;
   }
+}
+
+/* Calendar Styles */
+.rdp-button.bg-primary,
+.rdp-button.text-primary-foreground,
+.rdp-button[aria-selected="true"] {
+  color: white !important;
+}
+
+.rdp-button.bg-primary *,
+.rdp-button.text-primary-foreground *,
+.rdp-button[aria-selected="true"] * {
+  color: white !important;
+}
+
+.rdp-day_selected,
+.rdp-day_selected:focus-visible:not([disabled]),
+.rdp-day_selected:hover:not([disabled]) {
+  color: white !important;
+  background-color: rgb(37 99 235) !important;
+}
+
+.rdp-day_selected.hasEvent,
+.rdp-day_selected.hasEvent:focus-visible:not([disabled]),
+.rdp-day_selected.hasEvent:hover:not([disabled]) {
+  color: white !important;
+  background-color: rgb(37 99 235) !important;
+  text-decoration: underline !important;
+  font-weight: bold !important;
+}
+
+/* Override any internal styles */
+.rdp-day_selected *,
+.rdp-day_selected.hasEvent * {
+  color: white !important;
+}
+
+.rdp-day_selected {
+  color: white !important;
+}
+
+.rdp-day_selected span {
+  color: white !important;
 }

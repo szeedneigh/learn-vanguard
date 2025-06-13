@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import HeroSection from "@/components/section/HeroSection";
 import TaskList from "@/components/section/TaskList";
 import { Calendar } from "@/components/ui/calendar";
@@ -19,26 +19,67 @@ const Home = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isDateChanging, setIsDateChanging] = useState(false);
+
+  // Debounced date selection handler
+  const handleDateSelect = useCallback((date) => {
+    if (!date || isNaN(date.getTime())) {
+      console.error("Invalid date selected:", date);
+      return;
+    }
+
+    setIsDateChanging(true);
+    try {
+      setSelectedDate(date);
+    } catch (err) {
+      console.error("Error setting date:", err);
+      setError(new Error("Failed to update date"));
+    } finally {
+      // Reset the changing state after a short delay
+      setTimeout(() => setIsDateChanging(false), 300);
+    }
+  }, []);
 
   // Format the selected date for display
   const formattedDate = useMemo(() => {
-    return format(selectedDate, "MMMM d, yyyy");
+    try {
+      return format(selectedDate, "MMMM d, yyyy");
+    } catch (err) {
+      console.error("Error formatting date:", err);
+      return "Invalid date";
+    }
   }, [selectedDate]);
 
   // Get all events for the current month to show indicators
   const currentMonth = useMemo(() => {
-    const date = new Date(selectedDate);
-    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    return {
-      firstDay: firstDay.toISOString().split("T")[0],
-      lastDay: lastDay.toISOString().split("T")[0],
-    };
+    try {
+      const date = new Date(selectedDate);
+      if (isNaN(date.getTime())) {
+        throw new Error("Invalid date");
+      }
+      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      return {
+        firstDay: firstDay.toISOString().split("T")[0],
+        lastDay: lastDay.toISOString().split("T")[0],
+      };
+    } catch (err) {
+      console.error("Error calculating month range:", err);
+      return {
+        firstDay: format(new Date(), "yyyy-MM-dd"),
+        lastDay: format(new Date(), "yyyy-MM-dd"),
+      };
+    }
   }, [selectedDate]);
 
   // Format the selected date for API query
   const dateString = useMemo(() => {
-    return format(selectedDate, "yyyy-MM-dd");
+    try {
+      return format(selectedDate, "yyyy-MM-dd");
+    } catch (err) {
+      console.error("Error formatting date string:", err);
+      return format(new Date(), "yyyy-MM-dd");
+    }
   }, [selectedDate]);
 
   // Get events for the selected day
@@ -53,12 +94,12 @@ const Home = () => {
       endDate: dateString,
     },
     {
-      // Force refetch when the date changes
+      enabled: !isDateChanging, // Don't fetch while date is changing
       refetchOnMount: true,
       refetchOnWindowFocus: true,
-      cacheTime: 0, // Don't cache this query
-      staleTime: 0, // Consider data stale immediately
-      retry: 1, // Retry once if the request fails
+      cacheTime: 0,
+      staleTime: 0,
+      retry: 1,
       onSuccess: (data) => {
         console.log(
           `Successfully fetched ${data.length} events for ${dateString}`
@@ -72,8 +113,10 @@ const Home = () => {
 
   // Effect to refetch selected day events when date changes
   useEffect(() => {
-    refetchSelectedDayEvents();
-  }, [dateString, refetchSelectedDayEvents]);
+    if (!isDateChanging) {
+      refetchSelectedDayEvents();
+    }
+  }, [dateString, refetchSelectedDayEvents, isDateChanging]);
 
   const {
     data: monthEvents = [],
@@ -290,6 +333,12 @@ const Home = () => {
               ? parseISO(event.scheduleDate)
               : new Date(event.scheduleDate);
 
+          // Validate the date
+          if (isNaN(eventDate.getTime())) {
+            console.error("Invalid event date:", event.scheduleDate);
+            return "Time not specified";
+          }
+
           return eventDate.toLocaleTimeString("en-US", {
             hour: "numeric",
             minute: "2-digit",
@@ -297,21 +346,29 @@ const Home = () => {
           });
         })();
 
+      // Validate the date for the formatted date
+      const eventDate =
+        typeof event.scheduleDate === "string"
+          ? parseISO(event.scheduleDate)
+          : new Date(event.scheduleDate);
+
+      const formattedDate = isNaN(eventDate.getTime())
+        ? "Invalid date"
+        : event._formattedDate || format(eventDate, "yyyy-MM-dd");
+
       return {
         id: event._id || event.id,
         title: event.title,
         time,
         type: event.label?.text?.toLowerCase() || event.type || "event",
-        date:
-          event._formattedDate ||
-          format(parseISO(event.scheduleDate), "yyyy-MM-dd"),
+        date: formattedDate,
       };
     } catch (err) {
       console.error("Error formatting event for display:", err, event);
       return {
         id: event._id || event.id,
         title: event.title,
-        time: "Invalid time",
+        time: "Time not specified",
         type: event.label?.text?.toLowerCase() || event.type || "event",
         date: "Invalid date",
       };
@@ -337,8 +394,9 @@ const Home = () => {
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    className="rounded-lg"
+                    onSelect={handleDateSelect}
+                    className="rounded-lg [&_.rdp-button.bg-primary]:!text-white [&_.rdp-button[aria-selected='true']]:!text-white"
+                    disabled={isDateChanging}
                     modifiers={{
                       hasEvent: (date) => hasEventOnDate(date),
                     }}
@@ -346,8 +404,27 @@ const Home = () => {
                       hasEvent: {
                         fontWeight: "bold",
                         textDecoration: "underline",
-                        color: "var(--blue-600)",
+                        color: "rgb(37 99 235)",
                       },
+                      selected: {
+                        backgroundColor: "rgb(37 99 235)",
+                        color: "white",
+                      },
+                      "selected.hasEvent": {
+                        backgroundColor: "rgb(37 99 235)",
+                        color: "white",
+                        textDecoration: "underline",
+                        fontWeight: "bold",
+                      },
+                    }}
+                    style={{
+                      "--rdp-cell-size": "40px",
+                      "--rdp-accent-color": "rgb(37 99 235)",
+                      "--rdp-background-color": "rgb(37 99 235)",
+                      "--rdp-accent-color-dark": "rgb(37 99 235)",
+                      "--rdp-background-color-dark": "rgb(37 99 235)",
+                      "--rdp-outline": "2px solid rgb(37 99 235)",
+                      "--rdp-outline-selected": "2px solid rgb(37 99 235)",
                     }}
                   />
                 </div>

@@ -336,7 +336,7 @@ export const completeGoogleRegistration = async (registrationData) => {
       registrationData.course === "BSIS"
         ? "Bachelor of Science in Information Systems"
         : registrationData.course === "ACT"
-        ? "Associate of Computer Technology"
+        ? "Associate in Computer Technology"
         : registrationData.course;
 
     const mappedYearLevel =
@@ -474,7 +474,7 @@ export const completeSignup = async (completeData) => {
       completeData.course === "BSIS"
         ? "Bachelor of Science in Information Systems"
         : completeData.course === "ACT"
-        ? "Associate of Computer Technology"
+        ? "Associate in Computer Technology"
         : completeData.course;
 
     const mappedYearLevel =

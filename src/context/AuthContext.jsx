@@ -608,6 +608,7 @@ export const AuthProvider = ({ children }) => {
         toast({
           title: "Logged Out",
           description: "You have been successfully logged out.",
+          duration: 3000,
         });
 
         // Force re-initialization after logout
@@ -617,6 +618,7 @@ export const AuthProvider = ({ children }) => {
           title: "Logout Error",
           description: "Failed to logout properly. Please try again.",
           variant: "destructive",
+          duration: 3000,
         });
       }
     } catch (error) {

@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import toast from "react-hot-toast";
 import { PERMISSIONS } from "@/lib/constants";
 
 // Display error message component
@@ -80,8 +80,14 @@ const Users = () => {
   );
   const [selectedYear, setSelectedYear] = useState("1");
 
-  // Modal states - only keep the Add Student modal state
+  // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
+  const [showRevertRoleModal, setShowRevertRoleModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [studentToAssignRole, setStudentToAssignRole] = useState(null);
+  const [studentToRevertRole, setStudentToRevertRole] = useState(null);
+  const [studentToRemove, setStudentToRemove] = useState(null);
 
   // Add student modal states
   const [addStudentSearchQuery, setAddStudentSearchQuery] = useState("");
@@ -119,7 +125,6 @@ const Users = () => {
   // Add user context to check current user's role
   const { user } = useAuth();
   const { hasPermission } = usePermission();
-  const { toast } = useToast();
 
   // Check if current user is a PIO - this will be used to disable actions
   const isCurrentUserPIO =
@@ -233,169 +238,42 @@ const Users = () => {
     // Don't open modal if user is PIO
     if (isCurrentUserPIO) return;
 
-    const studentName =
-      student.firstName && student.lastName
-        ? `${student.firstName} ${student.lastName}`
-        : student.name;
+    setStudentToAssignRole(student);
+    setShowAssignRoleModal(true);
+  };
 
-    toast({
-      title: "Assign Public Information Officer Role?",
-      description: `Are you sure you want to assign ${studentName} as a Public Information Officer?`,
-      action: (
-        <div className="flex gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => {
-              assignPIO({
-                studentId: student.id || student._id,
-                program: currentProgram.id,
-                yearLevel: selectedYear,
-              })
-                .then(() => {
-                  toast({
-                    title: "Success",
-                    description: `${studentName} is now a Public Information Officer`,
-                    variant: "default",
-                  });
-                  refetch();
-                })
-                .catch((error) => {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to assign PIO role",
-                    variant: "destructive",
-                  });
-                });
-            }}
-          >
-            Yes
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Do nothing, toast will dismiss
-            }}
-          >
-            No
-          </Button>
-        </div>
-      ),
-    });
+  const closeAssignRoleModal = () => {
+    setShowAssignRoleModal(false);
+    // Reset state immediately without setTimeout
+    setStudentToAssignRole(null);
   };
 
   const openRemoveModal = (student) => {
     // Don't open modal if user is PIO
     if (isCurrentUserPIO) return;
 
-    const studentName =
-      student.firstName && student.lastName
-        ? `${student.firstName} ${student.lastName}`
-        : student.name;
+    setStudentToRemove(student);
+    setShowRemoveModal(true);
+  };
 
-    toast({
-      title: "Remove Student?",
-      description: `Are you sure you want to remove ${studentName} from ${currentProgram.name} - Year ${selectedYear}? This action cannot be undone.`,
-      action: (
-        <div className="flex gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            className="bg-red-600 hover:bg-red-700 text-white"
-            onClick={() => {
-              removeUser({
-                studentId: student.id || student._id,
-                program: currentProgram.id,
-                yearLevel: selectedYear,
-              })
-                .then(() => {
-                  toast({
-                    title: "Success",
-                    description: `${studentName} has been removed from ${currentProgram.name} - Year ${selectedYear}`,
-                    variant: "default",
-                  });
-                  refetch();
-                })
-                .catch((error) => {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to remove student",
-                    variant: "destructive",
-                  });
-                });
-            }}
-          >
-            Remove
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Do nothing, toast will dismiss
-            }}
-          >
-            Cancel
-          </Button>
-        </div>
-      ),
-    });
+  const closeRemoveModal = () => {
+    setShowRemoveModal(false);
+    // Reset state immediately without setTimeout
+    setStudentToRemove(null);
   };
 
   const openRevertRoleModal = (student) => {
     // Don't open modal if user is PIO
     if (isCurrentUserPIO) return;
 
-    const studentName =
-      student.firstName && student.lastName
-        ? `${student.firstName} ${student.lastName}`
-        : student.name;
+    setStudentToRevertRole(student);
+    setShowRevertRoleModal(true);
+  };
 
-    toast({
-      title: "Revert to Student Role?",
-      description: `Are you sure you want to revert ${studentName} back to a regular student?`,
-      action: (
-        <div className="flex gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => {
-              revertPIO({
-                studentId: student.id || student._id,
-                program: currentProgram.id,
-                yearLevel: selectedYear,
-              })
-                .then(() => {
-                  toast({
-                    title: "Success",
-                    description: `${studentName} is now a regular student`,
-                    variant: "default",
-                  });
-                  refetch();
-                })
-                .catch((error) => {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to revert PIO role",
-                    variant: "destructive",
-                  });
-                });
-            }}
-          >
-            Yes
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Do nothing, toast will dismiss
-            }}
-          >
-            No
-          </Button>
-        </div>
-      ),
-    });
+  const closeRevertRoleModal = () => {
+    setShowRevertRoleModal(false);
+    // Reset state immediately without setTimeout
+    setStudentToRevertRole(null);
   };
 
   const handleSelectSearchResult = (student) => {
@@ -430,20 +308,131 @@ const Users = () => {
       refetch();
 
       // Show success toast
-      toast({
-        title: "Success",
-        description: `${
+      toast.success(
+        `${
           studentToAdd.firstName && studentToAdd.lastName
             ? `${studentToAdd.firstName} ${studentToAdd.lastName}`
             : studentToAdd.name
-        } has been added to ${currentProgram.name} - Year ${selectedYear}`,
-        variant: "default",
-      });
+        } has been added to ${currentProgram.name} - Year ${selectedYear}`
+      );
     } catch (error) {
       console.error("Error adding student:", error);
       setAddStudentError(
         error.message || "Failed to add student. Please try again."
       );
+    }
+  };
+
+  const handleAssignRole = async () => {
+    if (!studentToAssignRole) return;
+
+    try {
+      await assignPIO({
+        studentId: studentToAssignRole.id || studentToAssignRole._id,
+        program: currentProgram.id,
+        yearLevel: selectedYear,
+      });
+
+      // Close modal and refetch data on success
+      closeAssignRoleModal();
+      refetch();
+
+      // Show success toast
+      toast.success(
+        `${
+          studentToAssignRole.firstName && studentToAssignRole.lastName
+            ? `${studentToAssignRole.firstName} ${studentToAssignRole.lastName}`
+            : studentToAssignRole.name
+        } is now a Public Information Officer`
+      );
+    } catch (error) {
+      console.error("Error assigning PIO role:", error);
+      // Close modal after a short delay to allow error display, then refetch
+      setTimeout(() => {
+        closeAssignRoleModal();
+        // Optionally refetch to ensure data consistency
+        refetch().catch((refetchError) => {
+          console.error(
+            "Error refetching after PIO assignment error:",
+            refetchError
+          );
+        });
+      }, 2000);
+    }
+  };
+
+  const handleRemoveStudent = async () => {
+    if (!studentToRemove) return;
+
+    try {
+      await removeUser({
+        studentId: studentToRemove.id || studentToRemove._id,
+        program: currentProgram.id,
+        yearLevel: selectedYear,
+      });
+
+      // Close modal and refetch data on success
+      closeRemoveModal();
+      refetch();
+
+      // Show success toast
+      toast.success(
+        `${
+          studentToRemove.firstName && studentToRemove.lastName
+            ? `${studentToRemove.firstName} ${studentToRemove.lastName}`
+            : studentToRemove.name
+        } has been removed from ${currentProgram.name} - Year ${selectedYear}`
+      );
+    } catch (error) {
+      console.error("Error removing student:", error);
+      // Close modal after a short delay to allow error display, then refetch
+      setTimeout(() => {
+        closeRemoveModal();
+        // Optionally refetch to ensure data consistency
+        refetch().catch((refetchError) => {
+          console.error(
+            "Error refetching after student removal error:",
+            refetchError
+          );
+        });
+      }, 2000);
+    }
+  };
+
+  const handleRevertRole = async () => {
+    if (!studentToRevertRole) return;
+
+    try {
+      await revertPIO({
+        studentId: studentToRevertRole.id || studentToRevertRole._id,
+        program: currentProgram.id,
+        yearLevel: selectedYear,
+      });
+
+      // Close modal first
+      closeRevertRoleModal();
+
+      // Show success toast
+      toast.success(
+        `${
+          studentToRevertRole.firstName && studentToRevertRole.lastName
+            ? `${studentToRevertRole.firstName} ${studentToRevertRole.lastName}`
+            : studentToRevertRole.name
+        } is now a regular student`
+      );
+
+      // Add a small delay before refetching to ensure backend has processed the change
+      setTimeout(() => {
+        // Try to refetch data
+        refetch().catch((error) => {
+          console.error("Error refetching after role revert:", error);
+          // If refetch fails, reload the page as a fallback
+          window.location.reload();
+        });
+      }, 500);
+    } catch (error) {
+      console.error("Error reverting PIO role:", error);
+      // Error will be shown in the modal via the revertPIOError state
     }
   };
 
@@ -891,6 +880,220 @@ const Users = () => {
                 disabled={isAssigningPIO || !studentToAdd}
               >
                 {isAssigningPIO ? "Adding..." : "Add Student"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={showAssignRoleModal}
+          onOpenChange={(open) => {
+            // Allow closing the modal even during loading after a reasonable delay
+            if (!isAssigningPIO || !open) {
+              setShowAssignRoleModal(open);
+              if (!open) {
+                setStudentToAssignRole(null);
+              }
+            }
+          }}
+        >
+          <DialogContent
+            className="sm:max-w-md"
+            aria-describedby="assign-role-description"
+          >
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold">
+                Assign Public Information Officer Role
+              </DialogTitle>
+              <DialogDescription id="assign-role-description">
+                You are about to assign a student as the Public Information
+                Officer for this class.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 text-gray-600">
+              <div className="mb-4">
+                Are you sure you want to assign{" "}
+                <span className="font-medium">
+                  {studentToAssignRole?.firstName &&
+                  studentToAssignRole?.lastName
+                    ? `${studentToAssignRole.firstName} ${studentToAssignRole.lastName}`
+                    : studentToAssignRole?.name}
+                </span>{" "}
+                ({studentToAssignRole?.studentNumber || studentToAssignRole?.id}
+                ) as a Public Information Officer?
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm mb-4">
+                <strong>Important:</strong> Only one Public Information Officer
+                can be assigned per year level. If a PIO already exists for this
+                year, you must first revert their role or remove them before
+                assigning a new PIO.
+              </div>
+            </div>
+
+            {/* Show error in the modal if there is one */}
+            {assignPIOError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm">
+                {assignPIOError.message ||
+                  assignPIOError.error ||
+                  "Failed to assign PIO role"}
+              </div>
+            )}
+
+            <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={closeAssignRoleModal}
+                className="w-full sm:w-auto border-gray-300"
+                disabled={isAssigningPIO}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAssignRole}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={isAssigningPIO}
+              >
+                {isAssigningPIO
+                  ? "Assigning..."
+                  : "Assign Public Information Officer Role"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={showRemoveModal}
+          onOpenChange={(open) => {
+            // Allow closing the modal even during loading after a reasonable delay
+            if (!isRemovingUser || !open) {
+              setShowRemoveModal(open);
+              if (!open) {
+                setStudentToRemove(null);
+              }
+            }
+          }}
+        >
+          <DialogContent
+            className="sm:max-w-md"
+            aria-describedby="remove-student-description"
+          >
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold text-red-700">
+                Remove Student
+              </DialogTitle>
+              <DialogDescription id="remove-student-description">
+                This action will remove the student from this class.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 text-gray-600">
+              Are you sure you want to remove{" "}
+              <span className="font-medium">
+                {studentToRemove?.firstName && studentToRemove?.lastName
+                  ? `${studentToRemove.firstName} ${studentToRemove.lastName}`
+                  : studentToRemove?.name}
+              </span>{" "}
+              ({studentToRemove?.studentNumber || studentToRemove?.id}) from{" "}
+              {currentProgram.name} - Year {selectedYear}? This action cannot be
+              undone.
+            </div>
+
+            {/* Show error in the modal if there is one */}
+            {removeUserError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm">
+                {removeUserError.message ||
+                  removeUserError.error ||
+                  "Failed to remove student"}
+              </div>
+            )}
+
+            <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={closeRemoveModal}
+                className="w-full sm:w-auto border-gray-300"
+                disabled={isRemovingUser}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRemoveStudent}
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
+                disabled={isRemovingUser}
+              >
+                {isRemovingUser ? "Removing..." : "Remove Student"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={showRevertRoleModal}
+          onOpenChange={(open) => {
+            // Allow closing the modal even during loading after a reasonable delay
+            if (!isRevertingPIO || !open) {
+              setShowRevertRoleModal(open);
+              if (!open) {
+                setStudentToRevertRole(null);
+              }
+            }
+          }}
+        >
+          <DialogContent
+            className="sm:max-w-md"
+            aria-describedby="revert-role-description"
+          >
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold">
+                Revert Public Information Officer to Student
+              </DialogTitle>
+              <DialogDescription id="revert-role-description">
+                This action will remove the Public Information Officer role from
+                this student.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 text-gray-600">
+              <div className="mb-4">
+                Are you sure you want to revert{" "}
+                <span className="font-medium">
+                  {studentToRevertRole?.firstName &&
+                  studentToRevertRole?.lastName
+                    ? `${studentToRevertRole.firstName} ${studentToRevertRole.lastName}`
+                    : studentToRevertRole?.name}
+                </span>{" "}
+                ({studentToRevertRole?.studentNumber || studentToRevertRole?.id}
+                ) back to a regular student?
+              </div>
+              <div>
+                This will remove their Public Information Officer privileges for{" "}
+                {currentProgram.name} - Year {selectedYear}.
+              </div>
+            </div>
+
+            {/* Show error in the modal if there is one */}
+            {revertPIOError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded text-sm">
+                {revertPIOError.message ||
+                  revertPIOError.error ||
+                  "Failed to revert PIO role"}
+              </div>
+            )}
+
+            <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={closeRevertRoleModal}
+                className="w-full sm:w-auto border-gray-300"
+                disabled={isRevertingPIO}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRevertRole}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={isRevertingPIO}
+              >
+                {isRevertingPIO ? "Reverting..." : "Revert to Student"}
               </Button>
             </DialogFooter>
           </DialogContent>

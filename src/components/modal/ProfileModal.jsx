@@ -91,7 +91,6 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
       }
 
       await logout();
-      toast.success("Successfully logged out");
       navigate("/login");
       onClose();
     } catch (error) {

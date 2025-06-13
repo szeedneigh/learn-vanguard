@@ -493,7 +493,7 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
       case "bsis":
         return "Bachelor of Science in Information Systems";
       case "act":
-        return "Associate of Computer Technology";
+        return "Associate in Computer Technology";
       default:
         return programId;
     }
