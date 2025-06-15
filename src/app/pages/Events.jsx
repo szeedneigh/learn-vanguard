@@ -1,8 +1,9 @@
-import { useMemo, useState, useEffect, useContext } from "react";
+import React, { useMemo, useState, useEffect, useContext } from "react";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useEventsPage } from "@/hooks/useEventsQuery";
 import { useTasks } from "@/hooks/useTasksQuery";
+import { useEventsPageAnnouncements } from "@/hooks/useAnnouncementsQuery";
 import {
   toLocaleDateStringISO,
   generateCalendarGrid,
@@ -40,7 +41,7 @@ export default function Events() {
 
   // React Query hook for events with user-specific filters
   const {
-    events,
+    events: eventsData,
     isLoading,
     isError,
     error,
@@ -146,17 +147,101 @@ export default function Events() {
     return newDate;
   };
 
-  // Calendar grid generation
-  const calendarGrid = useMemo(() => {
-    return generateCalendarGrid(currentDate, events);
-  }, [currentDate, events]);
-
   // Fetch tasks separately for upcoming deadlines view (excludes events)
   const {
     data: tasksResponse,
     isLoading: tasksLoading,
     isError: tasksIsError,
   } = useTasks({ archived: "false" });
+
+  // Fetch announcements for calendar integration
+  const {
+    data: announcements = [],
+    isLoading: announcementsLoading,
+    isError: announcementsIsError,
+    error: announcementsError,
+  } = useEventsPageAnnouncements(
+    {},
+    {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: false,
+    }
+  );
+
+  // Debug logging for announcements
+  React.useEffect(() => {
+    console.log("Events.jsx - Announcements state:", {
+      loading: announcementsLoading,
+      error: announcementsIsError,
+      errorDetails: announcementsError,
+      count: announcements?.length || 0,
+      announcements: announcements?.slice(0, 3).map((a) => ({
+        id: a.id,
+        title: a.title,
+        type: a.type,
+      })),
+    });
+  }, [
+    announcements,
+    announcementsLoading,
+    announcementsIsError,
+    announcementsError,
+  ]);
+
+  // Combine events and announcements for calendar display, filtering out completed tasks
+  const events = useMemo(() => {
+    const combinedEvents = [];
+
+    // Add events (filter out completed tasks)
+    if (eventsData && Array.isArray(eventsData)) {
+      const filteredEvents = eventsData.filter((event) => {
+        // If it's a task (has taskStatus or type='task'), filter out completed ones
+        if (event.taskStatus || event.type === "task") {
+          const isCompleted =
+            event.taskStatus === "Completed" || event.status === "Completed";
+          return !isCompleted;
+        }
+        // For regular events, include all
+        return true;
+      });
+
+      combinedEvents.push(...filteredEvents);
+    }
+
+    // Add announcements (all announcements are shown)
+    if (announcements && Array.isArray(announcements)) {
+      combinedEvents.push(...announcements);
+    }
+
+    console.log("Combined events for calendar:", {
+      events: eventsData?.length || 0,
+      eventsAfterFiltering: eventsData
+        ? eventsData.filter((e) => {
+            if (e.taskStatus || e.type === "task") {
+              return e.taskStatus !== "Completed" && e.status !== "Completed";
+            }
+            return true;
+          }).length
+        : 0,
+      announcements: announcements?.length || 0,
+      total: combinedEvents.length,
+    });
+
+    // Debug logging (can be removed in production)
+    console.log("Events page loaded:", {
+      isStudent,
+      eventsCount: eventsData?.length || 0,
+      announcementsCount: announcements?.length || 0,
+      combinedEventsCount: combinedEvents.length,
+    });
+
+    return combinedEvents;
+  }, [eventsData, announcements]);
+
+  // Calendar grid generation - moved after events definition to fix initialization order
+  const calendarGrid = useMemo(() => {
+    return generateCalendarGrid(currentDate, events);
+  }, [currentDate, events]);
 
   // Filter and sort the upcoming tasks - Only show Tasks, not Events
   const upcomingTasks = useMemo(() => {

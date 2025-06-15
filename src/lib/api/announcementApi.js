@@ -172,6 +172,41 @@ export const getAnnouncementsBySubject = async (subjectId) => {
 };
 
 /**
+ * Get announcements for calendar view with access control
+ * @param {Object} filters - Optional filters (startDate, endDate)
+ * @returns {Promise<Object>} Calendar announcements list
+ */
+export const getCalendarAnnouncements = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+
+    // Add filters to params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        params.append(key, value);
+      }
+    });
+
+    const response = await apiClient.get(
+      `/announcements/calendar?${params.toString()}`
+    );
+    return {
+      data: response.data.data || response.data,
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error fetching calendar announcements:", error);
+    return {
+      success: false,
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch calendar announcements",
+    };
+  }
+};
+
+/**
  * Mark announcement as read
  * @param {string} announcementId - Announcement ID
  * @returns {Promise<Object>} Update result
@@ -205,5 +240,6 @@ export default {
   updateAnnouncement,
   deleteAnnouncement,
   getAnnouncementsBySubject,
+  getCalendarAnnouncements,
   markAnnouncementAsRead,
 };

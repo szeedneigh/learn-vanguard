@@ -164,6 +164,61 @@ export const isTaskCompleted = (status) => {
 };
 
 /**
+ * Get announcement color based on priority and type
+ * @param {string} priority - Announcement priority (high, medium, low)
+ * @param {string} type - Announcement type (general, assignment, quiz, exam, other)
+ * @returns {string} Hex color code
+ */
+export const getAnnouncementColor = (priority, type) => {
+  // Type-based colors take precedence for certain types
+  if (type === "exam") return "#DC2626"; // Red for exams
+  if (type === "quiz") return "#EA580C"; // Orange for quizzes
+  if (type === "assignment") return "#7C3AED"; // Purple for assignments
+
+  // Priority-based colors for general announcements
+  const normalizedPriority = normalizePriority(priority);
+
+  switch (normalizedPriority) {
+    case "High":
+      return "#EF4444"; // Red
+    case "Medium":
+      return "#F59E0B"; // Amber
+    case "Low":
+      return "#10B981"; // Green
+    default:
+      return "#3B82F6"; // Blue (default for announcements)
+  }
+};
+
+/**
+ * Get announcement background color classes based on priority and type
+ * @param {string} priority - Announcement priority
+ * @param {string} type - Announcement type
+ * @returns {string} CSS classes for background and text
+ */
+export const getAnnouncementColorClasses = (priority, type) => {
+  // Type-based classes take precedence
+  if (type === "exam") return "bg-red-50 border-red-200 text-red-800";
+  if (type === "quiz") return "bg-orange-50 border-orange-200 text-orange-800";
+  if (type === "assignment")
+    return "bg-purple-50 border-purple-200 text-purple-800";
+
+  // Priority-based classes for general announcements
+  const normalizedPriority = normalizePriority(priority);
+
+  switch (normalizedPriority) {
+    case "High":
+      return "bg-red-50 border-red-200 text-red-800";
+    case "Medium":
+      return "bg-amber-50 border-amber-200 text-amber-800";
+    case "Low":
+      return "bg-green-50 border-green-200 text-green-800";
+    default:
+      return "bg-blue-50 border-blue-200 text-blue-800"; // Default for announcements
+  }
+};
+
+/**
  * Capitalizes the first letter of each word in a string
  * @param {string} str - The string to capitalize
  * @return {string} The capitalized string
@@ -251,9 +306,41 @@ export function isSameDay(date1, date2) {
 }
 
 /**
+ * Determines the content type and appropriate icon for calendar items
+ * @param {Object} item - The calendar item (task, event, or announcement)
+ * @returns {Object} Object with type and icon
+ */
+export function getContentTypeInfo(item) {
+  // Check for task type
+  if (item.type === "task" || (item.taskId && !item.type)) {
+    return {
+      type: "task",
+      icon: "📋",
+      label: "Task",
+    };
+  }
+
+  // Check for announcement type
+  if (item.type === "announcement" || item.announcementType || item.content) {
+    return {
+      type: "announcement",
+      icon: "📢",
+      label: "Announcement",
+    };
+  }
+
+  // Default to event type
+  return {
+    type: "event",
+    icon: "📅",
+    label: "Event",
+  };
+}
+
+/**
  * Generates a calendar grid for a month view
  * @param {Date} date - The reference date
- * @param {Array} events - The events to include in the grid
+ * @param {Array} events - The events to include in the grid (tasks, events, announcements)
  * @return {Array} A 2D array representing the calendar grid
  */
 export function generateCalendarGrid(date, events) {
@@ -287,6 +374,12 @@ export function generateCalendarGrid(date, events) {
       } else if (event.startDate) {
         // Some events might use startDate instead
         eventDate = new Date(event.startDate);
+      } else if (event.dueDate && event.type === "announcement") {
+        // Handle announcements with due dates
+        eventDate = new Date(event.dueDate);
+      } else if (event.createdAt && event.type === "announcement") {
+        // Handle announcements without due dates (show on creation date)
+        eventDate = new Date(event.createdAt);
       } else {
         return false;
       }
@@ -301,7 +394,7 @@ export function generateCalendarGrid(date, events) {
       isCurrentMonth: currentDate.getMonth() === month,
       tasks: dayEvents.map((event) => {
         // Normalize event properties to ensure consistent interface
-        return {
+        const normalizedEvent = {
           ...event,
           id: event.id || event._id,
           title: event.title,
@@ -314,6 +407,20 @@ export function generateCalendarGrid(date, events) {
               ? toLocaleDateStringISO(new Date(event.scheduleDate))
               : dateString),
         };
+
+        // Add announcement-specific properties
+        if (event.type === "announcement") {
+          normalizedEvent.announcementType =
+            event.announcementType || event.type;
+          normalizedEvent.priority = event.priority || "medium";
+          normalizedEvent.subject = event.subject;
+          normalizedEvent.subjectInfo = event.subjectInfo;
+          normalizedEvent.dueDate = event.dueDate;
+          normalizedEvent.content = event.content;
+          normalizedEvent.creationSource = event.creationSource;
+        }
+
+        return normalizedEvent;
       }),
     });
 

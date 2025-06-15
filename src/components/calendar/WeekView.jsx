@@ -15,6 +15,7 @@ import {
   getTaskColor,
   getTaskColorClasses,
   isTaskCompleted,
+  getContentTypeInfo,
 } from "@/lib/calendarHelpers";
 
 function WeekView({ startDate, events, onEventClick, onDateClick }) {
@@ -90,36 +91,38 @@ function WeekView({ startDate, events, onEventClick, onDateClick }) {
               <ScrollArea className="h-[300px]">
                 <div className="space-y-2">
                   {dayData.events.map((event) => {
-                    const isTask = event.type === "task";
+                    const contentTypeInfo = getContentTypeInfo(event);
+                    const isTask = contentTypeInfo.type === "task";
+                    const isAnnouncement =
+                      contentTypeInfo.type === "announcement";
+                    const isEvent = contentTypeInfo.type === "event";
+
                     const taskColor = isTask
                       ? getTaskColor(event.priority, event.status)
-                      : event.label?.color;
+                      : isAnnouncement
+                      ? "#8B5CF6" // Purple for announcements
+                      : event.label?.color || "#3B82F6"; // Blue for events
+
                     const taskColorClasses = isTask
                       ? getTaskColorClasses(event.priority, event.status)
+                      : isAnnouncement
+                      ? "bg-purple-50 border-purple-200"
                       : statusClasses[event.status] ||
-                        "bg-gray-50 border-gray-200";
+                        "bg-blue-50 border-blue-200";
+
                     const completed = isTask && isTaskCompleted(event.status);
 
                     return (
                       <div
                         key={event.id || event._id}
                         onClick={() => onEventClick(event)}
-                        className={`${
-                          isTask
-                            ? taskColorClasses + " hover:opacity-80"
-                            : statusClasses[event.status] ||
-                              "bg-gray-50 border-gray-200"
-                        } flex items-center rounded px-2 py-1.5 text-xs cursor-pointer hover:opacity-80 border ${
+                        className={`${taskColorClasses} flex items-center rounded px-2 py-1.5 text-xs cursor-pointer hover:opacity-80 border ${
                           completed ? "opacity-75" : ""
                         }`}
-                        style={
-                          isTask
-                            ? {
-                                borderLeftWidth: "3px",
-                                borderLeftColor: taskColor,
-                              }
-                            : {}
-                        }
+                        style={{
+                          borderLeftWidth: "3px",
+                          borderLeftColor: taskColor,
+                        }}
                       >
                         <div
                           className="mr-1.5 h-2 w-2 rounded-full flex-shrink-0"
@@ -135,12 +138,12 @@ function WeekView({ startDate, events, onEventClick, onDateClick }) {
                             {isTask && completed && (
                               <CheckCircle className="h-3 w-3 text-green-500 mr-1 flex-shrink-0" />
                             )}
-                            {isTask && !completed && (
+                            {!completed && (
                               <span
                                 className="mr-1"
                                 style={{ color: taskColor }}
                               >
-                                📋
+                                {contentTypeInfo.icon}
                               </span>
                             )}
                             <span
@@ -150,7 +153,7 @@ function WeekView({ startDate, events, onEventClick, onDateClick }) {
                             >
                               {event.title}
                             </span>
-                            {isTask && event.priority && (
+                            {(isTask || isAnnouncement) && event.priority && (
                               <span
                                 className="ml-1 px-1 py-0.5 rounded text-xs font-medium"
                                 style={{
@@ -161,6 +164,11 @@ function WeekView({ startDate, events, onEventClick, onDateClick }) {
                                 }}
                               >
                                 {event.priority.charAt(0)}
+                              </span>
+                            )}
+                            {isEvent && (
+                              <span className="ml-1 px-1 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 border border-blue-300">
+                                E
                               </span>
                             )}
                           </div>

@@ -59,7 +59,15 @@ export const getEvents = async (filters = {}) => {
     console.log("Filters:", formattedFilters);
 
     const response = await apiClient.get(url);
-    console.log("Events response:", response.data);
+    console.log("Events API response:", {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data: response.data,
+      dataType: typeof response.data,
+      dataIsArray: Array.isArray(response.data),
+      dataLength: Array.isArray(response.data) ? response.data.length : "N/A",
+    });
 
     // Convert dates to proper format in the response
     if (Array.isArray(response.data)) {

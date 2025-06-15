@@ -29,15 +29,45 @@ export const useEvents = (filters = {}, options = {}) => {
       // The eventApi.getEvents returns the full axios response
       // The backend returns the array directly in response.data
       console.log("useEvents select - raw response:", response);
+      console.log("useEvents select - response type:", typeof response);
+      console.log(
+        "useEvents select - response.data type:",
+        typeof response?.data
+      );
+      console.log(
+        "useEvents select - response.data is array:",
+        Array.isArray(response?.data)
+      );
+
+      // Try multiple ways to extract the data
+      let data = [];
 
       if (Array.isArray(response?.data)) {
-        return response.data;
+        data = response.data;
+        console.log("useEvents select - using response.data (array)");
       } else if (Array.isArray(response)) {
-        return response;
+        data = response;
+        console.log("useEvents select - using response directly (array)");
+      } else if (response?.data?.data && Array.isArray(response.data.data)) {
+        data = response.data.data;
+        console.log("useEvents select - using response.data.data (nested)");
       } else {
-        console.warn("useEvents: API response.data is not an array:", response);
-        return [];
+        console.warn("useEvents: Could not find array data in response:", {
+          response,
+          responseData: response?.data,
+          responseType: typeof response,
+          responseDataType: typeof response?.data,
+        });
+        data = [];
       }
+
+      console.log("useEvents select - final data:", {
+        length: data.length,
+        firstItem: data[0],
+        isArray: Array.isArray(data),
+      });
+
+      return data;
     },
     ...options,
   });
@@ -211,9 +241,34 @@ export const useDeleteEvent = () => {
  * for the Events page component
  */
 export const useEventsPage = (filters = {}) => {
+  console.log("useEventsPage called with filters:", filters);
+
   // Main queries
   const eventsQuery = useEvents(filters);
   const todayEventsQuery = useTodayEvents();
+
+  console.log("useEventsPage query states:", {
+    eventsQuery: {
+      isLoading: eventsQuery.isLoading,
+      isError: eventsQuery.isError,
+      error: eventsQuery.error?.message,
+      data: eventsQuery.data,
+      dataType: typeof eventsQuery.data,
+      dataLength: Array.isArray(eventsQuery.data)
+        ? eventsQuery.data.length
+        : "N/A",
+    },
+    todayEventsQuery: {
+      isLoading: todayEventsQuery.isLoading,
+      isError: todayEventsQuery.isError,
+      error: todayEventsQuery.error?.message,
+      data: todayEventsQuery.data,
+      dataType: typeof todayEventsQuery.data,
+      dataLength: Array.isArray(todayEventsQuery.data)
+        ? todayEventsQuery.data.length
+        : "N/A",
+    },
+  });
 
   // Mutations
   const createEventMutation = useCreateEvent();

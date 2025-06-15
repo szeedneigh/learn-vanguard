@@ -14,6 +14,7 @@ import {
   getTaskColor,
   getTaskColorClasses,
   isTaskCompleted,
+  getContentTypeInfo,
 } from "@/lib/calendarHelpers";
 
 function DayView({ date, events, onEventClick }) {
@@ -83,41 +84,38 @@ function DayView({ date, events, onEventClick }) {
                 <div className="flex-grow">
                   {eventsByHour[hour] &&
                     eventsByHour[hour].map((event) => {
-                      const isTask = event.type === "task";
+                      const contentTypeInfo = getContentTypeInfo(event);
+                      const isTask = contentTypeInfo.type === "task";
+                      const isAnnouncement =
+                        contentTypeInfo.type === "announcement";
+                      const isEvent = contentTypeInfo.type === "event";
+
                       const taskColor = isTask
                         ? getTaskColor(event.priority, event.status)
-                        : event.label?.color;
+                        : isAnnouncement
+                        ? "#8B5CF6" // Purple for announcements
+                        : event.label?.color || "#3B82F6"; // Blue for events
+
                       const taskColorClasses = isTask
                         ? getTaskColorClasses(event.priority, event.status)
+                        : isAnnouncement
+                        ? "bg-purple-50 border-purple-200"
                         : statusClasses[event.status] ||
-                          "bg-gray-50 border-gray-200";
+                          "bg-blue-50 border-blue-200";
+
                       const completed = isTask && isTaskCompleted(event.status);
 
                       return (
                         <div
                           key={event.id || event._id}
                           onClick={() => onEventClick(event)}
-                          className={`${
-                            isTask
-                              ? taskColorClasses + " hover:opacity-80"
-                              : statusClasses[event.status] ||
-                                "bg-gray-50 border-gray-200"
-                          } flex items-center mb-1 rounded px-3 py-1.5 text-sm cursor-pointer hover:opacity-80 border ${
+                          className={`${taskColorClasses} flex items-center mb-1 rounded px-3 py-1.5 text-sm cursor-pointer hover:opacity-80 border ${
                             completed ? "opacity-75" : ""
                           }`}
-                          style={
-                            taskColor && event.type !== "task"
-                              ? {
-                                  borderColor: taskColor,
-                                  borderLeftWidth: "4px",
-                                }
-                              : isTask
-                              ? {
-                                  borderLeftWidth: "4px",
-                                  borderLeftColor: taskColor,
-                                }
-                              : {}
-                          }
+                          style={{
+                            borderLeftWidth: "4px",
+                            borderLeftColor: taskColor,
+                          }}
                         >
                           <div
                             className="mr-2 h-3 w-3 rounded-full flex-shrink-0"
@@ -130,18 +128,18 @@ function DayView({ date, events, onEventClick }) {
                               {isTask && completed && (
                                 <CheckCircle className="h-4 w-4 text-green-500 mr-1 flex-shrink-0" />
                               )}
-                              {isTask && !completed && (
+                              {!completed && (
                                 <span
                                   className="mr-1"
                                   style={{ color: taskColor }}
                                 >
-                                  📋
+                                  {contentTypeInfo.icon}
                                 </span>
                               )}
                               <span className={completed ? "line-through" : ""}>
                                 {event.title}
                               </span>
-                              {isTask && event.priority && (
+                              {(isTask || isAnnouncement) && event.priority && (
                                 <span
                                   className="ml-2 px-2 py-0.5 rounded text-xs font-medium"
                                   style={{
@@ -152,6 +150,11 @@ function DayView({ date, events, onEventClick }) {
                                   }}
                                 >
                                   {event.priority.replace(" Priority", "")}
+                                </span>
+                              )}
+                              {isEvent && (
+                                <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 border border-blue-300">
+                                  Event
                                 </span>
                               )}
                             </div>

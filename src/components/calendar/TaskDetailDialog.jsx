@@ -59,11 +59,14 @@ function TaskDetailDialog({
 
   // Get user context for permission checks - we'll determine the specific permissions based on item type later
 
-  // Determine if this is a task or event
+  // Determine if this is a task, announcement, or event
   // Tasks have type="task" (added in Events.jsx transformation) or have taskName/taskDeadline properties
+  // Announcements have type="announcement" or have content/subjectId properties
   // Events have title/scheduleDate properties and no type property
   const isTask =
     task?.type === "task" || (task?.taskName && task?.taskDeadline);
+  const isAnnouncement =
+    task?.type === "announcement" || (task?.content && task?.subjectId);
 
   // Helper function to get user ID (similar to backend getUserId)
   const getUserId = (userObj) => {
@@ -153,7 +156,7 @@ function TaskDetailDialog({
   // Normalize user role for case-insensitive comparison
   const userRole = user?.role?.toUpperCase();
 
-  // Permission logic for tasks vs events
+  // Permission logic for tasks, announcements, and events
   let canEditItem, canDeleteItem;
 
   if (isTask) {
@@ -163,6 +166,14 @@ function TaskDetailDialog({
     canDeleteItem = false;
     console.log(
       "TaskDetailDialog - Task permissions: edit=false, delete=false (tasks managed from Tasks page)"
+    );
+  } else if (isAnnouncement) {
+    // For announcements: Announcements should not be editable/deletable from the Events page
+    // They should only be managed from the Resources/Subject pages where they are created
+    canEditItem = false;
+    canDeleteItem = false;
+    console.log(
+      "TaskDetailDialog - Announcement permissions: edit=false, delete=false (announcements managed from Resources page)"
     );
   } else {
     // For events: Check event-specific permissions
@@ -231,6 +242,20 @@ function TaskDetailDialog({
               <p className="text-sm text-blue-800">
                 This is a personal task. To edit or manage this task, please
                 visit the <span className="font-medium">Tasks page</span>.
+              </p>
+            </div>
+          </div>
+        )}
+        {/* Show read-only notice for announcements viewed from Events page */}
+        {isAnnouncement && (
+          <div className="bg-purple-50 border border-purple-200 rounded-md p-3 mb-4">
+            <div className="flex items-center">
+              <Info className="h-4 w-4 text-purple-600 mr-2 flex-shrink-0" />
+              <p className="text-sm text-purple-800">
+                This is a subject announcement. To edit or manage this
+                announcement, please visit the{" "}
+                <span className="font-medium">Resources page</span> for the
+                related subject.
               </p>
             </div>
           </div>

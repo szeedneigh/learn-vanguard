@@ -32,7 +32,7 @@ export const navigationConfig = [
     name: "Tasks",
     href: "/dashboard/tasks",
     icon: ListTodo,
-    roles: [ROLES.STUDENT, ROLES.PIO],
+    roles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
     permissions: [PERMISSIONS.VIEW_TASKS],
     description: "Manage and view tasks",
   },
@@ -56,7 +56,7 @@ export const navigationConfig = [
     name: "Archive",
     href: "/dashboard/archive",
     icon: Archive,
-    roles: [ROLES.STUDENT, ROLES.PIO],
+    roles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
     permissions: [PERMISSIONS.VIEW_ARCHIVE],
     description: "Access archived resources",
   },
@@ -142,7 +142,7 @@ export const dashboardRoutes = [
   },
   {
     path: "tasks",
-    allowedRoles: [ROLES.STUDENT, ROLES.PIO],
+    allowedRoles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
     requiredPermissions: [PERMISSIONS.VIEW_TASKS],
   },
   {
@@ -167,7 +167,7 @@ export const dashboardRoutes = [
   },
   {
     path: "archive",
-    allowedRoles: [ROLES.STUDENT, ROLES.PIO],
+    allowedRoles: [ROLES.STUDENT, ROLES.PIO, ROLES.ADMIN],
     requiredPermissions: [PERMISSIONS.VIEW_ARCHIVE],
   },
   {
