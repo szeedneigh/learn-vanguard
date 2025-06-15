@@ -147,15 +147,21 @@ export const createEvent = async (eventData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error creating event:", error);
+    // Enhanced error logging and handling
+    console.error("Error creating event:", {
+      error: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      eventData,
+    });
+
+    // Return structured error response
     return {
       data: null,
       success: false,
-      error:
-        error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        "Failed to create event",
-      details: error.response?.data?.error?.details || {},
+      error: error.response?.data?.message || "Failed to create event",
+      errorCode: error.response?.data?.error,
+      details: error.response?.data?.details || {},
     };
   }
 };

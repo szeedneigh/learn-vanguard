@@ -246,6 +246,8 @@ export const useUpdateTaskStatus = () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
 
       toast({
         title: "Success",
@@ -275,6 +277,8 @@ export const useArchiveTask = () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
 
       toast({
         title: "Success",

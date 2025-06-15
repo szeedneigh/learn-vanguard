@@ -55,6 +55,8 @@ const normalizeUserData = (user) => {
     const normalizedUser = {
       ...user,
       role: roleMapping[user.role?.toLowerCase()] || user.role,
+      // Ensure assignedClass is preserved for PIO users
+      assignedClass: user.assignedClass,
     };
 
     console.log("Normalized user data:", {
@@ -209,8 +211,22 @@ export const loginWithGoogle = async (useRedirect = false) => {
         );
       }
 
+      // Normalize user data to ensure consistent handling
+      const normalizedUser = normalizeUserData(user);
+      if (!normalizedUser) {
+        console.error("Failed to normalize Firebase user data");
+        removeToken();
+        return {
+          success: false,
+          error: "Invalid user data received from Firebase authentication",
+        };
+      }
+
+      // Update React Query cache with normalized user data
+      queryClient.setQueryData(["user"], normalizedUser);
+
       return {
-        user,
+        user: normalizedUser,
         token,
         success: !!token,
         message: message || "Google sign-in successful",
@@ -314,8 +330,23 @@ export const checkGoogleRedirectResult = async () => {
     }
 
     if (token) storeToken(token);
+
+    // Normalize user data to ensure consistent handling
+    const normalizedUser = normalizeUserData(user);
+    if (!normalizedUser) {
+      console.error("Failed to normalize Firebase redirect user data");
+      removeToken();
+      return {
+        success: false,
+        error: "Invalid user data received from Firebase redirect",
+      };
+    }
+
+    // Update React Query cache with normalized user data
+    queryClient.setQueryData(["user"], normalizedUser);
+
     return {
-      user,
+      user: normalizedUser,
       token,
       success: true,
       message: message || "Google sign-in successful after redirect",
@@ -383,8 +414,23 @@ export const completeGoogleRegistration = async (registrationData) => {
       const response = await apiClient.post("/auth/firebase", formattedData);
       const { message, token, user, requiresEmailVerification } = response.data;
       if (token) storeToken(token);
+
+      // Normalize user data to ensure consistent handling
+      const normalizedUser = normalizeUserData(user);
+      if (!normalizedUser) {
+        console.error("Failed to normalize Google registration user data");
+        removeToken();
+        return {
+          success: false,
+          error: "Invalid user data received after registration",
+        };
+      }
+
+      // Update React Query cache with normalized user data
+      queryClient.setQueryData(["user"], normalizedUser);
+
       return {
-        user,
+        user: normalizedUser,
         token,
         success: true,
         requiresEmailVerification,

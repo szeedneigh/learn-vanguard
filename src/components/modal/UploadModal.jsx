@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export const UploadModal = ({
   isOpen,
@@ -85,6 +94,8 @@ export const UploadModal = ({
     }
   }, [subject]);
 
+  // Body scroll is handled by Dialog component automatically
+
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -158,25 +169,26 @@ export const UploadModal = ({
     onClose();
   };
 
-  if (!isOpen) return null;
+  const handleModalClose = (open) => {
+    // Only call onClose when the dialog is closing and not uploading
+    if (!open && !isUploading) {
+      handleClose();
+    }
+  };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={!isUploading ? handleClose : undefined}
-    >
-      <div
-        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl font-semibold mb-4">Upload Resource</h2>
-        <div className="mb-4">
-          <p className="text-sm text-gray-500 mb-2">
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Upload Resource</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
             {subject ? `Uploading to: ${subject.name}` : "No subject selected"}
           </p>
 
           {subject && topics.length > 0 && (
-            <div className="mb-4">
+            <div>
               <label
                 htmlFor="topic-select"
                 className="block text-sm font-medium text-gray-700 mb-1"
@@ -247,30 +259,22 @@ export const UploadModal = ({
             />
           </div>
         </div>
-        <div className="flex justify-end space-x-3">
-          <button
-            onClick={handleClose}
-            className={`px-4 py-2 text-sm border border-gray-300 rounded-md ${
-              isUploading ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
-            }`}
-            disabled={isUploading}
-          >
-            Cancel
-          </button>
-          <button
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" disabled={isUploading}>
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button
             onClick={handleUpload}
             disabled={!file || !subject || isUploading}
-            className={`px-4 py-2 text-sm bg-blue-600 text-white rounded-md ${
-              !file || !subject || isUploading
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-blue-700"
-            }`}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isUploading ? "Uploading..." : "Upload"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

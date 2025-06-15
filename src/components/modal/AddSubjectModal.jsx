@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/dialog";
 import { createSubject } from "@/services/programService";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { ROLES } from "@/lib/constants";
 
 const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
@@ -38,21 +39,124 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Check user role and get assigned class info for PIO users
+  const isPIO = user?.role === ROLES.PIO;
+  const isAdmin = user?.role === ROLES.ADMIN;
+
+  // Parse PIO assigned class information
+  const assignedClassInfo = useMemo(() => {
+    if (!isPIO || !user?.assignedClass) return null;
+
+    const parts = user.assignedClass.split(" - ");
+    if (parts.length !== 2) return null;
+
+    const [course, yearLevel] = parts;
+
+    // Map course names to programId
+    const courseToProgram = {
+      "Associate in Computer Technology": "act",
+      "Bachelor of Science in Information Systems": "bsis",
+    };
+
+    // Map year level to numeric value
+    const yearLevelToNumber = {
+      "First Year": "1",
+      "Second Year": "2",
+      "Third Year": "3",
+      "Fourth Year": "4",
+    };
+
+    return {
+      course,
+      yearLevel,
+      programId: courseToProgram[course],
+      yearLevelNumber: yearLevelToNumber[yearLevel],
+    };
+  }, [isPIO, user?.assignedClass]);
+
+  // Define year level options based on selected program and user role
+  const yearLevelOptions = useMemo(() => {
+    if (isPIO && assignedClassInfo) {
+      // PIO users can only create subjects for their assigned year level
+      return [
+        {
+          value: assignedClassInfo.yearLevelNumber,
+          label: assignedClassInfo.yearLevel,
+        },
+      ];
+    }
+
+    // Filter year levels based on selected program
+    const isACT = formData.programId === "act";
+
+    if (isACT) {
+      // ACT is a 2-year program
+      return [
+        { value: "1", label: "First Year" },
+        { value: "2", label: "Second Year" },
+      ];
+    } else {
+      // BSIS is a 4-year program
+      return [
+        { value: "1", label: "First Year" },
+        { value: "2", label: "Second Year" },
+        { value: "3", label: "Third Year" },
+        { value: "4", label: "Fourth Year" },
+      ];
+    }
+  }, [isPIO, assignedClassInfo, formData.programId]);
+
   // Reset form when modal is opened
   useEffect(() => {
     if (isOpen) {
-      setFormData({
+      const initialData = {
         name: "",
         description: "",
-        programId: "bsis",
-        yearLevel: "1",
+        programId:
+          isPIO && assignedClassInfo ? assignedClassInfo.programId : "bsis",
+        yearLevel:
+          isPIO && assignedClassInfo ? assignedClassInfo.yearLevelNumber : "1",
         semester: "1st Semester",
         instructor: "",
-      });
+      };
+
+      setFormData(initialData);
       setErrors({});
       setIsSubmitting(false);
     }
-  }, [isOpen]);
+  }, [isOpen, isPIO, assignedClassInfo]);
+
+  // Enforce PIO restrictions when assignedClassInfo becomes available
+  useEffect(() => {
+    if (isPIO && assignedClassInfo && isOpen) {
+      console.log("[AddSubjectModal] Enforcing PIO restrictions:", {
+        currentProgramId: formData.programId,
+        currentYearLevel: formData.yearLevel,
+        requiredProgramId: assignedClassInfo.programId,
+        requiredYearLevel: assignedClassInfo.yearLevelNumber,
+      });
+
+      // Force correct values for PIO users
+      if (formData.programId !== assignedClassInfo.programId) {
+        setFormData((prev) => ({
+          ...prev,
+          programId: assignedClassInfo.programId,
+        }));
+      }
+      if (formData.yearLevel !== assignedClassInfo.yearLevelNumber) {
+        setFormData((prev) => ({
+          ...prev,
+          yearLevel: assignedClassInfo.yearLevelNumber,
+        }));
+      }
+    }
+  }, [
+    isPIO,
+    assignedClassInfo,
+    isOpen,
+    formData.programId,
+    formData.yearLevel,
+  ]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -98,6 +202,29 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
 
     if (!validate()) {
       return;
+    }
+
+    // Final validation for PIO users
+    if (isPIO && assignedClassInfo) {
+      if (
+        formData.programId !== assignedClassInfo.programId ||
+        formData.yearLevel !== assignedClassInfo.yearLevelNumber
+      ) {
+        console.error(
+          "[AddSubjectModal] PIO restriction violation detected at submit:",
+          {
+            submittedProgramId: formData.programId,
+            submittedYearLevel: formData.yearLevel,
+            requiredProgramId: assignedClassInfo.programId,
+            requiredYearLevel: assignedClassInfo.yearLevelNumber,
+          }
+        );
+
+        setErrors({
+          form: "PIO users can only create subjects for their assigned class. Please refresh the page and try again.",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -205,18 +332,26 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="space-y-2">
               <Label htmlFor="programId">
                 Program <span className="text-red-600">*</span>
+                {isPIO && (
+                  <Lock className="inline w-3 h-3 ml-1 text-gray-500" />
+                )}
               </Label>
               <Select
-                defaultValue={formData.programId}
+                value={formData.programId}
                 onValueChange={(value) => {
-                  handleInputChange({
-                    target: { name: "programId", value },
-                  });
+                  if (!isPIO) {
+                    handleInputChange({
+                      target: { name: "programId", value },
+                    });
+                  }
                 }}
+                disabled={isPIO}
               >
                 <SelectTrigger
                   id="programId"
-                  className={errors.programId ? "border-red-500" : ""}
+                  className={`${errors.programId ? "border-red-500" : ""} ${
+                    isPIO ? "bg-gray-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   <SelectValue placeholder="Select Program" />
                 </SelectTrigger>
@@ -227,6 +362,13 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
                   </SelectItem>
                 </SelectContent>
               </Select>
+              {isPIO && assignedClassInfo && (
+                <p className="text-xs text-gray-600 flex items-center">
+                  <Lock className="w-3 h-3 mr-1" />
+                  Restricted to your assigned program:{" "}
+                  {assignedClassInfo.course}
+                </p>
+              )}
               {errors.programId && (
                 <p className="text-red-500 text-xs mt-1">{errors.programId}</p>
               )}
@@ -235,28 +377,44 @@ const AddSubjectModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="space-y-2">
               <Label htmlFor="yearLevel">
                 Year Level <span className="text-red-600">*</span>
+                {isPIO && (
+                  <Lock className="inline w-3 h-3 ml-1 text-gray-500" />
+                )}
               </Label>
               <Select
-                defaultValue={formData.yearLevel}
+                value={formData.yearLevel}
                 onValueChange={(value) => {
-                  handleInputChange({
-                    target: { name: "yearLevel", value },
-                  });
+                  if (!isPIO) {
+                    handleInputChange({
+                      target: { name: "yearLevel", value },
+                    });
+                  }
                 }}
+                disabled={isPIO}
               >
                 <SelectTrigger
                   id="yearLevel"
-                  className={errors.yearLevel ? "border-red-500" : ""}
+                  className={`${errors.yearLevel ? "border-red-500" : ""} ${
+                    isPIO ? "bg-gray-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   <SelectValue placeholder="Select Year Level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">First Year</SelectItem>
-                  <SelectItem value="2">Second Year</SelectItem>
-                  <SelectItem value="3">Third Year</SelectItem>
-                  <SelectItem value="4">Fourth Year</SelectItem>
+                  {yearLevelOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {isPIO && assignedClassInfo && (
+                <p className="text-xs text-gray-600 flex items-center">
+                  <Lock className="w-3 h-3 mr-1" />
+                  Restricted to your assigned year:{" "}
+                  {assignedClassInfo.yearLevel}
+                </p>
+              )}
               {errors.yearLevel && (
                 <p className="text-red-500 text-xs mt-1">{errors.yearLevel}</p>
               )}

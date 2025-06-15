@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useContext } from "react";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useEventsPage } from "@/hooks/useEventsQuery";
+import { useTasks } from "@/hooks/useTasksQuery";
 import {
   toLocaleDateStringISO,
   generateCalendarGrid,
@@ -12,7 +13,6 @@ import CalendarHeader from "@/components/calendar/CalendarHeader";
 import CalendarGrid from "@/components/calendar/CalendarGrid";
 import UpcomingDeadlines from "@/components/calendar/UpcomingDeadlines";
 import TaskDetailDialog from "@/components/calendar/TaskDetailDialog";
-import TaskFormDialog from "@/components/calendar/TaskFormDialog";
 import EventFormDialog from "@/components/calendar/EventFormDialog";
 import DayView from "@/components/calendar/DayView";
 import WeekView from "@/components/calendar/WeekView";
@@ -23,11 +23,11 @@ export default function Events() {
   const [currentView, setCurrentView] = useState("month");
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
-  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isEventFormOpen, setIsEventFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     toLocaleDateStringISO(new Date())
   );
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   // Get user context for role-based permissions
   const { user } = useContext(AuthContext);
@@ -41,9 +41,9 @@ export default function Events() {
   // React Query hook for events with user-specific filters
   const {
     events,
-    isLoading: tasksLoading,
-    isError: tasksIsError,
-    error: tasksError,
+    isLoading,
+    isError,
+    error,
     createEvent,
     updateEvent,
     deleteEvent,
@@ -102,45 +102,38 @@ export default function Events() {
     setIsEventFormOpen(true);
   };
 
-  const openEditTaskForm = (task) => {
-    setSelectedTask(task);
-    setIsTaskDetailOpen(false);
-    setIsTaskFormOpen(true);
-  };
-
-  const closeTaskForm = () => {
-    setIsTaskFormOpen(false);
-    setSelectedTask(null);
+  const openEditEventForm = (event) => {
+    setSelectedEvent(event);
+    setIsEventFormOpen(true);
   };
 
   const closeEventForm = () => {
     setIsEventFormOpen(false);
-  };
-
-  const handleSaveTask = (taskData) => {
-    if (selectedTask) {
-      updateEvent({ eventId: selectedTask.id, eventData: taskData });
-    } else {
-      createEvent(taskData);
-    }
-    closeTaskForm();
+    setSelectedEvent(null);
   };
 
   const handleSaveEvent = (eventData) => {
-    // Format data to ensure it contains the date property that the calendar expects
-    const formattedData = {
-      ...eventData,
-      date: eventData.scheduleDate.substring(0, 10), // Extract YYYY-MM-DD from the ISO string
-    };
-
-    // Call the API function
-    createEvent(formattedData);
-
-    // Close the form immediately after submitting
+    if (selectedEvent) {
+      updateEvent({ eventId: selectedEvent.id, eventData });
+    } else {
+      createEvent({
+        ...eventData,
+        date: eventData.scheduleDate.substring(0, 10),
+      });
+    }
     closeEventForm();
   };
 
   const handleDeleteTask = (taskId) => {
+    // Check if the selected task is actually a task or an event
+    if (selectedTask?.type === "task") {
+      // For tasks, we need to use the task deletion API
+      // This would require importing and using the task deletion mutation
+      console.log("Deleting task:", taskId);
+      // TODO: Implement task deletion - for now, we'll use the event deletion as fallback
+    }
+
+    // For events or as fallback, use the event deletion
     deleteEvent(taskId);
     setIsTaskDetailOpen(false);
   };
@@ -158,20 +151,36 @@ export default function Events() {
     return generateCalendarGrid(currentDate, events);
   }, [currentDate, events]);
 
-  // Upcoming tasks calculation
+  // Fetch tasks separately for upcoming deadlines view (excludes events)
+  const {
+    data: tasksResponse,
+    isLoading: tasksLoading,
+    isError: tasksIsError,
+  } = useTasks({ archived: "false" });
+
+  // Filter and sort the upcoming tasks - Only show Tasks, not Events
   const upcomingTasks = useMemo(() => {
     const today = new Date();
     const nextWeek = new Date(today);
     nextWeek.setDate(today.getDate() + 7);
 
-    return events
+    // Debug: Log the tasks response structure
+    console.log("Events.jsx - tasksResponse:", tasksResponse);
+
+    // The useTasks hook from useTasksQuery.js already selects data?.data || []
+    // So tasksResponse should be the array directly
+    const tasks = Array.isArray(tasksResponse) ? tasksResponse : [];
+
+    console.log("Events.jsx - tasks array:", tasks);
+
+    return tasks
       .filter((task) => {
-        // Handle both date and scheduleDate properties
+        // Handle task deadline date
         let taskDate;
-        if (task.date) {
+        if (task.taskDeadline) {
+          taskDate = new Date(task.taskDeadline);
+        } else if (task.date) {
           taskDate = new Date(task.date + "T00:00:00");
-        } else if (task.scheduleDate) {
-          taskDate = new Date(task.scheduleDate);
         } else {
           return false;
         }
@@ -179,17 +188,33 @@ export default function Events() {
         return (
           taskDate >= today &&
           taskDate <= nextWeek &&
-          task.status !== "completed"
+          task.taskStatus !== "Completed"
         );
       })
       .sort((a, b) => {
-        const dateA = a.date ? new Date(a.date) : new Date(a.scheduleDate);
-        const dateB = b.date ? new Date(b.date) : new Date(b.scheduleDate);
+        const dateA = a.taskDeadline
+          ? new Date(a.taskDeadline)
+          : new Date(a.date);
+        const dateB = b.taskDeadline
+          ? new Date(b.taskDeadline)
+          : new Date(b.date);
         return dateA - dateB;
-      });
-  }, [events]);
+      })
+      .map((task) => ({
+        // Transform task to match the expected format for UpcomingDeadlines component
+        id: task._id,
+        title: task.taskName,
+        description: task.taskDescription,
+        date: task.taskDeadline ? task.taskDeadline.split("T")[0] : null,
+        scheduleDate: task.taskDeadline,
+        status: task.taskStatus,
+        priority: task.taskPriority,
+        course: "Personal", // Tasks are personal
+        type: "task",
+      }));
+  }, [tasksResponse]);
 
-  if (tasksLoading) {
+  if (tasksLoading || isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-theme(space.24))]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -200,13 +225,13 @@ export default function Events() {
     );
   }
 
-  if (tasksIsError) {
+  if (tasksIsError || isError) {
     return (
       <div className="container mx-auto p-4">
         <Alert variant="destructive">
           <AlertTitle>Error Loading Events</AlertTitle>
           <AlertDescription>
-            {tasksError?.message ||
+            {error?.message ||
               "An unexpected error occurred. Please try again later."}
           </AlertDescription>
         </Alert>
@@ -271,24 +296,17 @@ export default function Events() {
         task={selectedTask}
         open={isTaskDetailOpen}
         onOpenChange={setIsTaskDetailOpen}
-        onEdit={openEditTaskForm}
+        onEdit={openEditEventForm}
         onDelete={handleDeleteTask}
         isDeleting={deleteTaskLoading}
-      />
-      <TaskFormDialog
-        open={isTaskFormOpen}
-        onOpenChange={setIsTaskFormOpen}
-        task={selectedTask}
-        onSave={handleSaveTask}
-        onCancel={closeTaskForm}
-        isLoading={selectedTask ? updateTaskLoading : createTaskLoading}
       />
       <EventFormDialog
         open={isEventFormOpen}
         onOpenChange={setIsEventFormOpen}
         onSave={handleSaveEvent}
         onCancel={closeEventForm}
-        isLoading={createTaskLoading}
+        isLoading={selectedEvent ? updateTaskLoading : createTaskLoading}
+        event={selectedEvent}
       />
     </div>
   );

@@ -179,6 +179,19 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
           {taskDescription}
         </p>
 
+        {/* Display on-hold remarks if task is on hold */}
+        {normalizedStatus === "On Hold" && task.onHoldRemark && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2 mt-2">
+            <div className="flex items-center text-yellow-700 text-sm">
+              <span className="mr-1">💬</span>
+              <span className="font-medium">On-Hold Reason:</span>
+            </div>
+            <p className="text-yellow-700 text-sm mt-1 italic">
+              {task.onHoldRemark}
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center text-gray-500 text-xs">
             <Calendar size={14} className="mr-1.5 text-gray-400" />

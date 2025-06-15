@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
-import { Info } from "lucide-react";
+import { Info, CheckCircle, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -8,8 +9,17 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { courseColors, statusClasses, capitalize } from "@/lib/calendarHelpers";
+import {
+  getTaskColor,
+  getTaskColorClasses,
+  getStatusColorClasses,
+  normalizePriority,
+  normalizeStatus,
+  isTaskCompleted,
+  capitalize,
+} from "@/lib/calendarHelpers";
 
 function UpcomingDeadlines({ tasks, onTaskClick }) {
   // Helper function to format date safely
@@ -30,43 +40,87 @@ function UpcomingDeadlines({ tasks, onTaskClick }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upcoming Deadlines</CardTitle>
-        <CardDescription>
-          Tasks due in the next 7 days (excluding completed).
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Upcoming Task Deadlines</CardTitle>
+            <CardDescription>
+              Personal tasks due in the next 7 days (excluding completed).
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-1 h-auto text-sm rounded-md"
+            asChild
+          >
+            <Link to="/dashboard/tasks" className="flex items-center gap-1">
+              View all Tasks
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[200px] pr-4">
           <div className="space-y-2">
             {tasks.length > 0 ? (
-              tasks.map((task) => (
-                <div
-                  key={task.id}
-                  onClick={() => onTaskClick(task)}
-                  className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center space-x-3 overflow-hidden">
-                    <div
-                      className={`${
-                        courseColors[task.course] || "bg-gray-500"
-                      } h-10 w-1 rounded-full flex-shrink-0`}
-                    />
-                    <div className="overflow-hidden">
-                      <h4 className="font-medium truncate">{task.title}</h4>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {task.course} • Due: {formatDate(task)}
+              tasks.map((task) => {
+                const taskColor = getTaskColor(task.priority, task.status);
+                const taskColorClasses = getTaskColorClasses(
+                  task.priority,
+                  task.status
+                );
+                const statusColorClasses = getStatusColorClasses(task.status);
+                const completed = isTaskCompleted(task.status);
+                const normalizedPriority = normalizePriority(task.priority);
+                const normalizedStatus = normalizeStatus(task.status);
+
+                return (
+                  <div
+                    key={task.id}
+                    onClick={() => onTaskClick(task)}
+                    className={`flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 cursor-pointer transition-colors ${
+                      completed ? "opacity-75" : ""
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 overflow-hidden">
+                      {/* Priority-based color indicator */}
+                      <div
+                        className="h-10 w-1 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: taskColor }}
+                      />
+                      <div className="overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          {completed && (
+                            <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          )}
+                          <h4
+                            className={`font-medium truncate ${
+                              completed ? "line-through" : ""
+                            }`}
+                          >
+                            {task.title}
+                          </h4>
+                        </div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {task.course} • Due: {formatDate(task)}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                      {/* Priority badge - using consistent colors and removing duplicate text */}
+                      {normalizedPriority && (
+                        <Badge className={taskColorClasses}>
+                          {normalizedPriority}
+                        </Badge>
+                      )}
+                      {/* Status badge - using consistent colors */}
+                      <Badge className={statusColorClasses}>
+                        {capitalize(normalizedStatus)}
+                      </Badge>
+                    </div>
                   </div>
-                  <Badge
-                    className={`${
-                      statusClasses[task.status]
-                    } ml-2 flex-shrink-0`}
-                  >
-                    {capitalize(task.status)}
-                  </Badge>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="flex flex-col items-center justify-center py-6 text-center">
                 <Info className="h-8 w-8 text-muted-foreground mb-2" />

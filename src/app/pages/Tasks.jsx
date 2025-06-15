@@ -122,7 +122,9 @@ const Tasks = () => {
       task.taskDescription?.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Only show archived tasks when showArchived is true
-    const archiveMatch = showArchived ? (task.isArchived || task.archived) : !(task.isArchived || task.archived);
+    const archiveMatch = showArchived
+      ? task.isArchived || task.archived
+      : !(task.isArchived || task.archived);
     return searchMatch && archiveMatch;
   });
 

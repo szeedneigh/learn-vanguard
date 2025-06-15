@@ -12,6 +12,9 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import { useEvents } from "@/hooks/useEventsQuery";
+import { useTasks } from "@/hooks/useTasksQuery";
+import UpcomingDeadlines from "@/components/calendar/UpcomingDeadlines";
+import TaskDetailDialog from "@/components/calendar/TaskDetailDialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { format, isSameDay, parseISO } from "date-fns";
 
@@ -20,6 +23,10 @@ const Home = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isDateChanging, setIsDateChanging] = useState(false);
+
+  // Task-related state for upcoming deadlines
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
 
   // Debounced date selection handler
   const handleDateSelect = useCallback((date) => {
@@ -138,6 +145,70 @@ const Home = () => {
   useEffect(() => {
     refetchMonthEvents();
   }, [currentMonth, refetchMonthEvents]);
+
+  // Fetch tasks separately for upcoming deadlines view (excludes events)
+  const {
+    data: tasksResponse,
+    isLoading: tasksLoading,
+    isError: tasksIsError,
+  } = useTasks({ archived: "false" });
+
+  // Filter and sort the upcoming tasks - Only show Tasks, not Events
+  const upcomingTasks = useMemo(() => {
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    // The useTasks hook from useTasksQuery.js already selects data?.data || []
+    // So tasksResponse should be the array directly
+    const tasks = Array.isArray(tasksResponse) ? tasksResponse : [];
+
+    return tasks
+      .filter((task) => {
+        // Handle task deadline date
+        let taskDate;
+        if (task.taskDeadline) {
+          taskDate = new Date(task.taskDeadline);
+        } else if (task.date) {
+          taskDate = new Date(task.date + "T00:00:00");
+        } else {
+          return false;
+        }
+
+        return (
+          taskDate >= today &&
+          taskDate <= nextWeek &&
+          task.taskStatus !== "Completed"
+        );
+      })
+      .sort((a, b) => {
+        const dateA = a.taskDeadline
+          ? new Date(a.taskDeadline)
+          : new Date(a.date);
+        const dateB = b.taskDeadline
+          ? new Date(b.taskDeadline)
+          : new Date(b.date);
+        return dateA - dateB;
+      })
+      .map((task) => ({
+        // Transform task to match the expected format for UpcomingDeadlines component
+        id: task._id,
+        title: task.taskName,
+        description: task.taskDescription,
+        date: task.taskDeadline ? task.taskDeadline.split("T")[0] : null,
+        scheduleDate: task.taskDeadline,
+        status: task.taskStatus,
+        priority: task.taskPriority,
+        course: "Personal", // Tasks are personal
+        type: "task",
+      }));
+  }, [tasksResponse]);
+
+  // Task click handler
+  const handleTaskClick = (task) => {
+    setSelectedTask(task);
+    setIsTaskDetailOpen(true);
+  };
 
   // Create a function to check if a date has events
   const hasEventOnDate = (date) => {
@@ -289,7 +360,7 @@ const Home = () => {
   }
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || tasksLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
@@ -382,9 +453,10 @@ const Home = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           <div className="lg:col-span-2 space-y-8">
             <HeroSection />
-            <Card>
-              <TaskList />
-            </Card>
+            <UpcomingDeadlines
+              tasks={upcomingTasks}
+              onTaskClick={handleTaskClick}
+            />
           </div>
 
           <div className="space-y-6">
@@ -513,6 +585,16 @@ const Home = () => {
             </Card>
           </div>
         </div>
+
+        {/* Task Detail Dialog */}
+        <TaskDetailDialog
+          task={selectedTask}
+          open={isTaskDetailOpen}
+          onOpenChange={setIsTaskDetailOpen}
+          onEdit={() => {}} // Tasks are read-only from home page
+          onDelete={() => {}} // Tasks are read-only from home page
+          isDeleting={false}
+        />
       </div>
     );
   } catch (err) {

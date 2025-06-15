@@ -3,7 +3,8 @@ import PropTypes from "prop-types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ROLES } from "@/lib/constants";
+import { ROLES, PERMISSIONS } from "@/lib/constants";
+import { usePermission } from "@/context/PermissionContext";
 import {
   Search,
   List,
@@ -17,7 +18,16 @@ import {
   Book,
   BookOpen,
   RefreshCw,
+  Lock,
+  Info,
+  X,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +59,7 @@ const ViewSubject = ({
   onAddAnnouncement,
   onEditAnnouncement,
   onDeleteAnnouncement,
+  onAnnouncementClick,
   userRole,
   topics = [],
   topicsLoading = false,
@@ -57,6 +68,11 @@ const ViewSubject = ({
   onActivityAdded = () => {},
   setIsModalOpen,
   refetchAll = () => {},
+  canEditInCurrentContext = false,
+  isPIO = false,
+  assignedClassInfo = null,
+  isStudent = false,
+  isAdmin = false,
 }) => {
   const [resourceToDelete, setResourceToDelete] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -67,14 +83,113 @@ const ViewSubject = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const { hasPermission } = usePermission();
+  const canCreateAnnouncement = hasPermission(PERMISSIONS.ANNOUNCE_SUBJECT);
+
+  // Enhanced filtering for resources
   const filteredResources = useMemo(() => {
     if (!resources) return [];
-    return resources.filter(
-      (resource) =>
-        resource.name &&
-        resource.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    if (!searchTerm.trim()) return resources;
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    return resources.filter((resource) => {
+      const nameMatch = resource.name?.toLowerCase().includes(searchLower);
+      const typeMatch = resource.type?.toLowerCase().includes(searchLower);
+      const descriptionMatch = resource.description
+        ?.toLowerCase()
+        .includes(searchLower);
+
+      return nameMatch || typeMatch || descriptionMatch;
+    });
   }, [resources, searchTerm]);
+
+  // Filter announcements
+  const filteredAnnouncements = useMemo(() => {
+    if (!announcements) return [];
+    if (!searchTerm.trim()) return announcements;
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    return announcements.filter((announcement) => {
+      const titleMatch = announcement.title
+        ?.toLowerCase()
+        .includes(searchLower);
+      const descriptionMatch = announcement.description
+        ?.toLowerCase()
+        .includes(searchLower);
+      const typeMatch = announcement.type?.toLowerCase().includes(searchLower);
+
+      return titleMatch || descriptionMatch || typeMatch;
+    });
+  }, [announcements, searchTerm]);
+
+  // Filter topics and their activities
+  const filteredTopics = useMemo(() => {
+    if (!topics) return [];
+    if (!searchTerm.trim()) return topics;
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    return topics
+      .map((topic) => {
+        const topicNameMatch = topic.name?.toLowerCase().includes(searchLower);
+        const topicDescMatch = topic.description
+          ?.toLowerCase()
+          .includes(searchLower);
+
+        // Filter activities within the topic
+        const filteredActivities =
+          topic.activities?.filter((activity) => {
+            const activityTitleMatch = activity.title
+              ?.toLowerCase()
+              .includes(searchLower);
+            const activityTypeMatch = activity.type
+              ?.toLowerCase()
+              .includes(searchLower);
+            const activityDescMatch = activity.description
+              ?.toLowerCase()
+              .includes(searchLower);
+
+            return activityTitleMatch || activityTypeMatch || activityDescMatch;
+          }) || [];
+
+        // Include topic if it matches or has matching activities
+        if (topicNameMatch || topicDescMatch || filteredActivities.length > 0) {
+          return {
+            ...topic,
+            activities: searchTerm.trim()
+              ? filteredActivities
+              : topic.activities,
+            _isFiltered:
+              !topicNameMatch &&
+              !topicDescMatch &&
+              filteredActivities.length > 0,
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+  }, [topics, searchTerm]);
+
+  // Helper function to highlight search matches
+  const highlightSearchTerm = (text, searchTerm) => {
+    if (!searchTerm.trim() || !text) return text;
+
+    const regex = new RegExp(
+      `(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+      "gi"
+    );
+    const parts = text.split(regex);
+
+    return parts.map((part, index) =>
+      regex.test(part) ? (
+        <mark key={index} className="bg-yellow-200 px-1 rounded">
+          {part}
+        </mark>
+      ) : (
+        part
+      )
+    );
+  };
 
   const handleConfirmDelete = () => {
     if (resourceToDelete) {
@@ -179,11 +294,21 @@ const ViewSubject = ({
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search resources..."
-                className="w-full pl-10 pr-4 py-2 bg-white rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="Search resources, announcements, topics, and activities..."
+                className="w-full pl-10 pr-10 py-2 bg-white rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
             </div>
             <div className="flex space-x-2">
               <Button
@@ -211,104 +336,233 @@ const ViewSubject = ({
               </Button>
             </div>
           </div>
+
+          {/* Search Results Summary */}
+          {searchTerm.trim() && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center space-x-2 text-sm text-blue-800">
+                <Search className="w-4 h-4" />
+                <span>
+                  Searching for "{searchTerm}" • Found{" "}
+                  <strong>
+                    {filteredResources.length} resources,{" "}
+                    {filteredAnnouncements.length} announcements,{" "}
+                    {filteredTopics.length} topics
+                  </strong>
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchTerm("")}
+                  className="ml-auto text-blue-600 hover:text-blue-800 h-6 px-2"
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Topics Section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div className="flex items-center space-x-3">
-            <BookOpen className="w-6 h-6 text-blue-600" />
-            <CardTitle className="text-xl font-semibold">Topics</CardTitle>
-          </div>
-          {(userRole === ROLES.ADMIN || userRole === ROLES.PIO) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAddTopic}
-              className="whitespace-nowrap"
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Add Topic
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {topicsLoading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-              <p className="ml-3 text-muted-foreground">Loading Topics...</p>
-            </div>
-          )}
-          {topicsError && (
-            <Alert variant="destructive" className="my-4">
-              <AlertTitle>Error Loading Topics</AlertTitle>
-              <AlertDescription>
-                {topicsError?.message ||
-                  "An unexpected error occurred while fetching topics."}
-              </AlertDescription>
-            </Alert>
-          )}
-          {!topicsLoading && !topicsError && topics && topics.length > 0 && (
-            <div className="space-y-4">
-              {topics.map((topic) => (
-                <div
-                  key={topic.id}
-                  className="p-4 bg-blue-50 rounded-xl shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-md font-medium">{topic.name}</h3>
-                    {(userRole === ROLES.ADMIN || userRole === ROLES.PIO) && (
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAddActivity(topic.id)}
-                          className="text-sm"
-                        >
-                          <PlusCircle className="w-3 h-3 mr-1" />
-                          Add Activity
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  {topic.description && (
-                    <p className="text-sm text-gray-600 mb-2">
-                      {topic.description}
+      <TooltipProvider>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center space-x-3">
+              <BookOpen
+                className={`w-6 h-6 ${
+                  canEditInCurrentContext ? "text-blue-600" : "text-gray-500"
+                }`}
+              />
+              <CardTitle className="text-xl font-semibold">Topics</CardTitle>
+              {!canEditInCurrentContext && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Lock className="w-4 h-4 text-gray-400 ml-2" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">
+                      {isStudent
+                        ? "Students have read-only access to topics"
+                        : isPIO
+                        ? "You can only edit topics in your assigned class"
+                        : "Read-only access"}
                     </p>
-                  )}
-
-                  {/* Topic Resources */}
-                  <TopicResourceView
-                    topic={topic}
-                    subjectId={currentSubject?.id}
-                    userRole={userRole}
-                    onUploadClick={handleUploadForTopic}
-                    refetchTrigger={refetchTrigger}
-                  />
-
-                  {/* Topic Activities */}
-                  <TopicActivitiesView
-                    topic={topic}
-                    userRole={userRole}
-                    onActivityDeleted={() => {
-                      // Refetch topics when an activity is deleted
-                      refetchAll();
-                    }}
-                  />
-                </div>
-              ))}
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
-          )}
-          {!topicsLoading &&
-            !topicsError &&
-            (!topics || topics.length === 0) && (
-              <p className="text-center text-muted-foreground py-8">
-                No topics for this subject yet.
-              </p>
+            {canEditInCurrentContext && !isStudent && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddTopic}
+                className="whitespace-nowrap"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Add Topic
+              </Button>
             )}
-        </CardContent>
-      </Card>
+            {!canEditInCurrentContext && !isStudent && (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    className="whitespace-nowrap opacity-50"
+                  >
+                    <PlusCircle className="w-4 h-4 mr-2" />
+                    Add Topic
+                    <Lock className="w-3 h-3 ml-1" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-sm">
+                    You can only add topics in your assigned class:{" "}
+                    {assignedClassInfo?.course} - {assignedClassInfo?.yearLevel}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </CardHeader>
+          <CardContent>
+            {topicsLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                <p className="ml-3 text-muted-foreground">Loading Topics...</p>
+              </div>
+            )}
+            {topicsError && (
+              <Alert variant="destructive" className="my-4">
+                <AlertTitle>Error Loading Topics</AlertTitle>
+                <AlertDescription>
+                  {topicsError?.message ||
+                    "An unexpected error occurred while fetching topics."}
+                </AlertDescription>
+              </Alert>
+            )}
+            {!topicsLoading &&
+              !topicsError &&
+              filteredTopics &&
+              filteredTopics.length > 0 && (
+                <div className="space-y-4">
+                  {filteredTopics.map((topic) => (
+                    <div
+                      key={topic.id}
+                      className="p-4 bg-blue-50 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-md font-medium">{topic.name}</h3>
+                          {!canEditInCurrentContext && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Lock className="w-3 h-3 text-gray-400" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-sm">
+                                  {isStudent
+                                    ? "Read-only access to topic content"
+                                    : "You can only edit topics in your assigned class"}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                        {canEditInCurrentContext && !isStudent && (
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddActivity(topic.id)}
+                              className="text-sm"
+                            >
+                              <PlusCircle className="w-3 h-3 mr-1" />
+                              Add Activity
+                            </Button>
+                          </div>
+                        )}
+                        {!canEditInCurrentContext && !isStudent && (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                className="text-sm opacity-50"
+                              >
+                                <PlusCircle className="w-3 h-3 mr-1" />
+                                Add Activity
+                                <Lock className="w-3 h-3 ml-1" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-sm">
+                                Restricted to your assigned class
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                      {topic.description && (
+                        <p className="text-sm text-gray-600 mb-2">
+                          {topic.description}
+                        </p>
+                      )}
+
+                      {/* Topic Resources */}
+                      <TopicResourceView
+                        topic={topic}
+                        subjectId={currentSubject?.id}
+                        userRole={userRole}
+                        onUploadClick={handleUploadForTopic}
+                        refetchTrigger={refetchTrigger}
+                        canEditInCurrentContext={canEditInCurrentContext}
+                        isStudent={isStudent}
+                        isPIO={isPIO}
+                        assignedClassInfo={assignedClassInfo}
+                      />
+
+                      {/* Topic Activities */}
+                      <TopicActivitiesView
+                        topic={topic}
+                        userRole={userRole}
+                        onActivityDeleted={(
+                          deletedActivity,
+                          announcementDeleted
+                        ) => {
+                          // Refetch both topics and announcements when an activity is deleted
+                          // This ensures the UI is updated to reflect both the activity and announcement deletion
+                          console.log(
+                            "Activity deleted:",
+                            deletedActivity?.title,
+                            "Announcement also deleted:",
+                            announcementDeleted
+                          );
+                          refetchAll();
+                        }}
+                        canEditInCurrentContext={canEditInCurrentContext}
+                        isStudent={isStudent}
+                        isPIO={isPIO}
+                        assignedClassInfo={assignedClassInfo}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            {!topicsLoading &&
+              !topicsError &&
+              (!filteredTopics || filteredTopics.length === 0) && (
+                <p className="text-center text-muted-foreground py-8">
+                  {searchTerm.trim()
+                    ? `No topics or activities found matching "${searchTerm}".`
+                    : "No topics for this subject yet."}
+                </p>
+              )}
+          </CardContent>
+        </Card>
+      </TooltipProvider>
 
       {resourcesLoading && (
         <div className="flex items-center justify-center mt-4">
@@ -355,8 +609,8 @@ const ViewSubject = ({
                         <span className="hidden sm:inline">Download</span>
                       </Button>
                       {handleDeleteResource &&
-                        (userRole === ROLES.ADMIN ||
-                          userRole === ROLES.PIO) && (
+                        canEditInCurrentContext &&
+                        !isStudent && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -370,6 +624,30 @@ const ViewSubject = ({
                             <span className="hidden sm:inline">Delete</span>
                           </Button>
                         )}
+                      {!canEditInCurrentContext && !isStudent && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled
+                                className="text-gray-400 opacity-50"
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                <span className="hidden sm:inline">Delete</span>
+                                <Lock className="w-3 h-3 ml-1" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-sm">
+                                You can only delete resources in your assigned
+                                class
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -396,110 +674,237 @@ const ViewSubject = ({
         )}
 
       {/* Announcements Section */}
-      <Card className="mt-6">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div className="flex items-center space-x-3">
-            <MessageSquare className="w-6 h-6 text-purple-600" />
-            <CardTitle className="text-xl font-semibold">
-              Announcements
-            </CardTitle>
-          </div>
-          {(userRole === ROLES.ADMIN || userRole === ROLES.PIO) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAddAnnouncement}
-              className="whitespace-nowrap"
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Add New
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {announcementsLoading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
-              <p className="ml-3 text-muted-foreground">
-                Loading Announcements...
-              </p>
-            </div>
-          )}
-          {announcementsError && (
-            <Alert variant="destructive" className="my-4">
-              <AlertTitle>Error Loading Announcements</AlertTitle>
-              <AlertDescription>
-                {announcementsError?.message ||
-                  "An unexpected error occurred while fetching announcements."}
-              </AlertDescription>
-            </Alert>
-          )}
-          {!announcementsLoading &&
-            !announcementsError &&
-            announcements &&
-            announcements.length > 0 && (
-              <div className="space-y-4">
-                {announcements.map((announcement) => (
-                  <div
-                    key={announcement.id}
-                    className="p-4 bg-purple-50 rounded-xl shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap mb-2">
-                      {announcement.content}
+      <TooltipProvider>
+        <Card className="mt-6">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center space-x-3">
+              <MessageSquare
+                className={`w-6 h-6 ${
+                  canEditInCurrentContext ? "text-purple-600" : "text-gray-500"
+                }`}
+              />
+              <CardTitle className="text-xl font-semibold">
+                Announcements
+              </CardTitle>
+              {!canEditInCurrentContext && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Lock className="w-4 h-4 text-gray-400 ml-2" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">
+                      {isStudent
+                        ? "Students have read-only access to announcements"
+                        : isPIO
+                        ? "You can only create announcements in your assigned class"
+                        : "Read-only access"}
                     </p>
-                    <div className="flex justify-between items-center">
-                      <p className="text-xs text-purple-700">
-                        Posted:{" "}
-                        {new Date(announcement.createdAt).toLocaleDateString()}{" "}
-                        at{" "}
-                        {new Date(announcement.createdAt).toLocaleTimeString()}
-                      </p>
-                      {(userRole === ROLES.ADMIN || userRole === ROLES.PIO) && (
-                        <div className="flex space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-purple-600 hover:bg-purple-100"
-                            onClick={() => onEditAnnouncement(announcement)}
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-red-600 hover:bg-red-100"
-                            onClick={() => {
-                              // Ensure we have a valid ID before attempting deletion
-                              const announcementId =
-                                announcement._id || announcement.id;
-                              if (announcementId) {
-                                onDeleteAnnouncement(announcementId);
-                              } else {
-                                console.error(
-                                  "Invalid announcement ID:",
-                                  announcement
-                                );
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+            {canEditInCurrentContext && !isStudent && canCreateAnnouncement && (
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    onAnnouncementClick && onAnnouncementClick(currentSubject)
+                  }
+                  className="whitespace-nowrap"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Announcement
+                </Button>
               </div>
             )}
-          {!announcementsLoading &&
-            !announcementsError &&
-            (!announcements || announcements.length === 0) && (
-              <p className="text-center text-muted-foreground py-8">
-                No announcements for this subject yet.
-              </p>
+            {!canEditInCurrentContext && !isStudent && (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    className="whitespace-nowrap opacity-50"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Announcement
+                    <Lock className="w-3 h-3 ml-1" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-sm">
+                    You can only create announcements in your assigned class:{" "}
+                    {assignedClassInfo?.course} - {assignedClassInfo?.yearLevel}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
             )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {announcementsLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+                <p className="ml-3 text-muted-foreground">
+                  Loading Announcements...
+                </p>
+              </div>
+            )}
+            {announcementsError && (
+              <Alert variant="destructive" className="my-4">
+                <AlertTitle>Error Loading Announcements</AlertTitle>
+                <AlertDescription>
+                  {announcementsError?.message ||
+                    "An unexpected error occurred while fetching announcements."}
+                </AlertDescription>
+              </Alert>
+            )}
+            {!announcementsLoading &&
+              !announcementsError &&
+              filteredAnnouncements &&
+              filteredAnnouncements.length > 0 && (
+                <div className="space-y-4">
+                  {filteredAnnouncements.map((announcement) => (
+                    <div
+                      key={announcement.id}
+                      className={`p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow ${
+                        announcement.creationSource === "activity"
+                          ? "bg-blue-50 border-l-4 border-blue-400"
+                          : "bg-purple-50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap flex-1">
+                          {announcement.content}
+                        </p>
+                        {announcement.creationSource === "activity" && (
+                          <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full whitespace-nowrap">
+                            Auto-generated
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-purple-700">
+                          Posted:{" "}
+                          {new Date(
+                            announcement.createdAt
+                          ).toLocaleDateString()}{" "}
+                          at{" "}
+                          {new Date(
+                            announcement.createdAt
+                          ).toLocaleTimeString()}
+                        </p>
+                        {canEditInCurrentContext && !isStudent && (
+                          <div className="flex space-x-1">
+                            {/* Only show edit button for manually created announcements */}
+                            {announcement.creationSource !== "activity" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-purple-600 hover:bg-purple-100"
+                                onClick={() => onEditAnnouncement(announcement)}
+                                title="Edit announcement"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </Button>
+                            )}
+
+                            {/* Show info icon for activity-generated announcements */}
+                            {announcement.creationSource === "activity" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-400 cursor-not-allowed"
+                                disabled
+                                title="This announcement was auto-generated from an activity and cannot be edited"
+                              >
+                                <Edit3 className="w-4 h-4 opacity-50" />
+                              </Button>
+                            )}
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-red-600 hover:bg-red-100"
+                              onClick={() => {
+                                // Ensure we have a valid ID before attempting deletion
+                                const announcementId =
+                                  announcement._id || announcement.id;
+                                if (announcementId) {
+                                  onDeleteAnnouncement(announcementId);
+                                } else {
+                                  console.error(
+                                    "Invalid announcement ID:",
+                                    announcement
+                                  );
+                                }
+                              }}
+                              title="Delete announcement"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                        {!canEditInCurrentContext && !isStudent && (
+                          <div className="flex space-x-1">
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled
+                                  className="h-7 w-7 text-gray-400 opacity-50 relative"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                  <Lock className="w-2 h-2 absolute top-1 right-1" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-sm">
+                                  You can only edit announcements in your
+                                  assigned class
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled
+                                  className="h-7 w-7 text-gray-400 opacity-50 relative"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  <Lock className="w-2 h-2 absolute top-1 right-1" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-sm">
+                                  You can only delete announcements in your
+                                  assigned class
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            {!announcementsLoading &&
+              !announcementsError &&
+              (!filteredAnnouncements ||
+                filteredAnnouncements.length === 0) && (
+                <p className="text-center text-muted-foreground py-8">
+                  {searchTerm.trim()
+                    ? `No announcements found matching "${searchTerm}".`
+                    : "No announcements for this subject yet."}
+                </p>
+              )}
+          </CardContent>
+        </Card>
+      </TooltipProvider>
 
       {/* Modals */}
       <AddTopicModal
@@ -551,6 +956,7 @@ ViewSubject.propTypes = {
   onAddAnnouncement: PropTypes.func,
   onEditAnnouncement: PropTypes.func,
   onDeleteAnnouncement: PropTypes.func,
+  onAnnouncementClick: PropTypes.func,
   userRole: PropTypes.string,
   topics: PropTypes.arrayOf(
     PropTypes.shape({
@@ -566,6 +972,11 @@ ViewSubject.propTypes = {
   onActivityAdded: PropTypes.func,
   setIsModalOpen: PropTypes.func,
   refetchAll: PropTypes.func,
+  canEditInCurrentContext: PropTypes.bool,
+  isPIO: PropTypes.bool,
+  assignedClassInfo: PropTypes.object,
+  isStudent: PropTypes.bool,
+  isAdmin: PropTypes.bool,
 };
 
 export default ViewSubject;

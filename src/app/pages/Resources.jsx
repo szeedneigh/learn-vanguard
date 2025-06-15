@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useContext } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { UploadModal } from "@/components/modal/UploadModal";
 import { AddSubjectModal } from "@/components/modal/AddSubjectModal";
 import { AddEditAnnouncementModal } from "@/components/modal/AddEditAnnouncementModal";
@@ -37,6 +37,8 @@ export default function Resources() {
   const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
   const [isAddAnnouncementModalOpen, setIsAddAnnouncementModalOpen] =
     useState(false);
+  const [selectedSubjectForAnnouncement, setSelectedSubjectForAnnouncement] =
+    useState(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("grid");
@@ -47,6 +49,41 @@ export default function Resources() {
   const [currentSubject, setCurrentSubject] = useState(null);
 
   const { user } = useContext(AuthContext);
+
+  // Check user role and get assigned class info for PIO users
+  const isPIO = user?.role === ROLES.PIO;
+  const isAdmin = user?.role === ROLES.ADMIN;
+
+  // Parse PIO assigned class information
+  const assignedClassInfo = useMemo(() => {
+    if (!isPIO || !user?.assignedClass) return null;
+
+    const parts = user.assignedClass.split(" - ");
+    if (parts.length !== 2) return null;
+
+    const [course, yearLevel] = parts;
+
+    // Map course names to programId
+    const courseToProgram = {
+      "Associate in Computer Technology": "act",
+      "Bachelor of Science in Information Systems": "bsis",
+    };
+
+    // Map year level to numeric value
+    const yearLevelToNumber = {
+      "First Year": 1,
+      "Second Year": 2,
+      "Third Year": 3,
+      "Fourth Year": 4,
+    };
+
+    return {
+      course,
+      yearLevel,
+      programId: courseToProgram[course],
+      yearLevelNumber: yearLevelToNumber[yearLevel],
+    };
+  }, [isPIO, user?.assignedClass]);
 
   // Programs query
   const {
@@ -65,6 +102,37 @@ export default function Resources() {
     }
     return undefined;
   }, [programsData, currentProgramName]);
+
+  // Check if user can edit content in the current context
+  const canEditInCurrentContext = useMemo(() => {
+    // Admin can edit everything
+    if (isAdmin) return true;
+
+    // Students cannot edit anything
+    if (user?.role === ROLES.STUDENT) return false;
+
+    // PIO users can only edit content in their assigned class
+    if (isPIO && assignedClassInfo) {
+      const currentProgramId = programsData?.find(
+        (p) => p.name === currentProgramName
+      )?.id;
+      return (
+        currentProgramId === assignedClassInfo.programId &&
+        currentYear === assignedClassInfo.yearLevelNumber
+      );
+    }
+
+    // Default to false for safety
+    return false;
+  }, [
+    isAdmin,
+    isPIO,
+    assignedClassInfo,
+    currentProgramName,
+    currentYear,
+    programsData,
+    user?.role,
+  ]);
 
   // Subjects query
   const {
@@ -201,7 +269,8 @@ export default function Resources() {
   });
 
   const updateAnnouncementMutation = useMutation({
-    mutationFn: ({ id, ...data }) => updateAnnouncement(id, data),
+    mutationFn: ({ announcementId, ...data }) =>
+      updateAnnouncement({ announcementId, ...data }),
     onSuccess: () => {
       refetchAnnouncements();
       toast.success("Announcement updated successfully!");
@@ -254,20 +323,31 @@ export default function Resources() {
       "Resources.jsx: Initial selection useEffect - programsData:",
       JSON.stringify(programsData),
       "currentProgramName:",
-      currentProgramName
+      currentProgramName,
+      "isPIO:",
+      isPIO,
+      "assignedClassInfo:",
+      assignedClassInfo
     );
+
     if (programsData && programsData.length > 0 && !currentProgramName) {
-      const firstProgram = programsData[0];
+      // All users get the first available program (no restrictions on navigation)
+      const targetProgram = programsData[0];
+
       console.log(
         "Resources.jsx: Initial selection useEffect - Setting initial program:",
-        JSON.stringify(firstProgram)
+        JSON.stringify(targetProgram)
       );
-      setCurrentProgramName(firstProgram.name);
-      if (firstProgram.years && firstProgram.years.length > 0) {
-        const firstYear = firstProgram.years[0];
-        setCurrentYear(firstYear.year);
-        if (firstYear.semesters && firstYear.semesters.length > 0) {
-          setCurrentSemester(firstYear.semesters[0]);
+
+      setCurrentProgramName(targetProgram.name);
+
+      if (targetProgram.years && targetProgram.years.length > 0) {
+        // All users get the first available year (no restrictions on navigation)
+        const targetYear = targetProgram.years[0];
+        setCurrentYear(targetYear.year);
+
+        if (targetYear.semesters && targetYear.semesters.length > 0) {
+          setCurrentSemester(targetYear.semesters[0]);
         }
       }
     } else {
@@ -275,7 +355,7 @@ export default function Resources() {
         "Resources.jsx: Initial selection useEffect - Conditions NOT met or program already selected."
       );
     }
-  }, [programsData, currentProgramName]);
+  }, [programsData, currentProgramName, isPIO, assignedClassInfo]);
 
   useEffect(() => {
     if (selectedProgramId && currentYear && currentSemester) {
@@ -391,13 +471,15 @@ export default function Resources() {
 
   const handleProgramChange = useCallback(
     (programName) => {
+      // All users can navigate to any program (no restrictions)
       setCurrentProgramName(programName);
       const selectedProg = programsData?.find((p) => p.name === programName);
       if (selectedProg && selectedProg.years && selectedProg.years.length > 0) {
-        const firstYear = selectedProg.years[0];
-        setCurrentYear(firstYear.year);
-        if (firstYear.semesters && firstYear.semesters.length > 0) {
-          setCurrentSemester(firstYear.semesters[0]);
+        // All users get the first available year (no restrictions)
+        const targetYear = selectedProg.years[0];
+        setCurrentYear(targetYear.year);
+        if (targetYear.semesters && targetYear.semesters.length > 0) {
+          setCurrentSemester(targetYear.semesters[0]);
         } else {
           setCurrentSemester(null);
         }
@@ -503,6 +585,34 @@ export default function Resources() {
   };
 
   const handleEditAnnouncementClick = (announcement) => {
+    // Validate announcement data before setting it for editing
+    if (!announcement) {
+      toast.error("Cannot edit announcement: No announcement data provided.");
+      console.error(
+        "handleEditAnnouncementClick: announcement is null/undefined"
+      );
+      return;
+    }
+
+    const announcementId = announcement.id || announcement._id;
+    if (!announcementId) {
+      toast.error("Cannot edit announcement: Invalid announcement ID.");
+      console.error(
+        "handleEditAnnouncementClick: Missing announcement ID:",
+        announcement
+      );
+      return;
+    }
+
+    console.log(
+      "handleEditAnnouncementClick: Setting announcement for editing:",
+      {
+        id: announcementId,
+        title: announcement.title,
+        content: announcement.content?.substring(0, 50) + "...",
+      }
+    );
+
     setEditingAnnouncement(announcement);
     setIsAddAnnouncementModalOpen(true);
   };
@@ -534,43 +644,66 @@ export default function Resources() {
   };
 
   const handleSaveAnnouncement = (values) => {
-    if (!currentSubjectId) {
+    const subjectId = currentSubjectId || selectedSubjectForAnnouncement?.id;
+
+    if (!subjectId) {
       toast.error("Cannot save announcement: Subject context is missing.");
       return;
     }
 
     if (editingAnnouncement) {
+      // Validate that we have a valid announcement with an ID
+      const announcementId = editingAnnouncement.id || editingAnnouncement._id;
+
+      if (!announcementId) {
+        toast.error("Cannot update announcement: Invalid announcement data.");
+        console.error("Missing announcement ID:", editingAnnouncement);
+        return;
+      }
+
       updateAnnouncementMutation.mutate(
         {
-          announcementId: editingAnnouncement.id,
+          announcementId: announcementId,
           content: values.content,
           title: values.title,
           priority: values.priority,
           type: values.type,
-          subjectId: currentSubjectId,
+          dueDate: values.dueDate,
+          subjectId: subjectId,
         },
         {
           onSuccess: () => {
             setIsAddAnnouncementModalOpen(false);
             setEditingAnnouncement(null);
+            setSelectedSubjectForAnnouncement(null);
           },
         }
       );
     } else {
-      createAnnouncementMutation.mutate(
-        {
-          content: values.content,
-          title: values.title,
-          priority: values.priority,
-          type: values.type,
-          subjectId: currentSubjectId,
+      // Prepare announcement data
+      const announcementData = {
+        content: values.content,
+        title: values.title,
+        priority: values.priority,
+        type: values.type,
+        dueDate: values.dueDate,
+        subjectId: subjectId,
+      };
+
+      // Only include activityData if it's provided and is a valid object
+      if (values.activityData && typeof values.activityData === "object") {
+        announcementData.activityData = values.activityData;
+      }
+
+      createAnnouncementMutation.mutate(announcementData, {
+        onSuccess: () => {
+          setIsAddAnnouncementModalOpen(false);
+          setSelectedSubjectForAnnouncement(null);
+          // Refetch both announcements and topics since we might have created an activity
+          refetchAnnouncements();
+          refetchTopics();
         },
-        {
-          onSuccess: () => {
-            setIsAddAnnouncementModalOpen(false);
-          },
-        }
-      );
+      });
     }
   };
 
@@ -583,6 +716,13 @@ export default function Resources() {
   const handleActivityAdded = () => {
     refetchTopics();
     refetchAnnouncements();
+  };
+
+  // Handle announcement button click from ViewSubject (enhanced modal)
+  const handleAnnouncementClick = (subject) => {
+    setSelectedSubjectForAnnouncement(subject);
+    setEditingAnnouncement(null); // Ensure we're creating a new announcement
+    setIsAddAnnouncementModalOpen(true); // Use the existing modal
   };
 
   if (programsLoading) {
@@ -660,6 +800,7 @@ export default function Resources() {
             onAddAnnouncement={handleAddAnnouncementClick}
             onEditAnnouncement={handleEditAnnouncementClick}
             onDeleteAnnouncement={handleDeleteAnnouncement}
+            onAnnouncementClick={handleAnnouncementClick}
             userRole={user?.role}
             topics={topicsData?.data || []}
             topicsLoading={topicsLoading}
@@ -680,6 +821,11 @@ export default function Resources() {
               refetchTopics();
               refetchAnnouncements();
             }}
+            canEditInCurrentContext={canEditInCurrentContext}
+            isPIO={isPIO}
+            assignedClassInfo={assignedClassInfo}
+            isStudent={user?.role === ROLES.STUDENT}
+            isAdmin={isAdmin}
           />
         ) : selectedProgramData ? (
           <CourseView
@@ -702,6 +848,9 @@ export default function Resources() {
             userRole={user?.role}
             onDeleteSubject={handleDeleteSubject}
             SubjectListComponent={SubjectList}
+            canEditInCurrentContext={canEditInCurrentContext}
+            isPIO={isPIO}
+            assignedClassInfo={assignedClassInfo}
           />
         ) : (
           <div className="flex items-center justify-center h-64">
@@ -755,10 +904,9 @@ export default function Resources() {
           selectedTopic={selectedTopicForUpload}
         />
 
-        {currentSubject &&
-          (user?.role === ROLES.ADMIN || user?.role === ROLES.PIO) && (
-            <FloatingUploadButton setIsModalOpen={setIsModalOpen} />
-          )}
+        {currentSubject && canEditInCurrentContext && (
+          <FloatingUploadButton setIsModalOpen={setIsModalOpen} />
+        )}
 
         <AddSubjectModal
           isOpen={isAddSubjectModalOpen}
@@ -775,6 +923,7 @@ export default function Resources() {
           onClose={() => {
             setIsAddAnnouncementModalOpen(false);
             setEditingAnnouncement(null);
+            setSelectedSubjectForAnnouncement(null);
           }}
           onSubmit={handleSaveAnnouncement}
           isLoading={
@@ -782,8 +931,10 @@ export default function Resources() {
             updateAnnouncementMutation.isPending
           }
           announcement={editingAnnouncement}
-          subjectName={currentSubject?.name}
-          subjectId={currentSubjectId}
+          subjectName={
+            currentSubject?.name || selectedSubjectForAnnouncement?.name
+          }
+          subjectId={currentSubjectId || selectedSubjectForAnnouncement?.id}
         />
       </div>
     </div>

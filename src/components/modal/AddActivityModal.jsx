@@ -11,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { addActivity } from "@/services/topicService";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Calendar, Plus, X } from "lucide-react";
@@ -47,10 +55,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
       setIsSubmitting(false);
     }
   }, [isOpen]);
-
-  if (!isOpen) {
-    return null;
-  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -172,27 +176,19 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
     }
   };
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
+  const handleModalClose = (open) => {
+    // Only call onClose when the dialog is closing
+    if (!open) {
       onClose();
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div
-        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="modal-title" className="text-xl font-semibold mb-6">
-          Add Activity
-        </h2>
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add Activity</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {errors.form && (
@@ -349,15 +345,12 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              onClick={onClose}
-              variant="outline"
-              type="button"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
+          <DialogFooter className="pt-4">
+            <DialogClose asChild>
+              <Button variant="outline" type="button" disabled={isSubmitting}>
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -372,10 +365,10 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
                 "Create Activity"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

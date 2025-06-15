@@ -36,6 +36,134 @@ export const statusClasses = {
 };
 
 /**
+ * Get task color based on priority and status (matches main task page)
+ * @param {string} priority - Task priority (High Priority, Medium Priority, Low Priority, High, Medium, Low)
+ * @param {string} status - Task status (Completed, On-hold, On Hold, etc.)
+ * @returns {string} Hex color code
+ */
+export const getTaskColor = (priority, status) => {
+  // Normalize status to handle different formats
+  const normalizedStatus = normalizeStatus(status);
+
+  // Status overrides priority color
+  if (normalizedStatus === "Completed") return "#10B981"; // Green
+  if (normalizedStatus === "On Hold") return "#F59E0B"; // Yellow/Amber
+
+  // Normalize priority to handle different formats
+  const normalizedPriority = normalizePriority(priority);
+
+  switch (normalizedPriority) {
+    case "High":
+      return "#EF4444"; // Red (matches main task page)
+    case "Medium":
+      return "#F59E0B"; // Amber (matches main task page)
+    case "Low":
+      return "#10B981"; // Green (matches main task page)
+    default:
+      return "#6366F1"; // Blue (default)
+  }
+};
+
+/**
+ * Normalize status to handle different formats from backend
+ * @param {string} status - Task status
+ * @returns {string} Normalized status
+ */
+export const normalizeStatus = (status) => {
+  if (!status) return "Unknown";
+
+  const statusLower = typeof status === "string" ? status.toLowerCase() : "";
+
+  if (
+    statusLower === "not yet started" ||
+    statusLower === "not-started" ||
+    statusLower === "not started"
+  ) {
+    return "Not Started";
+  } else if (statusLower === "in progress" || statusLower === "in-progress") {
+    return "In Progress";
+  } else if (statusLower === "on hold" || statusLower === "on-hold") {
+    return "On Hold";
+  } else if (statusLower === "completed") {
+    return "Completed";
+  }
+
+  return status; // Return original if no match
+};
+
+/**
+ * Normalize priority to handle different formats from backend
+ * @param {string} priority - Task priority
+ * @returns {string} Normalized priority
+ */
+export const normalizePriority = (priority) => {
+  if (!priority) return null;
+
+  if (priority && priority.includes && priority.includes("Priority")) {
+    return priority.replace(" Priority", "");
+  }
+  return priority;
+};
+
+/**
+ * Get task background color classes based on priority and status (matches main task page)
+ * @param {string} priority - Task priority
+ * @param {string} status - Task status
+ * @returns {string} CSS classes for background and text
+ */
+export const getTaskColorClasses = (priority, status) => {
+  const normalizedStatus = normalizeStatus(status);
+  const normalizedPriority = normalizePriority(priority);
+
+  // Status overrides priority color (matches main task page)
+  if (normalizedStatus === "Completed") return "bg-green-100 text-green-800"; // Matches TaskCard
+  if (normalizedStatus === "On Hold") return "bg-amber-100 text-amber-800"; // Matches TaskCard
+
+  switch (normalizedPriority) {
+    case "High":
+      return "bg-red-100 text-red-700"; // Matches TaskCard
+    case "Medium":
+      return "bg-amber-100 text-amber-700"; // Matches TaskCard
+    case "Low":
+      return "bg-green-100 text-green-700"; // Matches TaskCard
+    default:
+      return "bg-blue-50 border-blue-200 text-blue-800"; // Default
+  }
+};
+
+/**
+ * Get status color classes (matches main task page)
+ * @param {string} status - Task status
+ * @returns {string} CSS classes for status display
+ */
+export const getStatusColorClasses = (status) => {
+  const normalizedStatus = normalizeStatus(status);
+
+  switch (normalizedStatus) {
+    case "Not Started":
+      return "bg-gray-100 text-gray-800";
+    case "In Progress":
+      return "bg-blue-100 text-blue-800";
+    case "On Hold":
+      return "bg-amber-100 text-amber-800";
+    case "Completed":
+      return "bg-green-100 text-green-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
+
+/**
+ * Check if a task is completed
+ * @param {string} status - Task status
+ * @returns {boolean} True if task is completed
+ */
+export const isTaskCompleted = (status) => {
+  const normalizedStatus = normalizeStatus(status);
+  return normalizedStatus === "Completed";
+};
+
+/**
  * Capitalizes the first letter of each word in a string
  * @param {string} str - The string to capitalize
  * @return {string} The capitalized string

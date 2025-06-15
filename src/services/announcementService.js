@@ -151,10 +151,22 @@ export const createAnnouncement = async ({
   title,
   priority = "medium",
   type = "general",
+  dueDate = null,
+  activityData = null,
+  creationSource = "manual",
 }) => {
   console.log(
     "announcementService.js: createAnnouncement called with:",
-    { content, subjectId, title, priority, type },
+    {
+      content,
+      subjectId,
+      title,
+      priority,
+      type,
+      dueDate,
+      activityData,
+      creationSource,
+    },
     "USE_MOCK_DATA:",
     config.useMockData
   );
@@ -185,13 +197,34 @@ export const createAnnouncement = async ({
     console.log(
       "announcementService.js: createAnnouncement - attempting to create via API"
     );
-    const result = await announcementApi.createAnnouncement({
+    // Prepare the request payload, excluding activityData if it's null/undefined
+    const payload = {
       content,
       subjectId,
       title,
       priority,
       type,
-    });
+      dueDate,
+      creationSource,
+    };
+
+    // Only include activityData if it's a valid object
+    if (activityData && typeof activityData === "object") {
+      payload.activityData = activityData;
+      console.log(
+        "announcementService.js: Including activityData in payload:",
+        activityData
+      );
+    } else {
+      console.log(
+        "announcementService.js: Excluding activityData from payload. Value:",
+        activityData,
+        "Type:",
+        typeof activityData
+      );
+    }
+
+    const result = await announcementApi.createAnnouncement(payload);
 
     if (result.success) {
       console.log(
@@ -204,34 +237,16 @@ export const createAnnouncement = async ({
         "announcementService.js: createAnnouncement - API returned error:",
         result.error
       );
-      // Fall back to mock data if API fails
-      console.log(
-        "announcementService.js: createAnnouncement - falling back to mock data"
-      );
-      return mockCreateAnnouncement({
-        content,
-        subjectId,
-        title,
-        priority,
-        type,
-      });
+      // Throw error instead of falling back to mock data
+      throw new Error(result.error || "Failed to create announcement");
     }
   } catch (error) {
     console.error(
       "announcementService.js: createAnnouncement - API call failed:",
       error
     );
-    // Fall back to mock data if API fails
-    console.log(
-      "announcementService.js: createAnnouncement - falling back to mock data after error"
-    );
-    return mockCreateAnnouncement({
-      content,
-      subjectId,
-      title,
-      priority,
-      type,
-    });
+    // Re-throw the error instead of falling back to mock data
+    throw error;
   }
 };
 
@@ -244,30 +259,60 @@ export const createAnnouncement = async ({
 export const updateAnnouncement = async ({
   announcementId,
   content,
+  title,
+  priority,
+  type,
+  dueDate,
   subjectId,
 }) => {
   console.log(
     "announcementService.js: updateAnnouncement called with:",
-    { announcementId, content, subjectId },
+    { announcementId, content, title, priority, type, dueDate, subjectId },
     "USE_MOCK_DATA:",
     config.useMockData
   );
+
+  // Validate required parameters
+  if (!announcementId) {
+    throw new Error("Announcement ID is required for update");
+  }
+
+  if (!content && !title) {
+    throw new Error("At least content or title is required for update");
+  }
 
   if (config.useMockData) {
     console.log(
       "announcementService.js: updateAnnouncement - MOCK - updating announcement"
     );
-    return mockUpdateAnnouncement({ announcementId, content, subjectId });
+    return mockUpdateAnnouncement({
+      announcementId,
+      content,
+      title,
+      priority,
+      type,
+      dueDate,
+      subjectId,
+    });
   }
 
   try {
     console.log(
       "announcementService.js: updateAnnouncement - attempting to update via API"
     );
-    const result = await announcementApi.updateAnnouncement(announcementId, {
-      content,
-      subjectId,
-    });
+    // Prepare update data, excluding undefined values
+    const updateData = {};
+    if (content !== undefined) updateData.content = content;
+    if (title !== undefined) updateData.title = title;
+    if (priority !== undefined) updateData.priority = priority;
+    if (type !== undefined) updateData.type = type;
+    if (dueDate !== undefined) updateData.dueDate = dueDate;
+    if (subjectId !== undefined) updateData.subjectId = subjectId;
+
+    const result = await announcementApi.updateAnnouncement(
+      announcementId,
+      updateData
+    );
 
     if (result.success) {
       console.log(

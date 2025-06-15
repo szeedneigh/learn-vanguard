@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import { CheckCircle } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -10,6 +11,9 @@ import {
   statusClasses,
   courseColors,
   toLocaleDateStringISO,
+  getTaskColor,
+  getTaskColorClasses,
+  isTaskCompleted,
 } from "@/lib/calendarHelpers";
 
 function DayView({ date, events, onEventClick }) {
@@ -78,33 +82,106 @@ function DayView({ date, events, onEventClick }) {
                 </div>
                 <div className="flex-grow">
                   {eventsByHour[hour] &&
-                    eventsByHour[hour].map((event) => (
-                      <div
-                        key={event.id}
-                        onClick={() => onEventClick(event)}
-                        className={`${
-                          statusClasses[event.status]
-                        } flex items-center mb-1 rounded px-3 py-1.5 text-sm cursor-pointer hover:opacity-80 border`}
-                        style={
-                          event.label?.color
-                            ? {
-                                borderColor: event.label.color,
-                                borderLeftWidth: "4px",
-                              }
-                            : {}
-                        }
-                      >
+                    eventsByHour[hour].map((event) => {
+                      const isTask = event.type === "task";
+                      const taskColor = isTask
+                        ? getTaskColor(event.priority, event.status)
+                        : event.label?.color;
+                      const taskColorClasses = isTask
+                        ? getTaskColorClasses(event.priority, event.status)
+                        : statusClasses[event.status] ||
+                          "bg-gray-50 border-gray-200";
+                      const completed = isTask && isTaskCompleted(event.status);
+
+                      return (
                         <div
-                          className="mr-2 h-3 w-3 rounded-full flex-shrink-0"
-                          style={{
-                            backgroundColor: event.label?.color || "#6b7280",
-                          }}
-                        />
-                        <span className="truncate flex-grow">
-                          {event.title}
-                        </span>
-                      </div>
-                    ))}
+                          key={event.id || event._id}
+                          onClick={() => onEventClick(event)}
+                          className={`${
+                            isTask
+                              ? taskColorClasses + " hover:opacity-80"
+                              : statusClasses[event.status] ||
+                                "bg-gray-50 border-gray-200"
+                          } flex items-center mb-1 rounded px-3 py-1.5 text-sm cursor-pointer hover:opacity-80 border ${
+                            completed ? "opacity-75" : ""
+                          }`}
+                          style={
+                            taskColor && event.type !== "task"
+                              ? {
+                                  borderColor: taskColor,
+                                  borderLeftWidth: "4px",
+                                }
+                              : isTask
+                              ? {
+                                  borderLeftWidth: "4px",
+                                  borderLeftColor: taskColor,
+                                }
+                              : {}
+                          }
+                        >
+                          <div
+                            className="mr-2 h-3 w-3 rounded-full flex-shrink-0"
+                            style={{
+                              backgroundColor: taskColor || "#6b7280",
+                            }}
+                          />
+                          <div className="flex-grow">
+                            <div className="font-medium flex items-center">
+                              {isTask && completed && (
+                                <CheckCircle className="h-4 w-4 text-green-500 mr-1 flex-shrink-0" />
+                              )}
+                              {isTask && !completed && (
+                                <span
+                                  className="mr-1"
+                                  style={{ color: taskColor }}
+                                >
+                                  📋
+                                </span>
+                              )}
+                              <span className={completed ? "line-through" : ""}>
+                                {event.title}
+                              </span>
+                              {isTask && event.priority && (
+                                <span
+                                  className="ml-2 px-2 py-0.5 rounded text-xs font-medium"
+                                  style={{
+                                    backgroundColor: `${taskColor}20`,
+                                    color: taskColor,
+                                    borderColor: taskColor,
+                                    border: "1px solid",
+                                  }}
+                                >
+                                  {event.priority.replace(" Priority", "")}
+                                </span>
+                              )}
+                            </div>
+                            {event.description && (
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {event.description}
+                              </div>
+                            )}
+                            {isTask && event.status && (
+                              <div
+                                className="text-xs mt-0.5 font-medium"
+                                style={{ color: taskColor }}
+                              >
+                                Status: {event.status}
+                                {completed && (
+                                  <span className="ml-1 text-green-600">✓</span>
+                                )}
+                              </div>
+                            )}
+                            {event.type === "task" &&
+                              event.status === "On-hold" &&
+                              event.onHoldRemark && (
+                                <div className="text-xs mt-1 text-yellow-700 italic bg-yellow-50 p-1 rounded">
+                                  💬 {event.onHoldRemark}
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             );

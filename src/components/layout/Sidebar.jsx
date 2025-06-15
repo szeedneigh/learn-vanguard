@@ -230,7 +230,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               )}
             >
               <img
-                src="/images/headLogoV2.png"
+                src="/images/LearnVanguard_LOGO.png"
                 alt="logo"
                 loading="lazy"
                 className={cn(

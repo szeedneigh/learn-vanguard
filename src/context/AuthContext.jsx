@@ -31,12 +31,61 @@ export const AuthProvider = ({ children }) => {
   const authInitialized = useRef(false);
   const { toast } = useToast();
 
+  // User data management
+  const cacheUserData = useCallback((userData) => {
+    if (!userData) {
+      localStorage.removeItem("userData");
+      return;
+    }
+    // Cache essential user data including assignedClass
+    const cacheableData = {
+      id: userData.id,
+      role: userData.role,
+      assignedClass: userData.assignedClass, // Critical for PIO restrictions
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      course: userData.course,
+      yearLevel: userData.yearLevel,
+      // Add additional fields that might be needed
+      studentNumber: userData.studentNumber,
+      isEmailVerified: userData.isEmailVerified,
+    };
+
+    console.log("AuthContext: Caching user data:", {
+      id: cacheableData.id,
+      role: cacheableData.role,
+      assignedClass: cacheableData.assignedClass,
+    });
+
+    localStorage.setItem("userData", JSON.stringify(cacheableData));
+  }, []);
+
+  const restoreUserData = useCallback(() => {
+    const cachedData = localStorage.getItem("userData");
+    if (!cachedData) {
+      console.log("AuthContext: No cached user data found");
+      return null;
+    }
+    const userData = JSON.parse(cachedData);
+    console.log("AuthContext: Restored user data from cache:", {
+      id: userData.id,
+      role: userData.role,
+      assignedClass: userData.assignedClass,
+    });
+    return userData;
+  }, []);
+
   // Use React Query to manage user state
   const { data: user, isLoading: isUserLoading } = useQuery({
     queryKey: ["user"],
     queryFn: async () => {
       const token = localStorage.getItem("authToken");
-      if (!token) return null;
+      if (!token) {
+        const cachedData = restoreUserData();
+        console.log("AuthContext: No token, using cached data:", cachedData);
+        return cachedData;
+      }
 
       try {
         const decoded = jwtDecode(token);
@@ -44,19 +93,36 @@ export const AuthProvider = ({ children }) => {
 
         if (isTokenExpired) {
           localStorage.removeItem("authToken");
-          return null;
+          return restoreUserData();
         }
 
-        const response = await authService.verifyToken();
-        return response.user;
+        const verifyResult = await authService.verifyToken();
+        // Defensive: handle null, undefined, or missing .user
+        if (verifyResult && verifyResult.user) {
+          console.log(
+            "AuthContext: Token verification successful, user data:",
+            {
+              id: verifyResult.user.id,
+              role: verifyResult.user.role,
+              assignedClass: verifyResult.user.assignedClass,
+            }
+          );
+          cacheUserData(verifyResult.user);
+          return verifyResult.user;
+        } else {
+          console.warn("verifyToken did not return a valid user", verifyResult);
+          return restoreUserData();
+        }
       } catch (error) {
         console.error("Error verifying token:", error);
-        localStorage.removeItem("authToken");
-        return null;
+        return restoreUserData();
       }
     },
+    initialData: restoreUserData,
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    cacheTime: 10 * 60 * 1000, // Keep data in cache for 10 minutes
+    cacheTime: 30 * 60 * 1000, // Keep data in cache for 30 minutes
+    refetchOnWindowFocus: false, // Prevent unnecessary refetches
+    refetchOnMount: true, // Always refetch on mount to ensure fresh data
   });
 
   // Initialize auth state
@@ -193,6 +259,8 @@ export const AuthProvider = ({ children }) => {
       queryClient.setQueryData(["user"], null);
       localStorage.removeItem("authToken");
       queryClient.clear(); // Clear all queries from cache
+      // Redirect to login page after logout
+      window.location.href = "/login";
     } catch (error) {
       console.error("AuthContext: Logout error:", error);
     }

@@ -13,7 +13,15 @@ import {
   RefreshCw,
   Trash2,
   Eye,
+  Lock,
+  Info,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ROLES } from "@/lib/constants";
 import { getResources, deleteResource } from "@/services/resourceService";
 import {
@@ -33,6 +41,10 @@ const TopicResourceView = ({
   userRole,
   onUploadClick,
   refetchTrigger = 0, // Use this to trigger refetch from parent
+  canEditInCurrentContext = false,
+  isStudent = false,
+  isPIO = false,
+  assignedClassInfo = null,
 }) => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -323,17 +335,41 @@ const TopicResourceView = ({
             <span className="sr-only">Refresh</span>
           </Button>
         </div>
-        {(userRole === ROLES.ADMIN || userRole === ROLES.PIO) && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onUploadClick(topic)}
-            className="text-xs"
-          >
-            <Upload className="w-3 h-3 mr-1" />
-            Upload File
-          </Button>
-        )}
+        <TooltipProvider>
+          {canEditInCurrentContext && !isStudent && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onUploadClick(topic)}
+              className="text-xs"
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Upload File
+            </Button>
+          )}
+          {!canEditInCurrentContext && !isStudent && (
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  className="text-xs opacity-50"
+                >
+                  <Upload className="w-3 h-3 mr-1" />
+                  Upload File
+                  <Lock className="w-2 h-2 ml-1" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-sm">
+                  You can only upload files in your assigned class:{" "}
+                  {assignedClassInfo?.course} - {assignedClassInfo?.yearLevel}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </TooltipProvider>
       </div>
 
       {loading ? (
@@ -386,7 +422,7 @@ const TopicResourceView = ({
                   <Download className="w-3.5 h-3.5 mr-1" />
                   <span className="text-xs">Download</span>
                 </Button>
-                {(userRole === ROLES.ADMIN || userRole === ROLES.PIO) && (
+                {canEditInCurrentContext && !isStudent && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -399,6 +435,29 @@ const TopicResourceView = ({
                     <Trash2 className="w-3.5 h-3.5 mr-1" />
                     <span className="text-xs">Delete</span>
                   </Button>
+                )}
+                {!canEditInCurrentContext && !isStudent && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled
+                          className="text-gray-400 opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1" />
+                          <span className="text-xs">Delete</span>
+                          <Lock className="w-2 h-2 ml-1" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-sm">
+                          You can only delete files in your assigned class
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </div>
             </div>
@@ -422,6 +481,10 @@ TopicResourceView.propTypes = {
   userRole: PropTypes.string,
   onUploadClick: PropTypes.func.isRequired,
   refetchTrigger: PropTypes.number,
+  canEditInCurrentContext: PropTypes.bool,
+  isStudent: PropTypes.bool,
+  isPIO: PropTypes.bool,
+  assignedClassInfo: PropTypes.object,
 };
 
 export default TopicResourceView;

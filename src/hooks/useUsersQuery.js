@@ -13,6 +13,30 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 /**
+ * Helper function to get program name from ID
+ */
+const getProgramNameFromId = (programId) => {
+  const programs = {
+    bsis: "Bachelor of Science in Information Systems",
+    act: "Associate in Computer Technology",
+  };
+  return programs[programId] || programId;
+};
+
+/**
+ * Helper function to get year level name
+ */
+const getYearLevelName = (year) => {
+  const yearLevels = {
+    1: "First Year",
+    2: "Second Year",
+    3: "Third Year",
+    4: "Fourth Year",
+  };
+  return yearLevels[year] || year;
+};
+
+/**
  * Hook for assigning PIO role
  */
 export const useAssignPIORole = () => {
@@ -21,37 +45,59 @@ export const useAssignPIORole = () => {
 
   return useMutation({
     mutationFn: async (params) => {
-      // Handle both object with studentId and direct parameters
-      let userId, assignedClass;
+      // Handle both object and direct parameters
+      let userId, course, yearLevel;
 
       if (typeof params === "object") {
-        // Extract from object format
-        userId = params.studentId || null;
+        userId = params.studentId;
 
-        // Create assignedClass from program and yearLevel if provided
         if (params.program && params.yearLevel) {
-          const programName = getProgramNameFromId(params.program);
-          const yearLevelName = getYearLevelName(params.yearLevel);
-          assignedClass = `${programName} - ${yearLevelName}`;
+          // New format with program and yearLevel
+          course = getProgramNameFromId(params.program);
+          yearLevel = getYearLevelName(params.yearLevel);
+        } else if (typeof params.assignedClass === "string") {
+          // Legacy format with combined string - split it
+          const parts = params.assignedClass.split(" - ");
+          if (parts.length !== 2) {
+            throw new Error(
+              "Invalid assigned class format. Expected 'Course - Year Level'"
+            );
+          }
+          [course, yearLevel] = parts;
         } else {
-          assignedClass = params.assignedClass;
+          throw new Error(
+            "Invalid parameters. Need either program/yearLevel or assignedClass"
+          );
         }
       } else {
-        // Legacy format
+        // Direct parameters (legacy format)
         userId = params;
-        assignedClass = arguments[1];
+        const assignedClass = arguments[1];
+        if (typeof assignedClass !== "string") {
+          throw new Error("Invalid assigned class format");
+        }
+        const parts = assignedClass.split(" - ");
+        if (parts.length !== 2) {
+          throw new Error(
+            "Invalid assigned class format. Expected 'Course - Year Level'"
+          );
+        }
+        [course, yearLevel] = parts;
       }
 
-      if (!userId) {
-        throw new Error("User ID is required to assign PIO role");
+      if (!userId || !course || !yearLevel) {
+        throw new Error(
+          "User ID, course, and year level are all required to assign PIO role"
+        );
       }
 
       console.log(
-        `Assigning PIO role to user ${userId} with class ${assignedClass}`
+        `Assigning PIO role to user ${userId}`,
+        { course, yearLevel }
       );
-      const result = await assignPIORole(userId, assignedClass);
 
-      // If the API returned an error, throw it to trigger onError
+      const result = await assignPIORole(userId, { course, yearLevel });
+
       if (!result.success) {
         throw new Error(result.error || "Failed to assign PIO role");
       }
@@ -129,33 +175,6 @@ export const useAssignPIORole = () => {
       // Don't invalidate queries on error to prevent potential loops
     },
   });
-};
-
-// Helper functions for the hooks
-const getProgramNameFromId = (programId) => {
-  switch (programId) {
-    case "bsis":
-      return "Bachelor of Science in Information Systems";
-    case "act":
-      return "Associate in Computer Technology";
-    default:
-      return programId;
-  }
-};
-
-const getYearLevelName = (year) => {
-  switch (year) {
-    case "1":
-      return "First Year";
-    case "2":
-      return "Second Year";
-    case "3":
-      return "Third Year";
-    case "4":
-      return "Fourth Year";
-    default:
-      return year;
-  }
 };
 
 /**

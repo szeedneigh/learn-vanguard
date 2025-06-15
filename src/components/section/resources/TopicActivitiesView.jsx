@@ -1,7 +1,21 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, FileText, Calendar, Award } from "lucide-react";
+import {
+  Loader2,
+  Trash2,
+  FileText,
+  Calendar,
+  Award,
+  Lock,
+  Info,
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ROLES } from "@/lib/constants";
 import { format } from "date-fns";
 import { deleteActivity } from "@/services/topicService";
@@ -21,6 +35,10 @@ const TopicActivitiesView = ({
   topic,
   userRole,
   onActivityDeleted = () => {},
+  canEditInCurrentContext = false,
+  isStudent = false,
+  isPIO = false,
+  assignedClassInfo = null,
 }) => {
   const [activityToDelete, setActivityToDelete] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -35,11 +53,18 @@ const TopicActivitiesView = ({
       const result = await deleteActivity(topic.id, activityToDelete._id);
 
       if (result.success) {
+        // Show success message with information about announcement deletion
+        const message = result.deletedAnnouncement
+          ? "Activity and its related announcement deleted successfully"
+          : "Activity deleted successfully";
+
         toast({
           title: "Success",
-          description: "Activity deleted successfully",
+          description: message,
         });
-        onActivityDeleted(activityToDelete);
+
+        // Notify parent component to refresh both activities and announcements
+        onActivityDeleted(activityToDelete, result.deletedAnnouncement);
       } else {
         throw new Error(result.error || "Failed to delete activity");
       }
@@ -84,10 +109,19 @@ const TopicActivitiesView = ({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{activityToDelete?.title}
-              &rdquo;? This action cannot be undone.
+            <AlertDialogTitle>Confirm Activity Deletion</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Are you sure you want to delete &ldquo;{activityToDelete?.title}
+                &rdquo;?
+              </p>
+              <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded">
+                <strong>Note:</strong> This will also delete any related
+                announcement that was automatically generated for this activity.
+              </p>
+              <p className="text-sm text-gray-600">
+                This action cannot be undone.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -139,20 +173,43 @@ const TopicActivitiesView = ({
               </div>
             </div>
             <div className="flex space-x-1">
-              {(userRole === ROLES.ADMIN || userRole === ROLES.PIO) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-600"
-                  onClick={() => {
-                    setActivityToDelete(activity);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />
-                  <span className="text-xs">Delete</span>
-                </Button>
-              )}
+              <TooltipProvider>
+                {canEditInCurrentContext && !isStudent && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600"
+                    onClick={() => {
+                      setActivityToDelete(activity);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    <span className="text-xs">Delete</span>
+                  </Button>
+                )}
+                {!canEditInCurrentContext && !isStudent && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled
+                        className="text-gray-400 opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" />
+                        <span className="text-xs">Delete</span>
+                        <Lock className="w-2 h-2 ml-1" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-sm">
+                        You can only delete activities in your assigned class
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </TooltipProvider>
             </div>
           </div>
         ))}
@@ -176,7 +233,11 @@ TopicActivitiesView.propTypes = {
     ),
   }).isRequired,
   userRole: PropTypes.string,
-  onActivityDeleted: PropTypes.func,
+  onActivityDeleted: PropTypes.func, // (deletedActivity, announcementDeleted) => void
+  canEditInCurrentContext: PropTypes.bool,
+  isStudent: PropTypes.bool,
+  isPIO: PropTypes.bool,
+  assignedClassInfo: PropTypes.object,
 };
 
 export default TopicActivitiesView;

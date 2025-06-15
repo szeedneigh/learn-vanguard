@@ -2,7 +2,15 @@ import PropTypes from "prop-types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, List, Filter, Loader2, PlusCircle } from "lucide-react";
+import {
+  Search,
+  List,
+  Filter,
+  Loader2,
+  PlusCircle,
+  Lock,
+  X,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ROLES } from "@/lib/constants";
 // SubjectList will be imported from its own file after extraction
@@ -31,6 +39,9 @@ const CourseView = ({
   userRole,
   onDeleteSubject,
   SubjectListComponent,
+  canEditInCurrentContext,
+  isPIO,
+  assignedClassInfo,
 }) => {
   const currentYearObject = programData?.years?.find(
     (y) => y.year === currentYear
@@ -108,18 +119,36 @@ const CourseView = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search subjects..."
-              className="w-full pl-10 pr-4 py-2 bg-white rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none border border-gray-200"
+              placeholder="Search subjects by name, description, or instructor..."
+              className="w-full pl-10 pr-10 py-2 bg-white rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none border border-gray-200"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
           </div>
           {/* Action Buttons - Grouped to the right */}
           <div className="flex items-center space-x-2 flex-shrink-0">
             {(userRole === ROLES.ADMIN || userRole === ROLES.PIO) && (
-              <Button variant="outline" size="sm" onClick={onAddSubjectClick}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onAddSubjectClick}
+                className={!canEditInCurrentContext ? "opacity-60" : ""}
+              >
                 <PlusCircle className="w-4 h-4 mr-2" />
                 Add Subject
+                {!canEditInCurrentContext && isPIO && (
+                  <Lock className="w-3 h-3 ml-1 text-gray-500" />
+                )}
               </Button>
             )}
             <Button
@@ -162,6 +191,10 @@ const CourseView = ({
             setCurrentSubject={setCurrentSubject}
             onDeleteSubject={onDeleteSubject}
             userRole={userRole}
+            canEditInCurrentContext={canEditInCurrentContext}
+            isPIO={isPIO}
+            assignedClassInfo={assignedClassInfo}
+            searchTerm={searchTerm}
           />
         ) : (
           <div className="text-center py-8">
@@ -209,6 +242,9 @@ CourseView.propTypes = {
   userRole: PropTypes.string,
   onDeleteSubject: PropTypes.func.isRequired,
   SubjectListComponent: PropTypes.elementType.isRequired,
+  canEditInCurrentContext: PropTypes.bool,
+  isPIO: PropTypes.bool,
+  assignedClassInfo: PropTypes.object,
 };
 
 export default CourseView;

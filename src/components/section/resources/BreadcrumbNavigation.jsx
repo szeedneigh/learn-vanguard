@@ -1,4 +1,4 @@
-import { ChevronRight, Book } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -42,68 +42,29 @@ const BreadcrumbNavigation = ({
     <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl shadow-sm mb-6">
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="hover:bg-blue-50 font-medium"
-                >
-                  Resources
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-72">
-                {programsData?.map((program) => (
-                  <DropdownMenuItem
-                    key={program.id}
-                    onClick={() => {
-                      handleProgramChange(program.name);
-                    }}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-blue-50 rounded-lg">
-                        <Book className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{program.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {program.duration || ""}
-                        </p>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </BreadcrumbItem>
           {currentProgram && (
-            <>
-              <BreadcrumbSeparator>
-                <ChevronRight className="w-4 h-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="hover:bg-blue-50 font-medium"
+            <BreadcrumbItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="hover:bg-blue-50 font-medium"
+                  >
+                    {currentProgram}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {programsData?.map((program) => (
+                    <DropdownMenuItem
+                      key={program.id}
+                      onClick={() => handleProgramChange(program.name)}
                     >
-                      {currentProgram}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {programsData?.map((program) => (
-                      <DropdownMenuItem
-                        key={program.id}
-                        onClick={() => handleProgramChange(program.name)}
-                      >
-                        {program.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </BreadcrumbItem>
-            </>
+                      {program.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </BreadcrumbItem>
           )}
           {currentYear && selectedProgramObject && (
             <>
