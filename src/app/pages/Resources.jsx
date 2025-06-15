@@ -25,7 +25,17 @@ import {
 import { AuthContext } from "@/context/AuthContext";
 import { ROLES } from "@/lib/constants";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import toast from "react-hot-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import BreadcrumbNavigation from "@/components/section/resources/BreadcrumbNavigation";
 import CourseView from "@/components/section/resources/CourseView";
 import SubjectList from "@/components/section/resources/SubjectList";
@@ -43,12 +53,18 @@ export default function Resources() {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("grid");
 
+  // Subject deletion confirmation dialog state
+  const [subjectToDelete, setSubjectToDelete] = useState(null);
+  const [isDeleteSubjectDialogOpen, setIsDeleteSubjectDialogOpen] =
+    useState(false);
+
   const [currentProgramName, setCurrentProgramName] = useState(null);
   const [currentYear, setCurrentYear] = useState(null);
   const [currentSemester, setCurrentSemester] = useState(null);
   const [currentSubject, setCurrentSubject] = useState(null);
 
   const { user } = useContext(AuthContext);
+  const { toast } = useToast();
 
   // Check user role and get assigned class info for PIO users
   const isPIO = user?.role === ROLES.PIO;
@@ -228,13 +244,21 @@ export default function Resources() {
       // Remove toast notification from here as it's already shown in handleAddSubject
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to add subject");
+      toast({
+        title: "Failed to Add Subject",
+        description:
+          error.message || "An error occurred while adding the subject",
+        variant: "destructive",
+      });
     },
   });
 
   const deleteSubjectMutation = useMutation({
     mutationFn: deleteSubject,
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // Get the subject name from the context for the success message
+      const deletedSubjectName = subjectToDelete?.name || "Subject";
+
       // Immediately refetch subjects
       refetchSubjects();
 
@@ -249,10 +273,28 @@ export default function Resources() {
         refetchSubjects();
       }, 1500);
 
-      toast.success("Subject deleted successfully!");
+      // Show success toast with subject name
+      toast({
+        title: "Subject Deleted",
+        description: `Subject "${deletedSubjectName}" has been deleted successfully!`,
+        variant: "default",
+      });
+
+      // Clear the deletion state
+      setSubjectToDelete(null);
+      setIsDeleteSubjectDialogOpen(false);
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to delete subject");
+      const errorMessage = error.message || "Failed to delete subject";
+      toast({
+        title: "Deletion Failed",
+        description: `${errorMessage}. Please try again or contact support if the problem persists.`,
+        variant: "destructive",
+      });
+
+      // Clear the deletion state on error as well
+      setSubjectToDelete(null);
+      setIsDeleteSubjectDialogOpen(false);
     },
   });
 
@@ -569,10 +611,28 @@ export default function Resources() {
       return;
     }
 
-    console.log(`Deleting subject with ID: ${JSON.stringify(subjectId)}`);
+    // Find the subject to get its name for the confirmation dialog
+    const subject = subjectsData?.find((s) => s.id === subjectId);
+    if (!subject) {
+      toast.error("Cannot delete subject: Subject not found");
+      return;
+    }
+
+    // Set the subject to delete and show confirmation dialog
+    setSubjectToDelete(subject);
+    setIsDeleteSubjectDialogOpen(true);
+  };
+
+  // Handle the actual deletion after confirmation
+  const handleConfirmDeleteSubject = () => {
+    if (!subjectToDelete) return;
+
+    console.log(
+      `Deleting subject with ID: ${JSON.stringify(subjectToDelete.id)}`
+    );
 
     deleteSubjectMutation.mutate({
-      subjectId,
+      subjectId: subjectToDelete.id,
       programId: selectedProgramId,
       yearName: currentYear,
       semesterName: currentSemester,
@@ -936,6 +996,52 @@ export default function Resources() {
           }
           subjectId={currentSubjectId || selectedSubjectForAnnouncement?.id}
         />
+
+        {/* Subject Deletion Confirmation Dialog */}
+        <AlertDialog
+          open={isDeleteSubjectDialogOpen}
+          onOpenChange={setIsDeleteSubjectDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Subject Deletion</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the subject{" "}
+                <strong>"{subjectToDelete?.name}"</strong>?
+                <br />
+                <br />
+                This action will permanently remove the subject and all its
+                associated resources, announcements, topics, and activities.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={deleteSubjectMutation.isPending}
+                onClick={() => {
+                  setSubjectToDelete(null);
+                  setIsDeleteSubjectDialogOpen(false);
+                }}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDeleteSubject}
+                disabled={deleteSubjectMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:ring-destructive"
+              >
+                {deleteSubjectMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Subject"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
