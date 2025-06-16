@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Calendar, AlertCircle } from "lucide-react";
+import { Calendar, AlertCircle, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -38,15 +38,18 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
 
     console.log("Normalizing task data:", task);
 
-    // Format date to YYYY-MM-DD for input[type="date"]
+    // Format date to YYYY-MM-DD for input[type="date"] and time to HH:MM for input[type="time"]
     let formattedDueDate = "";
+    let formattedDueTime = "23:59"; // Default to end of day
     if (task.dueDate || task.taskDeadline) {
       const dateStr = task.dueDate || task.taskDeadline;
       try {
-        // Parse the date and format it as YYYY-MM-DD
+        // Parse the date and format it as YYYY-MM-DD and HH:MM
         const date = new Date(dateStr);
         if (!isNaN(date.getTime())) {
           formattedDueDate = date.toISOString().split("T")[0];
+          // Extract time in HH:MM format
+          formattedDueTime = date.toTimeString().slice(0, 5);
         }
       } catch (error) {
         console.error("Error formatting date:", error);
@@ -59,6 +62,7 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
       name: task.name || task.taskName || "",
       description: task.description || task.taskDescription || "",
       dueDate: formattedDueDate,
+      dueTime: formattedDueTime,
       // Normalize the priority format
       priority:
         task.priority ||
@@ -96,6 +100,7 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
         name: "",
         description: "",
         dueDate: "",
+        dueTime: "23:59", // Default to end of day
         priority: "Medium",
         status: "not-started",
         onHoldRemark: "",
@@ -128,11 +133,32 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
 
     if (!formData.dueDate) {
       newErrors.dueDate = "Due date is required";
-    } else {
-      const today = startOfDay(new Date());
-      const selectedDate = startOfDay(parseISO(formData.dueDate));
-      if (selectedDate < today) {
-        newErrors.dueDate = "Due date cannot be in the past";
+    }
+
+    if (!formData.dueTime) {
+      newErrors.dueTime = "Due time is required";
+    }
+
+    // Validate that the combined date and time is not in the past
+    if (formData.dueDate && formData.dueTime) {
+      try {
+        const now = new Date();
+        const selectedDateTime = new Date(
+          `${formData.dueDate}T${formData.dueTime}:00`
+        );
+
+        if (selectedDateTime <= now) {
+          // If it's today, check if the time has passed
+          const today = new Date().toISOString().split("T")[0];
+          if (formData.dueDate === today) {
+            newErrors.dueTime = "Due time cannot be in the past";
+          } else if (selectedDateTime < startOfDay(now)) {
+            newErrors.dueDate = "Due date cannot be in the past";
+          }
+        }
+      } catch (error) {
+        console.error("Error validating datetime:", error);
+        newErrors.dueDate = "Invalid date or time format";
       }
     }
 
@@ -152,8 +178,14 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
         return;
       }
 
+      // Combine date and time into a proper datetime for the backend
+      const taskDeadline = new Date(
+        `${formData.dueDate}T${formData.dueTime}:00`
+      ).toISOString();
+
       onSubmit({
         ...formData,
+        taskDeadline, // Send combined datetime to backend
         lastUpdated: new Date().toISOString(),
       });
 
@@ -280,6 +312,33 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editTask = null }) => {
                     )}
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="dueTime" className="text-sm font-medium">
+                      Due Time <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="dueTime"
+                        name="dueTime"
+                        type="time"
+                        value={formData.dueTime}
+                        onChange={handleInputChange}
+                        className={`pl-10 ${
+                          errors.dueTime ? "ring-destructive" : ""
+                        }`}
+                      />
+                      <Clock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                    </div>
+                    {errors.dueTime && (
+                      <span className="text-destructive text-sm flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.dueTime}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="priority" className="text-sm font-medium">
                       Priority

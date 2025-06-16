@@ -1,11 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 // Import API services
-import taskApi from '@/lib/api/taskApi';
-import subjectApi from '@/lib/api/subjectApi';
-import eventApi from '@/lib/api/eventApi';
-import userApi from '@/lib/api/userApi';
+import taskApi from "@/lib/api/taskApi";
+import subjectApi from "@/lib/api/subjectApi";
+import eventApi from "@/lib/api/eventApi";
+import userApi from "@/lib/api/userApi";
 
 /**
  * Task Management Hooks
@@ -14,7 +14,7 @@ import userApi from '@/lib/api/userApi';
 // Get task summary
 export const useTaskSummary = () => {
   return useQuery({
-    queryKey: ['tasks', 'summary'],
+    queryKey: ["tasks", "summary"],
     queryFn: async () => {
       const result = await taskApi.getTaskSummary();
       if (!result.success) {
@@ -30,7 +30,7 @@ export const useTaskSummary = () => {
 // Get tasks with filters
 export const useTasks = (filters = {}) => {
   return useQuery({
-    queryKey: ['tasks', filters],
+    queryKey: ["tasks", filters],
     queryFn: async () => {
       const result = await taskApi.getTasks(filters);
       if (!result.success) {
@@ -46,20 +46,32 @@ export const useTasks = (filters = {}) => {
 // Create task mutation
 export const useCreateTask = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: taskApi.createTask,
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Task created successfully');
+        toast({
+          title: "Success",
+          description: result.message || "Task created successfully",
+          variant: "default",
+        });
         // Invalidate and refetch tasks
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to create task');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create task",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -67,19 +79,31 @@ export const useCreateTask = () => {
 // Update task mutation
 export const useUpdateTask = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ taskId, taskData }) => taskApi.updateTask(taskId, taskData),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Task updated successfully');
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        toast({
+          title: "Success",
+          description: result.message || "Task updated successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to update task');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update task",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -87,19 +111,31 @@ export const useUpdateTask = () => {
 // Delete task mutation
 export const useDeleteTask = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: taskApi.deleteTask,
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Task deleted successfully');
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        toast({
+          title: "Success",
+          description: result.message || "Task deleted successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to delete task');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete task",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -111,7 +147,7 @@ export const useDeleteTask = () => {
 // Get subjects with filters
 export const useSubjects = (filters = {}) => {
   return useQuery({
-    queryKey: ['subjects', filters],
+    queryKey: ["subjects", filters],
     queryFn: async () => {
       const result = await subjectApi.getSubjects(filters);
       if (!result.success) {
@@ -127,19 +163,31 @@ export const useSubjects = (filters = {}) => {
 // Create subject mutation
 export const useCreateSubject = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: subjectApi.createSubject,
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Subject created successfully');
-        queryClient.invalidateQueries({ queryKey: ['subjects'] });
+        toast({
+          title: "Success",
+          description: result.message || "Subject created successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["subjects"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to create subject');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create subject",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -147,20 +195,32 @@ export const useCreateSubject = () => {
 // Upload lecture mutation
 export const useUploadLecture = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ subjectId, file, title, onProgress }) => 
+    mutationFn: ({ subjectId, file, title, onProgress }) =>
       subjectApi.uploadLecture(subjectId, file, title, onProgress),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Lecture uploaded successfully');
-        queryClient.invalidateQueries({ queryKey: ['subjects'] });
+        toast({
+          title: "Success",
+          description: result.message || "Lecture uploaded successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["subjects"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to upload lecture');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload lecture",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -168,20 +228,32 @@ export const useUploadLecture = () => {
 // Delete lecture mutation
 export const useDeleteLecture = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ subjectId, lectureId }) => 
+    mutationFn: ({ subjectId, lectureId }) =>
       subjectApi.deleteLecture(subjectId, lectureId),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Lecture deleted successfully');
-        queryClient.invalidateQueries({ queryKey: ['subjects'] });
+        toast({
+          title: "Success",
+          description: result.message || "Lecture deleted successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["subjects"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to delete lecture');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete lecture",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -189,20 +261,32 @@ export const useDeleteLecture = () => {
 // Create announcement mutation
 export const useCreateAnnouncement = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ subjectId, announcementData }) => 
+    mutationFn: ({ subjectId, announcementData }) =>
       subjectApi.createAnnouncement(subjectId, announcementData),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Announcement created successfully');
-        queryClient.invalidateQueries({ queryKey: ['subjects'] });
+        toast({
+          title: "Success",
+          description: result.message || "Announcement created successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["subjects"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to create announcement');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create announcement",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -214,7 +298,7 @@ export const useCreateAnnouncement = () => {
 // Get events with filters
 export const useEvents = (filters = {}) => {
   return useQuery({
-    queryKey: ['events', filters],
+    queryKey: ["events", filters],
     queryFn: async () => {
       const result = await eventApi.getEvents(filters);
       if (!result.success) {
@@ -230,7 +314,7 @@ export const useEvents = (filters = {}) => {
 // Get today's events
 export const useTodayEvents = () => {
   return useQuery({
-    queryKey: ['events', 'today'],
+    queryKey: ["events", "today"],
     queryFn: async () => {
       const result = await eventApi.getTodayEvents();
       if (!result.success) {
@@ -246,19 +330,31 @@ export const useTodayEvents = () => {
 // Create event mutation
 export const useCreateEvent = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: eventApi.createEvent,
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Event created successfully');
-        queryClient.invalidateQueries({ queryKey: ['events'] });
+        toast({
+          title: "Success",
+          description: result.message || "Event created successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["events"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to create event');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create event",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -266,19 +362,32 @@ export const useCreateEvent = () => {
 // Update event mutation
 export const useUpdateEvent = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ eventId, eventData }) => eventApi.updateEvent(eventId, eventData),
+    mutationFn: ({ eventId, eventData }) =>
+      eventApi.updateEvent(eventId, eventData),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Event updated successfully');
-        queryClient.invalidateQueries({ queryKey: ['events'] });
+        toast({
+          title: "Success",
+          description: result.message || "Event updated successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["events"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to update event');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update event",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -286,19 +395,31 @@ export const useUpdateEvent = () => {
 // Delete event mutation
 export const useDeleteEvent = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: eventApi.deleteEvent,
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'Event deleted successfully');
-        queryClient.invalidateQueries({ queryKey: ['events'] });
+        toast({
+          title: "Success",
+          description: result.message || "Event deleted successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["events"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to delete event');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete event",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -310,7 +431,7 @@ export const useDeleteEvent = () => {
 // Get users with filters
 export const useUsers = (filters = {}) => {
   return useQuery({
-    queryKey: ['users', filters],
+    queryKey: ["users", filters],
     queryFn: async () => {
       const result = await userApi.getUsers(filters);
       if (!result.success) {
@@ -326,7 +447,7 @@ export const useUsers = (filters = {}) => {
 // Get class students
 export const useClassStudents = (classInfo) => {
   return useQuery({
-    queryKey: ['users', 'class', classInfo],
+    queryKey: ["users", "class", classInfo],
     queryFn: async () => {
       const result = await userApi.getClassStudents(classInfo);
       if (!result.success) {
@@ -342,19 +463,32 @@ export const useClassStudents = (classInfo) => {
 // Assign PIO role mutation
 export const useAssignPIORole = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ userId, assignedClass }) => userApi.assignPIORole(userId, assignedClass),
+    mutationFn: ({ userId, assignedClass }) =>
+      userApi.assignPIORole(userId, assignedClass),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'PIO role assigned successfully');
-        queryClient.invalidateQueries({ queryKey: ['users'] });
+        toast({
+          title: "Success",
+          description: result.message || "PIO role assigned successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to assign PIO role');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to assign PIO role",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -362,19 +496,31 @@ export const useAssignPIORole = () => {
 // Revert PIO role mutation
 export const useRevertPIORole = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: userApi.revertPIORole,
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'PIO role reverted successfully');
-        queryClient.invalidateQueries({ queryKey: ['users'] });
+        toast({
+          title: "Success",
+          description: result.message || "PIO role reverted successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to revert PIO role');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to revert PIO role",
+        variant: "destructive",
+      });
     },
   });
 };
@@ -382,19 +528,31 @@ export const useRevertPIORole = () => {
 // Remove user mutation
 export const useRemoveUser = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: userApi.removeUser,
     onSuccess: (result) => {
       if (result.success) {
-        toast.success(result.message || 'User removed successfully');
-        queryClient.invalidateQueries({ queryKey: ['users'] });
+        toast({
+          title: "Success",
+          description: result.message || "User removed successfully",
+          variant: "default",
+        });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
       } else {
-        toast.error(result.error);
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to remove user');
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove user",
+        variant: "destructive",
+      });
     },
   });
-}; 
+};

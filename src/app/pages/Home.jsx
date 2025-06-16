@@ -155,9 +155,12 @@ const Home = () => {
 
   // Filter and sort the upcoming tasks - Only show Tasks, not Events
   const upcomingTasks = useMemo(() => {
-    const today = new Date();
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
+    // Create consistent date boundaries - start of today to end of 7 days from now
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
+    const sevenDaysLater = new Date(today);
+    sevenDaysLater.setDate(today.getDate() + 7);
+    sevenDaysLater.setHours(23, 59, 59, 999); // End of the 7th day
 
     // The useTasks hook from useTasksQuery.js already selects data?.data || []
     // So tasksResponse should be the array directly
@@ -175,11 +178,18 @@ const Home = () => {
           return false;
         }
 
-        return (
-          taskDate >= today &&
-          taskDate <= nextWeek &&
-          task.taskStatus !== "Completed"
-        );
+        // Check if task date is valid
+        if (isNaN(taskDate.getTime())) {
+          console.warn("Invalid task date:", task);
+          return false;
+        }
+
+        // Include tasks from today (inclusive) through the next 7 days (inclusive)
+        const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
+        const isNotCompleted =
+          task.taskStatus !== "Completed" && task.taskStatus !== "completed";
+
+        return isInDateRange && isNotCompleted;
       })
       .sort((a, b) => {
         const dateA = a.taskDeadline
@@ -195,8 +205,9 @@ const Home = () => {
         id: task._id,
         title: task.taskName,
         description: task.taskDescription,
-        date: task.taskDeadline ? task.taskDeadline.split("T")[0] : null,
+        // Don't strip time from date - keep full datetime for proper display
         scheduleDate: task.taskDeadline,
+        dueDate: task.taskDeadline, // Also provide as dueDate for consistency
         status: task.taskStatus,
         priority: task.taskPriority,
         course: "Personal", // Tasks are personal

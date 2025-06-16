@@ -365,6 +365,18 @@ export const deleteActivity = async (topicId, activityId) => {
   }
 };
 
+// Re-export activity completion functions for convenience
+export {
+  markActivityComplete,
+  getActivityCompletions,
+  checkActivityCompletion,
+  batchCheckActivityCompletions,
+  filterIncompleteActivities,
+  filterCompletedActivities,
+  areAllActivitiesCompleted,
+  getTopicCompletionProgress,
+} from "./activityService";
+
 export default {
   getTopicsBySubject,
   getTopicById,

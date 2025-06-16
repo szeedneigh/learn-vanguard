@@ -303,10 +303,18 @@ export default function Resources() {
     mutationFn: createAnnouncement,
     onSuccess: () => {
       refetchAnnouncements();
-      toast.success("Announcement created successfully!");
+      toast({
+        title: "Success",
+        description: "Announcement created successfully!",
+        variant: "default",
+      });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to create announcement");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create announcement",
+        variant: "destructive",
+      });
     },
   });
 
@@ -315,10 +323,18 @@ export default function Resources() {
       updateAnnouncement({ announcementId, ...data }),
     onSuccess: () => {
       refetchAnnouncements();
-      toast.success("Announcement updated successfully!");
+      toast({
+        title: "Success",
+        description: "Announcement updated successfully!",
+        variant: "default",
+      });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to update announcement");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update announcement",
+        variant: "destructive",
+      });
     },
   });
 
@@ -326,10 +342,18 @@ export default function Resources() {
     mutationFn: deleteAnnouncement,
     onSuccess: () => {
       refetchAnnouncements();
-      toast.success("Announcement deleted successfully!");
+      toast({
+        title: "Success",
+        description: "Announcement deleted successfully!",
+        variant: "default",
+      });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to delete announcement");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete announcement",
+        variant: "destructive",
+      });
     },
   });
 
@@ -338,10 +362,18 @@ export default function Resources() {
     mutationFn: createTopic,
     onSuccess: () => {
       refetchTopics();
-      toast.success("Topic created successfully!");
+      toast({
+        title: "Success",
+        description: "Topic created successfully!",
+        variant: "default",
+      });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to create topic");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create topic",
+        variant: "destructive",
+      });
     },
   });
 
@@ -350,10 +382,18 @@ export default function Resources() {
     onSuccess: () => {
       refetchTopics();
       refetchAnnouncements();
-      toast.success("Activity added successfully!");
+      toast({
+        title: "Success",
+        description: "Activity added successfully!",
+        variant: "default",
+      });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to add activity");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add activity",
+        variant: "destructive",
+      });
     },
   });
 
@@ -427,10 +467,15 @@ export default function Resources() {
       subjectForUpload,
       topic = null,
       onSuccess = null,
-      onError = null
+      onError = null,
+      onProgress = null
     ) => {
       if (!file || !subjectForUpload || !subjectForUpload.id) {
-        toast.error("Cannot upload: File or Subject not specified.");
+        toast({
+          title: "Upload Error",
+          description: "Cannot upload: File or Subject not specified.",
+          variant: "destructive",
+        });
         if (onError) onError();
         return;
       }
@@ -494,7 +539,11 @@ export default function Resources() {
               }, 100);
             }
 
-            toast.success(`File "${file.name}" uploaded successfully!`);
+            toast({
+              title: "Upload Success",
+              description: `File "${file.name}" uploaded successfully!`,
+              variant: "default",
+            });
             if (onSuccess) onSuccess();
           }, 1500);
         },
@@ -503,9 +552,14 @@ export default function Resources() {
             error?.message || "Unknown error"
           }`;
           console.error(errorMsg);
-          toast.error(errorMsg);
-          if (onError) onError();
+          toast({
+            title: "Upload Error",
+            description: errorMsg,
+            variant: "destructive",
+          });
+          if (onError) onError(error);
         },
+        onProgress: onProgress, // Pass through the progress callback
       });
     },
     [uploadFile, refetchResources, refetchTopics]
@@ -542,9 +596,11 @@ export default function Resources() {
 
   const handleAddSubject = (subjectName) => {
     if (!selectedProgramId || !currentYear || !currentSemester) {
-      toast.error(
-        "Cannot add subject: Program, Year, or Semester not selected."
-      );
+      toast({
+        title: "Cannot Add Subject",
+        description: "Program, Year, or Semester not selected.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -585,13 +641,19 @@ export default function Resources() {
             }, delay);
           });
 
-          toast.success(`Subject "${name}" added successfully!`);
+          toast({
+            title: "Subject Added",
+            description: `Subject "${name}" added successfully!`,
+            variant: "default",
+          });
         },
         onError: (error) => {
           console.error("Error creating subject:", error);
-          toast.error(
-            `Failed to add subject: ${error.message || "Unknown error"}`
-          );
+          toast({
+            title: "Failed to Add Subject",
+            description: error.message || "Unknown error occurred",
+            variant: "destructive",
+          });
         },
       }
     );
@@ -599,22 +661,32 @@ export default function Resources() {
 
   const handleDeleteSubject = (subjectId) => {
     if (!selectedProgramId || !currentYear || !currentSemester) {
-      toast.error(
-        "Cannot delete subject: Program, Year, or Semester context is missing."
-      );
+      toast({
+        title: "Cannot Delete Subject",
+        description: "Program, Year, or Semester context is missing.",
+        variant: "destructive",
+      });
       return;
     }
 
     // Ensure we have a valid ID
     if (!subjectId) {
-      toast.error("Cannot delete subject: Invalid subject ID");
+      toast({
+        title: "Cannot Delete Subject",
+        description: "Invalid subject ID",
+        variant: "destructive",
+      });
       return;
     }
 
     // Find the subject to get its name for the confirmation dialog
     const subject = subjectsData?.find((s) => s.id === subjectId);
     if (!subject) {
-      toast.error("Cannot delete subject: Subject not found");
+      toast({
+        title: "Cannot Delete Subject",
+        description: "Subject not found",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -647,7 +719,11 @@ export default function Resources() {
   const handleEditAnnouncementClick = (announcement) => {
     // Validate announcement data before setting it for editing
     if (!announcement) {
-      toast.error("Cannot edit announcement: No announcement data provided.");
+      toast({
+        title: "Cannot Edit Announcement",
+        description: "No announcement data provided.",
+        variant: "destructive",
+      });
       console.error(
         "handleEditAnnouncementClick: announcement is null/undefined"
       );
@@ -656,7 +732,11 @@ export default function Resources() {
 
     const announcementId = announcement.id || announcement._id;
     if (!announcementId) {
-      toast.error("Cannot edit announcement: Invalid announcement ID.");
+      toast({
+        title: "Cannot Edit Announcement",
+        description: "Invalid announcement ID.",
+        variant: "destructive",
+      });
       console.error(
         "handleEditAnnouncementClick: Missing announcement ID:",
         announcement
@@ -679,13 +759,21 @@ export default function Resources() {
 
   const handleDeleteAnnouncement = (announcementId) => {
     if (!currentSubjectId) {
-      toast.error("Cannot delete announcement: Subject context is missing.");
+      toast({
+        title: "Cannot Delete Announcement",
+        description: "Subject context is missing.",
+        variant: "destructive",
+      });
       return;
     }
 
     // Enhanced validation for announcement ID
     if (!announcementId) {
-      toast.error("Cannot delete announcement: Invalid announcement ID");
+      toast({
+        title: "Cannot Delete Announcement",
+        description: "Invalid announcement ID",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -707,7 +795,11 @@ export default function Resources() {
     const subjectId = currentSubjectId || selectedSubjectForAnnouncement?.id;
 
     if (!subjectId) {
-      toast.error("Cannot save announcement: Subject context is missing.");
+      toast({
+        title: "Cannot Save Announcement",
+        description: "Subject context is missing.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -716,7 +808,11 @@ export default function Resources() {
       const announcementId = editingAnnouncement.id || editingAnnouncement._id;
 
       if (!announcementId) {
-        toast.error("Cannot update announcement: Invalid announcement data.");
+        toast({
+          title: "Cannot Update Announcement",
+          description: "Invalid announcement data.",
+          variant: "destructive",
+        });
         console.error("Missing announcement ID:", editingAnnouncement);
         return;
       }
@@ -926,38 +1022,47 @@ export default function Resources() {
             setIsModalOpen(false);
             setSelectedTopicForUpload(null);
           }}
-          onUpload={(file, subject, topic, onSuccess) => {
-            handleUpload(file, subject, topic, () => {
-              console.log(
-                "Upload success callback triggered, refreshing resources..."
-              );
+          onUpload={(file, subject, topic, onSuccess, onError, onProgress) => {
+            handleUpload(
+              file,
+              subject,
+              topic,
+              () => {
+                console.log(
+                  "Upload success callback triggered, refreshing resources..."
+                );
 
-              // Immediately refetch resources
-              refetchResources();
-
-              // Also refetch topics as they might contain resources
-              if (refetchTopics) refetchTopics();
-
-              // Add a single delayed refetch to ensure data is up-to-date
-              setTimeout(() => {
-                console.log("Final delayed refetch after upload...");
+                // Immediately refetch resources
                 refetchResources();
+
+                // Also refetch topics as they might contain resources
                 if (refetchTopics) refetchTopics();
 
-                // Force the component to re-render with updated data
-                if (currentSubject) {
-                  console.log("Forcing ViewSubject to update with new data...");
-                  // This will cause the component to re-render with fresh data
-                  const updatedSubject = { ...currentSubject };
-                  setCurrentSubject(null);
-                  setTimeout(() => {
-                    setCurrentSubject(updatedSubject);
-                  }, 100);
-                }
+                // Add a single delayed refetch to ensure data is up-to-date
+                setTimeout(() => {
+                  console.log("Final delayed refetch after upload...");
+                  refetchResources();
+                  if (refetchTopics) refetchTopics();
 
-                if (onSuccess) onSuccess();
-              }, 1500);
-            });
+                  // Force the component to re-render with updated data
+                  if (currentSubject) {
+                    console.log(
+                      "Forcing ViewSubject to update with new data..."
+                    );
+                    // This will cause the component to re-render with fresh data
+                    const updatedSubject = { ...currentSubject };
+                    setCurrentSubject(null);
+                    setTimeout(() => {
+                      setCurrentSubject(updatedSubject);
+                    }, 100);
+                  }
+
+                  if (onSuccess) onSuccess();
+                }, 1500);
+              },
+              onError,
+              onProgress
+            );
           }}
           subject={currentSubject}
           isLoading={isCreatingResource}

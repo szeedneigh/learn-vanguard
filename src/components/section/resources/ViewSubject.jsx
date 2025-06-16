@@ -546,6 +546,7 @@ const ViewSubject = ({
                         isStudent={isStudent}
                         isPIO={isPIO}
                         assignedClassInfo={assignedClassInfo}
+                        currentSubject={currentSubject}
                       />
                     </div>
                   ))}

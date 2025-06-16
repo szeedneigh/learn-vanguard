@@ -19,7 +19,7 @@ export const useTasks = (filters = {}, options = {}) => {
   console.log("useTasks hook called with filters:", filters);
 
   return useQuery({
-    queryKey: queryKeys.tasks.concat([filters]),
+    queryKey: [...queryKeys.tasks, filters],
     queryFn: () => getTasks(filters),
     select: (data) => data?.data || [],
     ...options,
@@ -64,7 +64,7 @@ export const useCreateTask = () => {
       const apiTaskData = {
         taskName: taskData.name,
         taskDescription: taskData.description,
-        taskDeadline: taskData.dueDate,
+        taskDeadline: taskData.taskDeadline || taskData.dueDate, // Support both new datetime and legacy date
         taskPriority:
           taskData.priority === "High"
             ? "High Priority"
@@ -89,6 +89,10 @@ export const useCreateTask = () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      // Invalidate any other task-related queries
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
       toast({
         title: "Success",
@@ -131,8 +135,10 @@ export const useUpdateTask = () => {
       if (taskData.name !== undefined) apiTaskData.taskName = taskData.name;
       if (taskData.description !== undefined)
         apiTaskData.taskDescription = taskData.description;
-      if (taskData.dueDate !== undefined)
-        apiTaskData.taskDeadline = taskData.dueDate;
+      if (taskData.taskDeadline !== undefined)
+        apiTaskData.taskDeadline = taskData.taskDeadline;
+      else if (taskData.dueDate !== undefined)
+        apiTaskData.taskDeadline = taskData.dueDate; // Backward compatibility
 
       // Handle priority conversion
       if (taskData.priority !== undefined) {
@@ -172,6 +178,10 @@ export const useUpdateTask = () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      // Invalidate any other task-related queries
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
       toast({
         title: "Success",
@@ -201,6 +211,10 @@ export const useDeleteTask = () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      // Invalidate any other task-related queries
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
       toast({
         title: "Success",

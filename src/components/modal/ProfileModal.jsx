@@ -7,7 +7,7 @@ import { PERMISSIONS } from "@/lib/constants";
 import PropTypes from "prop-types";
 import { getUserInitials, formatUserRole } from "@/utils/userUtils";
 import PopoverModal from "@/components/ui/PopoverModal";
-import toast from "react-hot-toast";
+import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +45,7 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
       const fetchUserProfile = async () => {
         try {
           const result = await getCurrentUserProfile();
+
           if (result.success && result.data) {
             setProfileData(result.data);
             setFormData({
@@ -95,7 +96,11 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
       onClose();
     } catch (error) {
       console.error("Logout failed:", error);
-      toast.error(error.message || "Failed to log out. Please try again.");
+      toast({
+        title: "Logout Failed",
+        description: error.message || "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -114,14 +119,22 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
   const validateImageFile = (file) => {
     // Check if file is an image
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file (JPEG, PNG, etc.)");
+      toast({
+        title: "Invalid File Type",
+        description: "Please select an image file (JPEG, PNG, etc.)",
+        variant: "destructive",
+      });
       return false;
     }
 
     // Check file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB in bytes
     if (file.size > maxSize) {
-      toast.error("Image is too large. Maximum size is 5MB");
+      toast({
+        title: "File Too Large",
+        description: "Image is too large. Maximum size is 5MB",
+        variant: "destructive",
+      });
       return false;
     }
 
@@ -147,7 +160,11 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
       });
 
       if (result.success) {
-        toast.success("Profile picture updated successfully");
+        toast({
+          title: "Success",
+          description: "Profile picture updated successfully",
+          variant: "default",
+        });
         // Update avatar URL locally instead of reloading
         setAvatarUrl(result.url);
         // Update profile data with the new user data
@@ -157,11 +174,19 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
         // Refresh user data in context without page reload
         refreshUserData();
       } else {
-        toast.error(result.error || "Failed to upload profile picture");
+        toast({
+          title: "Upload Failed",
+          description: result.error || "Failed to upload profile picture",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error uploading profile picture:", error);
-      toast.error("Failed to upload profile picture");
+      toast({
+        title: "Upload Error",
+        description: "Failed to upload profile picture",
+        variant: "destructive",
+      });
     } finally {
       setIsUploading(false);
       // Reset the file input
@@ -174,7 +199,11 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
       const result = await updateCurrentUserProfile(formData);
 
       if (result.success) {
-        toast.success("Profile updated successfully");
+        toast({
+          title: "Success",
+          description: "Profile updated successfully",
+          variant: "default",
+        });
         setIsEditing(false);
         // Update profile data with the new user data
         if (result.data) {
@@ -183,11 +212,19 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
         // Refresh user data in context without page reload
         refreshUserData();
       } else {
-        toast.error(result.error || "Failed to update profile");
+        toast({
+          title: "Update Failed",
+          description: result.error || "Failed to update profile",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
+      toast({
+        title: "Update Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
     }
   };
 
@@ -295,9 +332,37 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
                 {user ? formatUserRole(user.role) : "Role"}
               </p>
               <p className="text-xs text-gray-500 mt-1">{getEmail()}</p>
+
+              {/* Show Year Level and Course for Students and PIOs only */}
+              {(user?.role === "student" ||
+                user?.role === "pio" ||
+                profileData?.role === "student" ||
+                profileData?.role === "pio") && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-400 uppercase tracking-wide">
+                      Year Level
+                    </label>
+                    <p className="text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded border">
+                      {profileData?.yearLevel ||
+                        user?.yearLevel ||
+                        "Not specified"}
+                    </p>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs text-gray-400 uppercase tracking-wide">
+                      Course
+                    </label>
+                    <p className="text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded border">
+                      {profileData?.course || user?.course || "Not specified"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={() => setIsEditing(true)}
-                className="mt-2 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                className="mt-3 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
               >
                 <Edit className="w-3 h-3" />
                 Edit Profile

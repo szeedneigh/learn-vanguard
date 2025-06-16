@@ -110,6 +110,10 @@ export const useTasks = (toast) => {
         };
       });
 
+      // Invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
       toast({
         title: "Task Created",
         description: "New task added successfully!",
@@ -155,6 +159,10 @@ export const useTasks = (toast) => {
       return { previousTasks };
     },
     onSuccess: (data, { taskId, taskData }) => {
+      // Invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
       toast({
         title: "Task Updated",
         description: "Task updated successfully!",
@@ -197,6 +205,10 @@ export const useTasks = (toast) => {
       return { previousTasks };
     },
     onSuccess: () => {
+      // Invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
       toast({
         title: "Task Deleted",
         description: "Task removed successfully!",

@@ -25,6 +25,8 @@ import {
   normalizePriority,
   normalizeStatus,
   isTaskCompleted,
+  isTaskOverdue,
+  formatDateTime,
 } from "@/lib/calendarHelpers";
 
 function TaskDetailDialog({
@@ -40,22 +42,14 @@ function TaskDetailDialog({
 
   if (!task) return null;
 
-  // Format date for display, handling multiple possible date properties
-  const formatDate = () => {
-    try {
-      if (task.date) {
-        return new Date(task.date + "T00:00:00").toLocaleDateString();
-      } else if (task.scheduleDate) {
-        return new Date(task.scheduleDate).toLocaleDateString();
-      } else if (task.taskDeadline) {
-        return new Date(task.taskDeadline).toLocaleDateString();
-      }
-      return "Date not specified";
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Invalid date";
-    }
+  // Get the appropriate date field for the task/event/announcement - prioritize full datetime fields
+  const getItemDate = () => {
+    return task.scheduleDate || task.dueDate || task.taskDeadline || task.date;
   };
+
+  // Check if item is overdue
+  const itemDate = getItemDate();
+  const overdue = isTaskOverdue(itemDate, task.status);
 
   // Get user context for permission checks - we'll determine the specific permissions based on item type later
 
@@ -232,7 +226,16 @@ function TaskDetailDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{task.title || task.taskName}</DialogTitle>
-          <DialogDescription>Due: {formatDate()}</DialogDescription>
+          <DialogDescription
+            className={
+              overdue && !isTaskCompleted(task.status) ? "text-red-600" : ""
+            }
+          >
+            Due: {formatDateTime(itemDate)}
+            {overdue && !isTaskCompleted(task.status) && (
+              <span className="ml-1 font-semibold">(OVERDUE)</span>
+            )}
+          </DialogDescription>
         </DialogHeader>
         {/* Show read-only notice for tasks viewed from Events page */}
         {isTask && (
@@ -246,14 +249,56 @@ function TaskDetailDialog({
             </div>
           </div>
         )}
-        {/* Show read-only notice for announcements viewed from Events page */}
+        {/* Show enhanced announcement details */}
         {isAnnouncement && (
-          <div className="bg-purple-50 border border-purple-200 rounded-md p-3 mb-4">
-            <div className="flex items-center">
+          <div className="bg-purple-50 border border-purple-200 rounded-md p-4 mb-4">
+            <div className="flex items-center mb-3">
               <Info className="h-4 w-4 text-purple-600 mr-2 flex-shrink-0" />
-              <p className="text-sm text-purple-800">
-                This is a subject announcement. To edit or manage this
-                announcement, please visit the{" "}
+              <p className="text-sm text-purple-800 font-medium">
+                Subject Announcement
+              </p>
+            </div>
+
+            {/* Announcement Type */}
+            {task.type && (
+              <div className="mb-2">
+                <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
+                  Type:
+                </span>
+                <span className="ml-2 text-sm text-purple-800 capitalize">
+                  {task.type}
+                </span>
+              </div>
+            )}
+
+            {/* Announcement Content */}
+            {task.content && (
+              <div className="mb-2">
+                <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
+                  Content:
+                </span>
+                <p className="mt-1 text-sm text-purple-800 bg-white p-2 rounded border">
+                  {task.content}
+                </p>
+              </div>
+            )}
+
+            {/* Due Date for assignments/quizzes/exams */}
+            {task.dueDate &&
+              ["assignment", "quiz", "exam"].includes(task.type) && (
+                <div className="mb-2">
+                  <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
+                    Due Date:
+                  </span>
+                  <span className="ml-2 text-sm text-purple-800">
+                    {formatDateTime(task.dueDate)}
+                  </span>
+                </div>
+              )}
+
+            <div className="mt-3 pt-2 border-t border-purple-200">
+              <p className="text-xs text-purple-700">
+                To edit or manage this announcement, visit the{" "}
                 <span className="font-medium">Resources page</span> for the
                 related subject.
               </p>

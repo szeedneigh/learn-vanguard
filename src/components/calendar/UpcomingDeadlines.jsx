@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { Info, CheckCircle, ArrowRight } from "lucide-react";
+import { Info, CheckCircle, ArrowRight, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -18,23 +18,15 @@ import {
   normalizePriority,
   normalizeStatus,
   isTaskCompleted,
+  isTaskOverdue,
+  formatDateTime,
   capitalize,
 } from "@/lib/calendarHelpers";
 
 function UpcomingDeadlines({ tasks, onTaskClick }) {
-  // Helper function to format date safely
-  const formatDate = (task) => {
-    try {
-      if (task.date) {
-        return new Date(task.date + "T00:00:00").toLocaleDateString();
-      } else if (task.scheduleDate) {
-        return new Date(task.scheduleDate).toLocaleDateString();
-      }
-      return "No date";
-    } catch (error) {
-      console.error("Date formatting error:", error, task);
-      return "No date";
-    }
+  // Helper function to get task due date - prioritize full datetime fields
+  const getTaskDueDate = (task) => {
+    return task.scheduleDate || task.dueDate || task.taskDeadline || task.date;
   };
 
   return (
@@ -73,6 +65,8 @@ function UpcomingDeadlines({ tasks, onTaskClick }) {
                 const completed = isTaskCompleted(task.status);
                 const normalizedPriority = normalizePriority(task.priority);
                 const normalizedStatus = normalizeStatus(task.status);
+                const taskDueDate = getTaskDueDate(task);
+                const overdue = isTaskOverdue(taskDueDate, task.status);
 
                 return (
                   <div
@@ -80,7 +74,7 @@ function UpcomingDeadlines({ tasks, onTaskClick }) {
                     onClick={() => onTaskClick(task)}
                     className={`flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 cursor-pointer transition-colors ${
                       completed ? "opacity-75" : ""
-                    }`}
+                    } ${overdue ? "border-red-200 bg-red-50" : ""}`}
                   >
                     <div className="flex items-center space-x-3 overflow-hidden">
                       {/* Priority-based color indicator */}
@@ -93,16 +87,30 @@ function UpcomingDeadlines({ tasks, onTaskClick }) {
                           {completed && (
                             <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                           )}
+                          {overdue && !completed && (
+                            <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                          )}
                           <h4
                             className={`font-medium truncate ${
                               completed ? "line-through" : ""
-                            }`}
+                            } ${overdue && !completed ? "text-red-700" : ""}`}
                           >
                             {task.title}
                           </h4>
                         </div>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {task.course} • Due: {formatDate(task)}
+                        <div
+                          className={`text-sm truncate ${
+                            overdue && !completed
+                              ? "text-red-600"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {task.course} • Due: {formatDateTime(taskDueDate)}
+                          {overdue && !completed && (
+                            <span className="ml-1 font-semibold">
+                              (OVERDUE)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

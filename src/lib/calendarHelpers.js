@@ -47,7 +47,7 @@ export const getTaskColor = (priority, status) => {
 
   // Status overrides priority color
   if (normalizedStatus === "Completed") return "#10B981"; // Green
-  if (normalizedStatus === "On Hold") return "#F59E0B"; // Yellow/Amber
+  if (normalizedStatus === "On Hold") return "#6B7280"; // Grey
 
   // Normalize priority to handle different formats
   const normalizedPriority = normalizePriority(priority);
@@ -117,7 +117,7 @@ export const getTaskColorClasses = (priority, status) => {
 
   // Status overrides priority color (matches main task page)
   if (normalizedStatus === "Completed") return "bg-green-100 text-green-800"; // Matches TaskCard
-  if (normalizedStatus === "On Hold") return "bg-amber-100 text-amber-800"; // Matches TaskCard
+  if (normalizedStatus === "On Hold") return "bg-gray-100 text-gray-800"; // Grey for On Hold
 
   switch (normalizedPriority) {
     case "High":
@@ -145,7 +145,7 @@ export const getStatusColorClasses = (status) => {
     case "In Progress":
       return "bg-blue-100 text-blue-800";
     case "On Hold":
-      return "bg-amber-100 text-amber-800";
+      return "bg-gray-100 text-gray-800";
     case "Completed":
       return "bg-green-100 text-green-800";
     default:
@@ -161,6 +161,48 @@ export const getStatusColorClasses = (status) => {
 export const isTaskCompleted = (status) => {
   const normalizedStatus = normalizeStatus(status);
   return normalizedStatus === "Completed";
+};
+
+/**
+ * Check if a task is overdue
+ * @param {string|Date} dueDate - Task due date
+ * @param {string} status - Task status
+ * @returns {boolean} True if task is overdue
+ */
+export const isTaskOverdue = (dueDate, status) => {
+  if (isTaskCompleted(status)) return false;
+  if (!dueDate) return false;
+
+  const now = new Date();
+  const due = new Date(dueDate);
+  return due < now;
+};
+
+/**
+ * Format date and time for display
+ * @param {string|Date} dateTime - Date/time to format
+ * @param {Object} options - Formatting options
+ * @returns {string} Formatted date and time string
+ */
+export const formatDateTime = (dateTime, options = {}) => {
+  if (!dateTime) return "Not specified";
+
+  try {
+    const date = new Date(dateTime);
+    const defaultOptions = {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    };
+
+    return date.toLocaleDateString("en-US", { ...defaultOptions, ...options });
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "Invalid date";
+  }
 };
 
 /**

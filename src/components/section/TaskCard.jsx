@@ -6,11 +6,13 @@ import {
   Edit,
   Trash2,
   Archive,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePermission } from "@/context/PermissionContext";
 import { useAuth } from "@/context/AuthContext";
 import { PERMISSIONS, ROLES } from "@/lib/constants";
+import { isTaskOverdue, formatDateTime } from "@/lib/calendarHelpers";
 import PropTypes from "prop-types";
 
 const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
@@ -49,7 +51,7 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
       case "In Progress":
         return "bg-blue-100 text-blue-800";
       case "On Hold":
-        return "bg-amber-100 text-amber-800";
+        return "bg-gray-100 text-gray-800";
       case "Completed":
         return "bg-green-100 text-green-800";
       default:
@@ -91,6 +93,7 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
   };
 
   const isCompleted = normalizedStatus === "Completed";
+  const isOverdue = isTaskOverdue(taskDueDate, normalizedStatus);
 
   // Permission checks
   const hasEditPermission = hasPermission(PERMISSIONS.EDIT_TASK);
@@ -193,30 +196,33 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
         )}
 
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center text-gray-500 text-xs">
-            <Calendar size={14} className="mr-1.5 text-gray-400" />
+          <div
+            className={`flex items-center text-xs ${
+              isOverdue ? "text-red-600" : "text-gray-500"
+            }`}
+          >
+            <Calendar
+              size={14}
+              className={`mr-1.5 ${
+                isOverdue ? "text-red-500" : "text-gray-400"
+              }`}
+            />
+            {isOverdue && (
+              <AlertTriangle size={14} className="mr-1.5 text-red-500" />
+            )}
             <span>
-              Due:{" "}
-              {new Date(taskDueDate).toLocaleDateString("en-US", {
-                month: "short",
-                day: "2-digit",
-                year: "numeric",
-              })}
+              Due: {formatDateTime(taskDueDate)}
+              {isOverdue && (
+                <span className="ml-1 font-semibold text-red-600">
+                  (OVERDUE)
+                </span>
+              )}
             </span>
           </div>
           {isCompleted && taskCompletedAt && (
             <div className="flex items-center text-green-600 text-xs">
               <CheckCircle2 size={14} className="mr-1.5" />
-              <span>
-                Completed:{" "}
-                {new Date(taskCompletedAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
+              <span>Completed: {formatDateTime(taskCompletedAt)}</span>
             </div>
           )}
         </div>

@@ -17,6 +17,7 @@ import TaskDetailDialog from "@/components/calendar/TaskDetailDialog";
 import EventFormDialog from "@/components/calendar/EventFormDialog";
 import DayView from "@/components/calendar/DayView";
 import WeekView from "@/components/calendar/WeekView";
+import { useActivityCompletions } from "@/hooks/useActivityCompletion";
 
 export default function Events() {
   // Local state for calendar functionality
@@ -168,6 +169,23 @@ export default function Events() {
     }
   );
 
+  // Fetch activity completions for filtering completed activities
+  const { data: activityCompletions = [] } = useActivityCompletions();
+
+  // Helper function to check if an activity is completed
+  const isActivityCompleted = useMemo(() => {
+    const completionMap = new Map();
+    activityCompletions.forEach((completion) => {
+      const key = `${completion.topicId}-${completion.activityId}`;
+      completionMap.set(key, true);
+    });
+
+    return (topicId, activityId) => {
+      const key = `${topicId}-${activityId}`;
+      return completionMap.has(key);
+    };
+  }, [activityCompletions]);
+
   // Debug logging for announcements
   React.useEffect(() => {
     console.log("Events.jsx - Announcements state:", {
@@ -188,7 +206,7 @@ export default function Events() {
     announcementsError,
   ]);
 
-  // Combine events and announcements for calendar display, filtering out completed tasks
+  // Combine events and announcements for calendar display, filtering out completed tasks and activities
   const events = useMemo(() => {
     const combinedEvents = [];
 
@@ -208,9 +226,26 @@ export default function Events() {
       combinedEvents.push(...filteredEvents);
     }
 
-    // Add announcements (all announcements are shown)
+    // Add announcements (filter out completed activities)
     if (announcements && Array.isArray(announcements)) {
-      combinedEvents.push(...announcements);
+      const filteredAnnouncements = announcements.filter((announcement) => {
+        // If announcement is linked to an activity, check if the activity is completed
+        if (
+          announcement.topicId &&
+          announcement.activityId &&
+          announcement.creationSource === "activity"
+        ) {
+          const completed = isActivityCompleted(
+            announcement.topicId,
+            announcement.activityId
+          );
+          return !completed; // Exclude completed activities
+        }
+        // For regular announcements (not activity-generated), include all
+        return true;
+      });
+
+      combinedEvents.push(...filteredAnnouncements);
     }
 
     console.log("Combined events for calendar:", {
@@ -224,6 +259,22 @@ export default function Events() {
           }).length
         : 0,
       announcements: announcements?.length || 0,
+      announcementsAfterActivityFiltering: announcements
+        ? announcements.filter((announcement) => {
+            if (
+              announcement.topicId &&
+              announcement.activityId &&
+              announcement.creationSource === "activity"
+            ) {
+              return !isActivityCompleted(
+                announcement.topicId,
+                announcement.activityId
+              );
+            }
+            return true;
+          }).length
+        : 0,
+      activityCompletions: activityCompletions?.length || 0,
       total: combinedEvents.length,
     });
 
@@ -236,7 +287,7 @@ export default function Events() {
     });
 
     return combinedEvents;
-  }, [eventsData, announcements]);
+  }, [eventsData, announcements, isActivityCompleted]);
 
   // Calendar grid generation - moved after events definition to fix initialization order
   const calendarGrid = useMemo(() => {
@@ -245,9 +296,12 @@ export default function Events() {
 
   // Filter and sort the upcoming tasks - Only show Tasks, not Events
   const upcomingTasks = useMemo(() => {
-    const today = new Date();
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
+    // Create consistent date boundaries - start of today to end of 7 days from now
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
+    const sevenDaysLater = new Date(today);
+    sevenDaysLater.setDate(today.getDate() + 7);
+    sevenDaysLater.setHours(23, 59, 59, 999); // End of the 7th day
 
     // Debug: Log the tasks response structure
     console.log("Events.jsx - tasksResponse:", tasksResponse);
@@ -270,11 +324,29 @@ export default function Events() {
           return false;
         }
 
-        return (
-          taskDate >= today &&
-          taskDate <= nextWeek &&
-          task.taskStatus !== "Completed"
-        );
+        // Check if task date is valid
+        if (isNaN(taskDate.getTime())) {
+          console.warn("Invalid task date:", task);
+          return false;
+        }
+
+        // Include tasks from today (inclusive) through the next 7 days (inclusive)
+        const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
+        const isNotCompleted =
+          task.taskStatus !== "Completed" && task.taskStatus !== "completed";
+
+        // Additional check for activity-based tasks (if they exist)
+        // Note: Currently tasks are personal, but this provides future-proofing
+        // if activities are ever integrated as tasks
+        let isActivityNotCompleted = true;
+        if (task.topicId && task.activityId) {
+          isActivityNotCompleted = !isActivityCompleted(
+            task.topicId,
+            task.activityId
+          );
+        }
+
+        return isInDateRange && isNotCompleted && isActivityNotCompleted;
       })
       .sort((a, b) => {
         const dateA = a.taskDeadline
@@ -290,14 +362,15 @@ export default function Events() {
         id: task._id,
         title: task.taskName,
         description: task.taskDescription,
-        date: task.taskDeadline ? task.taskDeadline.split("T")[0] : null,
+        // Don't strip time from date - keep full datetime for proper display
         scheduleDate: task.taskDeadline,
+        dueDate: task.taskDeadline, // Also provide as dueDate for consistency
         status: task.taskStatus,
         priority: task.taskPriority,
         course: "Personal", // Tasks are personal
         type: "task",
       }));
-  }, [tasksResponse]);
+  }, [tasksResponse, isActivityCompleted]);
 
   if (tasksLoading || isLoading) {
     return (
