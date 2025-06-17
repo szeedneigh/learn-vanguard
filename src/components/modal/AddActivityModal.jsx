@@ -27,7 +27,7 @@ import { useAuth } from "@/context/AuthContext";
 const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    type: "material",
+    type: "assignment",
     title: "",
     description: "",
     dueDate: "",
@@ -43,7 +43,7 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        type: "material",
+        type: "assignment",
         title: "",
         description: "",
         dueDate: "",
@@ -77,14 +77,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
       ...prev,
       [name]: value,
     }));
-
-    // Reset points to 0 if switching to material type
-    if (name === "type" && value === "material") {
-      setFormData((prev) => ({
-        ...prev,
-        points: 0,
-      }));
-    }
 
     if (errors[name]) {
       setErrors((prev) => ({
@@ -122,10 +114,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
       newErrors.type = "Activity type is required";
     }
 
-    if (formData.points < 0) {
-      newErrors.points = "Points cannot be negative";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -140,7 +128,22 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
     setIsSubmitting(true);
 
     try {
-      const result = await addActivity(topicId, formData);
+      // Prepare the data for submission, ensuring proper format
+      const submissionData = {
+        type: formData.type,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        dueDate:
+          formData.dueDate && formData.dueDate.trim() !== ""
+            ? formData.dueDate
+            : null,
+        points: formData.points || 0, // Points for assignments and quizzes
+        fileUrls: formData.fileUrls || [],
+      };
+
+      console.log("AddActivityModal: Submitting data:", submissionData);
+
+      const result = await addActivity(topicId, submissionData);
 
       if (result.success) {
         toast({
@@ -212,7 +215,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
                 <SelectValue placeholder="Select Activity Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="material">Learning Material</SelectItem>
                 <SelectItem value="assignment">Assignment</SelectItem>
                 <SelectItem value="quiz">Quiz</SelectItem>
               </SelectContent>
@@ -251,45 +253,22 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
             />
           </div>
 
-          {formData.type !== "material" && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="dueDate">Due Date</Label>
-                <div className="flex items-center">
-                  <Calendar className="mr-2 h-4 w-4 opacity-50" />
-                  <Input
-                    type="datetime-local"
-                    id="dueDate"
-                    name="dueDate"
-                    value={formData.dueDate}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  When this activity is due (optional)
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="points">Points</Label>
-                <Input
-                  type="number"
-                  id="points"
-                  name="points"
-                  value={formData.points}
-                  onChange={handleInputChange}
-                  min={0}
-                  className={errors.points ? "border-red-500" : ""}
-                />
-                {errors.points && (
-                  <p className="text-red-500 text-xs mt-1">{errors.points}</p>
-                )}
-                <p className="text-xs text-gray-500">
-                  Maximum points for this activity
-                </p>
-              </div>
-            </>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="dueDate">Due Date</Label>
+            <div className="flex items-center">
+              <Calendar className="mr-2 h-4 w-4 opacity-50" />
+              <Input
+                type="datetime-local"
+                id="dueDate"
+                name="dueDate"
+                value={formData.dueDate}
+                onChange={handleInputChange}
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              When this activity is due (optional)
+            </p>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="fileUrls">File URLs (Optional)</Label>

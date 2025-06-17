@@ -42,6 +42,7 @@ import { AddTopicModal } from "@/components/modal/AddTopicModal";
 import { AddActivityModal } from "@/components/modal/AddActivityModal";
 import TopicResourceView from "./TopicResourceView";
 import TopicActivitiesView from "./TopicActivitiesView";
+import Pagination from "@/components/ui/pagination";
 
 const ViewSubject = ({
   currentSubject,
@@ -82,6 +83,10 @@ const ViewSubject = ({
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Pagination state for topics
+  const [currentTopicPage, setCurrentTopicPage] = useState(1);
+  const topicsPerPage = 2;
 
   const { hasPermission } = usePermission();
   const canCreateAnnouncement = hasPermission(PERMISSIONS.ANNOUNCE_SUBJECT);
@@ -169,6 +174,25 @@ const ViewSubject = ({
       })
       .filter(Boolean);
   }, [topics, searchTerm]);
+
+  // Pagination logic for topics
+  const paginatedTopics = useMemo(() => {
+    const startIndex = (currentTopicPage - 1) * topicsPerPage;
+    const endIndex = startIndex + topicsPerPage;
+    return filteredTopics.slice(startIndex, endIndex);
+  }, [filteredTopics, currentTopicPage, topicsPerPage]);
+
+  const totalTopicPages = Math.ceil(filteredTopics.length / topicsPerPage);
+
+  // Reset to first page when search term changes
+  const handleTopicPageChange = (page) => {
+    setCurrentTopicPage(page);
+  };
+
+  // Reset pagination when search changes
+  useMemo(() => {
+    setCurrentTopicPage(1);
+  }, [searchTerm]);
 
   // Helper function to highlight search matches
   const highlightSearchTerm = (text, searchTerm) => {
@@ -446,111 +470,125 @@ const ViewSubject = ({
               !topicsError &&
               filteredTopics &&
               filteredTopics.length > 0 && (
-                <div className="space-y-4">
-                  {filteredTopics.map((topic) => (
-                    <div
-                      key={topic.id}
-                      className="p-4 bg-blue-50 rounded-xl shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="text-md font-medium">{topic.name}</h3>
-                          {!canEditInCurrentContext && (
+                <>
+                  <div className="space-y-4">
+                    {paginatedTopics.map((topic) => (
+                      <div
+                        key={topic.id}
+                        className="p-4 bg-blue-50 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center space-x-2">
+                            <h3 className="text-md font-medium">
+                              {topic.name}
+                            </h3>
+                            {!canEditInCurrentContext && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Lock className="w-3 h-3 text-gray-400" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-sm">
+                                    {isStudent
+                                      ? "Read-only access to topic content"
+                                      : "You can only edit topics in your assigned class"}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                          {canEditInCurrentContext && !isStudent && (
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddActivity(topic.id)}
+                                className="text-sm"
+                              >
+                                <PlusCircle className="w-3 h-3 mr-1" />
+                                Add Activity
+                              </Button>
+                            </div>
+                          )}
+                          {!canEditInCurrentContext && !isStudent && (
                             <Tooltip>
                               <TooltipTrigger>
-                                <Lock className="w-3 h-3 text-gray-400" />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  className="text-sm opacity-50"
+                                >
+                                  <PlusCircle className="w-3 h-3 mr-1" />
+                                  Add Activity
+                                  <Lock className="w-3 h-3 ml-1" />
+                                </Button>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="text-sm">
-                                  {isStudent
-                                    ? "Read-only access to topic content"
-                                    : "You can only edit topics in your assigned class"}
+                                  Restricted to your assigned class
                                 </p>
                               </TooltipContent>
                             </Tooltip>
                           )}
                         </div>
-                        {canEditInCurrentContext && !isStudent && (
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddActivity(topic.id)}
-                              className="text-sm"
-                            >
-                              <PlusCircle className="w-3 h-3 mr-1" />
-                              Add Activity
-                            </Button>
-                          </div>
+                        {topic.description && (
+                          <p className="text-sm text-gray-600 mb-2">
+                            {topic.description}
+                          </p>
                         )}
-                        {!canEditInCurrentContext && !isStudent && (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled
-                                className="text-sm opacity-50"
-                              >
-                                <PlusCircle className="w-3 h-3 mr-1" />
-                                Add Activity
-                                <Lock className="w-3 h-3 ml-1" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-sm">
-                                Restricted to your assigned class
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                      {topic.description && (
-                        <p className="text-sm text-gray-600 mb-2">
-                          {topic.description}
-                        </p>
-                      )}
 
-                      {/* Topic Resources */}
-                      <TopicResourceView
-                        topic={topic}
-                        subjectId={currentSubject?.id}
-                        userRole={userRole}
-                        onUploadClick={handleUploadForTopic}
-                        refetchTrigger={refetchTrigger}
-                        canEditInCurrentContext={canEditInCurrentContext}
-                        isStudent={isStudent}
-                        isPIO={isPIO}
-                        assignedClassInfo={assignedClassInfo}
-                      />
+                        {/* Topic Resources */}
+                        <TopicResourceView
+                          topic={topic}
+                          subjectId={currentSubject?.id}
+                          userRole={userRole}
+                          onUploadClick={handleUploadForTopic}
+                          refetchTrigger={refetchTrigger}
+                          canEditInCurrentContext={canEditInCurrentContext}
+                          isStudent={isStudent}
+                          isPIO={isPIO}
+                          assignedClassInfo={assignedClassInfo}
+                        />
 
-                      {/* Topic Activities */}
-                      <TopicActivitiesView
-                        topic={topic}
-                        userRole={userRole}
-                        onActivityDeleted={(
-                          deletedActivity,
-                          announcementDeleted
-                        ) => {
-                          // Refetch both topics and announcements when an activity is deleted
-                          // This ensures the UI is updated to reflect both the activity and announcement deletion
-                          console.log(
-                            "Activity deleted:",
-                            deletedActivity?.title,
-                            "Announcement also deleted:",
+                        {/* Topic Activities */}
+                        <TopicActivitiesView
+                          topic={topic}
+                          userRole={userRole}
+                          onActivityDeleted={(
+                            deletedActivity,
                             announcementDeleted
-                          );
-                          refetchAll();
-                        }}
-                        canEditInCurrentContext={canEditInCurrentContext}
-                        isStudent={isStudent}
-                        isPIO={isPIO}
-                        assignedClassInfo={assignedClassInfo}
-                        currentSubject={currentSubject}
-                      />
-                    </div>
-                  ))}
-                </div>
+                          ) => {
+                            // Refetch both topics and announcements when an activity is deleted
+                            // This ensures the UI is updated to reflect both the activity and announcement deletion
+                            console.log(
+                              "Activity deleted:",
+                              deletedActivity?.title,
+                              "Announcement also deleted:",
+                              announcementDeleted
+                            );
+                            refetchAll();
+                          }}
+                          canEditInCurrentContext={canEditInCurrentContext}
+                          isStudent={isStudent}
+                          isPIO={isPIO}
+                          assignedClassInfo={assignedClassInfo}
+                          currentSubject={currentSubject}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Topic Pagination */}
+                  {totalTopicPages > 1 && (
+                    <Pagination
+                      currentPage={currentTopicPage}
+                      totalPages={totalTopicPages}
+                      onPageChange={handleTopicPageChange}
+                      className="mt-4"
+                    />
+                  )}
+                </>
               )}
             {!topicsLoading &&
               !topicsError &&

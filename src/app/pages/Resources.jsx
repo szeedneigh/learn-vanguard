@@ -228,20 +228,14 @@ export default function Resources() {
   const createSubjectMutation = useMutation({
     mutationFn: createSubject,
     onSuccess: () => {
-      // Immediately refetch subjects to show the new subject
+      // Single refetch to avoid race conditions and duplicate cards
       refetchSubjects();
 
-      // Add multiple delayed refetches to ensure data is up-to-date
-      const refetchDelays = [500, 1500, 3000];
-
-      refetchDelays.forEach((delay) => {
-        setTimeout(() => {
-          console.log(`Delayed refetch after subject creation (${delay}ms)`);
-          refetchSubjects();
-        }, delay);
-      });
-
-      // Remove toast notification from here as it's already shown in handleAddSubject
+      // Add one delayed refetch to ensure data consistency
+      setTimeout(() => {
+        console.log("Final refetch after subject creation");
+        refetchSubjects();
+      }, 1000);
     },
     onError: (error) => {
       toast({
@@ -594,69 +588,34 @@ export default function Resources() {
     ]
   );
 
-  const handleAddSubject = (subjectName) => {
-    if (!selectedProgramId || !currentYear || !currentSemester) {
+  const handleAddSubject = (result) => {
+    // This function is called when AddSubjectModal successfully creates a subject
+    // We don't need to create another subject, just handle the success response
+
+    if (result && result.name) {
+      console.log(
+        "Subject created successfully via AddSubjectModal:",
+        result.name
+      );
+
+      // Show success toast
       toast({
-        title: "Cannot Add Subject",
-        description: "Program, Year, or Semester not selected.",
-        variant: "destructive",
+        title: "Subject Added",
+        description: `Subject "${result.name}" added successfully!`,
+        variant: "default",
       });
-      return;
+
+      // Manually trigger refetch since we're not using createSubjectMutation
+      refetchSubjects();
+
+      // Add one delayed refetch to ensure data consistency
+      setTimeout(() => {
+        console.log("Final refetch after subject creation via AddSubjectModal");
+        refetchSubjects();
+      }, 1000);
+    } else {
+      console.error("Invalid result from AddSubjectModal:", result);
     }
-
-    // If subjectName is an object (from the modal's onSuccess), extract the name
-    const name =
-      typeof subjectName === "object" ? subjectName.name : subjectName;
-
-    console.log(
-      `Creating subject "${name}" for program ${selectedProgramId}, year ${currentYear}, semester ${currentSemester}`
-    );
-
-    // Ensure yearName is passed as a string to match the backend's expected format
-    const yearLevelString = String(currentYear);
-
-    createSubjectMutation.mutate(
-      {
-        name: name,
-        programId: selectedProgramId,
-        yearLevel: yearLevelString, // Use yearLevel instead of yearName to match backend
-        semester: currentSemester, // Use semester instead of semesterName to match backend
-      },
-      {
-        onSuccess: () => {
-          console.log("Subject created successfully, triggering refetch");
-
-          // Immediately refetch subjects to show the new subject
-          refetchSubjects();
-
-          // Add multiple delayed refetches to ensure data is up-to-date
-          const refetchDelays = [500, 1500, 3000];
-
-          refetchDelays.forEach((delay) => {
-            setTimeout(() => {
-              console.log(
-                `Delayed refetch after subject creation (${delay}ms)`
-              );
-              refetchSubjects();
-            }, delay);
-          });
-
-          toast({
-            title: "Subject Added",
-            description: `Subject "${name}" added successfully!`,
-            variant: "default",
-          });
-        },
-        onError: (error) => {
-          console.error("Error creating subject:", error);
-          toast({
-            title: "Failed to Add Subject",
-            description: error.message || "Unknown error occurred",
-            variant: "destructive",
-          });
-        },
-      }
-    );
   };
 
   const handleDeleteSubject = (subjectId) => {

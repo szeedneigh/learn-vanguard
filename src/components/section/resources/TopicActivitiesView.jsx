@@ -12,6 +12,7 @@ import {
   Info,
   Check,
   CheckCircle,
+  Eye,
 } from "lucide-react";
 import {
   Tooltip,
@@ -37,6 +38,7 @@ import {
   useMarkActivityComplete,
   useTopicActivityCompletions,
 } from "@/hooks/useActivityCompletion";
+import { ActivityDetailModal } from "@/components/modal/ActivityDetailModal";
 
 const TopicActivitiesView = ({
   topic,
@@ -51,6 +53,8 @@ const TopicActivitiesView = ({
   const [activityToDelete, setActivityToDelete] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [isActivityDetailOpen, setIsActivityDetailOpen] = useState(false);
   const { toast } = useToast();
 
   // Activity completion hooks
@@ -177,6 +181,16 @@ const TopicActivitiesView = ({
     }
   };
 
+  const handleActivityClick = (activity) => {
+    setSelectedActivity(activity);
+    setIsActivityDetailOpen(true);
+  };
+
+  const handleCloseActivityDetail = () => {
+    setIsActivityDetailOpen(false);
+    setSelectedActivity(null);
+  };
+
   // Function to get icon based on activity type
   const getActivityIcon = (type) => {
     switch (type.toLowerCase()) {
@@ -184,6 +198,9 @@ const TopicActivitiesView = ({
         return <FileText className="w-4 h-4 text-blue-600" />;
       case "quiz":
         return <Award className="w-4 h-4 text-amber-600" />;
+      case "material":
+        // Backward compatibility for existing material activities
+        return <FileText className="w-4 h-4 text-green-600" />;
       default:
         return <FileText className="w-4 h-4 text-gray-600" />;
     }
@@ -268,9 +285,10 @@ const TopicActivitiesView = ({
                 <div>
                   <div className="flex items-center space-x-2">
                     <p
-                      className={`text-sm font-medium ${
+                      className={`text-sm font-medium cursor-pointer hover:text-blue-600 ${
                         isCompleted ? "text-green-800 line-through" : ""
                       }`}
+                      onClick={() => handleActivityClick(activity)}
                     >
                       {activity.title}
                     </p>
@@ -287,16 +305,22 @@ const TopicActivitiesView = ({
                         {format(new Date(activity.dueDate), "MMM d, yyyy")}
                       </p>
                     )}
-                    {activity.points > 0 && (
-                      <p className="text-xs text-gray-500">
-                        Points: {activity.points}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
               <div className="flex space-x-1">
                 <TooltipProvider>
+                  {/* View Details button - available to all users */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-blue-600 hover:bg-blue-50"
+                    onClick={() => handleActivityClick(activity)}
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1" />
+                    <span className="text-xs">View</span>
+                  </Button>
+
                   {/* Mark as Done button - only for Students and PIO users with proper access */}
                   {canMarkActivitiesComplete &&
                     !isCompleted &&
@@ -361,6 +385,15 @@ const TopicActivitiesView = ({
           );
         })}
       </div>
+
+      {/* Activity Detail Modal */}
+      <ActivityDetailModal
+        isOpen={isActivityDetailOpen}
+        onClose={handleCloseActivityDetail}
+        activity={selectedActivity}
+        topic={topic}
+        subject={currentSubject}
+      />
     </div>
   );
 };
@@ -375,7 +408,10 @@ TopicActivitiesView.propTypes = {
         title: PropTypes.string,
         type: PropTypes.string,
         dueDate: PropTypes.string,
-        points: PropTypes.number,
+        description: PropTypes.string,
+        fileUrls: PropTypes.arrayOf(PropTypes.string),
+        createdAt: PropTypes.string,
+        updatedAt: PropTypes.string,
       })
     ),
   }).isRequired,

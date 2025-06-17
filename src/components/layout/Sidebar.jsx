@@ -224,32 +224,37 @@ const Sidebar = ({ isOpen, onClose }) => {
             )}
           >
             <div
-              className={cn(
-                "flex items-center justify-center flex-shrink-0",
-                isCollapsed && !isMobile ? "w-12 h-12" : "w-10 h-10"
-              )}
+              className={cn("flex items-center justify-center flex-shrink-0")}
+              style={{
+                width: isCollapsed && !isMobile ? "64px" : "56px",
+                height: isCollapsed && !isMobile ? "64px" : "56px",
+              }}
             >
               <img
                 src="/images/LearnVanguard_LOGO.png"
                 alt="logo"
                 loading="lazy"
-                className={cn(
-                  "rounded-xl",
-                  isCollapsed && !isMobile ? "w-12 h-12" : "w-10 h-10"
-                )}
+                className="rounded-xl"
+                style={{
+                  width: isCollapsed && !isMobile ? "64px" : "56px",
+                  height: isCollapsed && !isMobile ? "64px" : "56px",
+                }}
                 onError={(e) => {
                   console.error("Logo image failed to load:", e);
                   // Fallback to text if image fails to load
                   e.target.style.display = "none";
                   e.target.parentNode.innerHTML =
-                    '<div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold">LV</div>';
+                    '<div style="width: 56px; height: 56px;" class="bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold">LV</div>';
                 }}
               />
             </div>
             {(!isCollapsed || isMobile) && (
-              <div className="w-32">
-                <span className="font-semibold text-white text-lg whitespace-nowrap">
-                  Learn <br /> Vanguard
+              <div className="w-40">
+                <span
+                  className="font-semibold text-white whitespace-nowrap"
+                  style={{ fontSize: "19px" }}
+                >
+                  Learn Vanguard
                 </span>
               </div>
             )}

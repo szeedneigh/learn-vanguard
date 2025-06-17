@@ -264,7 +264,7 @@ const Tasks = () => {
     }
   };
 
-  const handleArchiveTask = (taskId) => {
+  const handleArchiveTask = (taskId, skipConfirmation = false) => {
     if (!taskId) {
       console.error("Cannot archive task: Task ID is undefined");
       toast({
@@ -287,6 +287,43 @@ const Tasks = () => {
     }
 
     const taskName = task.taskName || task.name;
+    const actualTaskId = task._id || task.id;
+
+    if (!actualTaskId) {
+      console.error("Cannot archive task: Invalid task ID", task);
+      toast({
+        title: "Error",
+        description: "Failed to archive task: Invalid task ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // If skipConfirmation is true, directly archive the task
+    if (skipConfirmation) {
+      archiveTask({
+        taskId: actualTaskId,
+        archived: true,
+      })
+        .then(() => {
+          // Force refresh the task list and stats
+          refetch();
+          // If we're in the archive view, refresh immediately
+          if (showArchived) {
+            setTimeout(() => refetch(), 300);
+          }
+          // Note: Success toast is handled by useArchiveTask hook
+        })
+        .catch((error) => {
+          console.error("Error archiving task:", error);
+          toast({
+            title: "Error",
+            description: "Failed to archive task. Please try again.",
+            variant: "destructive",
+          });
+        });
+      return;
+    }
 
     // Show toast with confirmation buttons
     toast({
@@ -298,43 +335,8 @@ const Tasks = () => {
             variant="default"
             size="sm"
             onClick={() => {
-              // Use the task's _id or id property (MongoDB uses _id)
-              const actualTaskId = task._id || task.id;
-
-              if (!actualTaskId) {
-                console.error("Cannot archive task: Invalid task ID", task);
-                toast({
-                  title: "Error",
-                  description: "Failed to archive task: Invalid task ID",
-                  variant: "destructive",
-                });
-                return;
-              }
-
-              archiveTask({
-                taskId: actualTaskId,
-                archived: true,
-              })
-                .then(() => {
-                  toast({
-                    title: "Task Archived",
-                    description: "The task has been moved to the archive.",
-                  });
-                  // Force refresh the task list and stats
-                  refetch();
-                  // If we're in the archive view, refresh immediately
-                  if (showArchived) {
-                    setTimeout(() => refetch(), 300);
-                  }
-                })
-                .catch((error) => {
-                  console.error("Error archiving task:", error);
-                  toast({
-                    title: "Error",
-                    description: "Failed to archive task. Please try again.",
-                    variant: "destructive",
-                  });
-                });
+              // Archive with skipConfirmation to avoid nested toasts
+              handleArchiveTask(taskId, true);
             }}
           >
             Archive
@@ -354,41 +356,8 @@ const Tasks = () => {
   };
 
   const openArchiveDialog = (taskId) => {
-    const task = tasks.find((t) => t.id === taskId || t._id === taskId);
-    if (task) {
-      const taskName = task.taskName || task.name;
-
-      // Show confirmation toast instead of modal
-      toast({
-        title: "Archive Task?",
-        description: `Are you sure you want to archive "${taskName}"? You can restore it later from the Archive page.`,
-        action: (
-          <div className="flex gap-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                const actualTaskId = task._id || task.id;
-                if (actualTaskId) {
-                  handleArchiveTask(actualTaskId);
-                }
-              }}
-            >
-              Archive
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                // Do nothing, toast will dismiss
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        ),
-      });
-    }
+    // Simply call handleArchiveTask which already handles confirmation
+    handleArchiveTask(taskId);
   };
 
   const handleDragEnd = (result) => {

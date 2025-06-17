@@ -1,66 +1,67 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
-  CheckCircle, 
-  Clock, 
-  User, 
-  BookOpen, 
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  CheckCircle,
+  Clock,
+  User,
+  BookOpen,
   Award,
   FileText,
   Calendar,
   Check,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
 import {
   useMarkActivityComplete,
   useActivityCompletions,
   useTopicActivityCompletions,
-} from '@/hooks/useActivityCompletion';
+} from "@/hooks/useActivityCompletion";
 
 /**
  * Test component to verify activity completion functionality
  */
 const ActivityCompletionTest = () => {
-  const [selectedRole, setSelectedRole] = useState('student');
+  const [selectedRole, setSelectedRole] = useState("student");
   const [testResults, setTestResults] = useState([]);
 
   // Mock data for testing
   const mockTopic = {
-    id: 'test-topic-123',
-    name: 'Introduction to Programming',
+    id: "test-topic-123",
+    name: "Introduction to Programming",
     activities: [
       {
-        _id: 'activity-1',
-        title: 'Programming Assignment 1',
-        type: 'assignment',
-        dueDate: '2024-01-15T23:59:59Z',
+        _id: "activity-1",
+        title: "Programming Assignment 1",
+        type: "assignment",
+        dueDate: "2024-01-15T23:59:59Z",
         points: 100,
-        description: 'Create a simple calculator program'
+        description: "Create a simple calculator program",
       },
       {
-        _id: 'activity-2',
-        title: 'Quiz: Variables and Data Types',
-        type: 'quiz',
-        dueDate: '2024-01-10T14:00:00Z',
+        _id: "activity-2",
+        title: "Quiz: Variables and Data Types",
+        type: "quiz",
+        dueDate: "2024-01-10T14:00:00Z",
         points: 50,
-        description: 'Test your knowledge of basic programming concepts'
+        description: "Test your knowledge of basic programming concepts",
       },
       {
-        _id: 'activity-3',
-        title: 'Reading Material: Functions',
-        type: 'material',
+        _id: "activity-3",
+        title: "Reading Material: Functions",
+        type: "material",
         dueDate: null,
         points: 0,
-        description: 'Read chapter 5 about functions'
-      }
-    ]
+        description: "Read chapter 5 about functions",
+      },
+    ],
   };
 
   // Hooks for testing
   const markActivityCompleteMutation = useMarkActivityComplete();
-  const { data: completions, isLoading: completionsLoading } = useActivityCompletions();
+  const { data: completions, isLoading: completionsLoading } =
+    useActivityCompletions();
   const {
     isActivityCompleted,
     completedActivityIds,
@@ -68,33 +69,36 @@ const ActivityCompletionTest = () => {
   } = useTopicActivityCompletions(mockTopic, true);
 
   const addTestResult = (result) => {
-    setTestResults(prev => [...prev, {
-      ...result,
-      timestamp: new Date().toLocaleTimeString()
-    }]);
+    setTestResults((prev) => [
+      ...prev,
+      {
+        ...result,
+        timestamp: new Date().toLocaleTimeString(),
+      },
+    ]);
   };
 
   const handleMarkComplete = async (activity) => {
     addTestResult({
-      type: 'info',
-      message: `Attempting to mark "${activity.title}" as complete...`
+      type: "info",
+      message: `Attempting to mark "${activity.title}" as complete...`,
     });
 
     try {
       await markActivityCompleteMutation.mutateAsync({
         topicId: mockTopic.id,
         activityId: activity._id,
-        notes: `Completed by ${selectedRole} user in test environment`
+        notes: `Completed by ${selectedRole} user in test environment`,
       });
 
       addTestResult({
-        type: 'success',
-        message: `Successfully marked "${activity.title}" as complete!`
+        type: "success",
+        message: `Successfully marked "${activity.title}" as complete!`,
       });
     } catch (error) {
       addTestResult({
-        type: 'error',
-        message: `Failed to mark "${activity.title}" as complete: ${error.message}`
+        type: "error",
+        message: `Failed to mark "${activity.title}" as complete: ${error.message}`,
       });
     }
   };
@@ -105,11 +109,12 @@ const ActivityCompletionTest = () => {
 
   const getActivityIcon = (type) => {
     switch (type) {
-      case 'assignment':
+      case "assignment":
         return <FileText className="w-4 h-4 text-blue-600" />;
-      case 'quiz':
+      case "quiz":
         return <Award className="w-4 h-4 text-amber-600" />;
-      case 'material':
+      case "material":
+        // Backward compatibility for existing material activities
         return <BookOpen className="w-4 h-4 text-green-600" />;
       default:
         return <FileText className="w-4 h-4 text-gray-600" />;
@@ -118,9 +123,9 @@ const ActivityCompletionTest = () => {
 
   const getResultIcon = (type) => {
     switch (type) {
-      case 'success':
+      case "success":
         return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'error':
+      case "error":
         return <X className="w-4 h-4 text-red-500" />;
       default:
         return <Clock className="w-4 h-4 text-blue-500" />;
@@ -129,12 +134,12 @@ const ActivityCompletionTest = () => {
 
   const getResultColor = (type) => {
     switch (type) {
-      case 'success':
-        return 'text-green-700 bg-green-50 border-green-200';
-      case 'error':
-        return 'text-red-700 bg-red-50 border-red-200';
+      case "success":
+        return "text-green-700 bg-green-50 border-green-200";
+      case "error":
+        return "text-red-700 bg-red-50 border-red-200";
       default:
-        return 'text-blue-700 bg-blue-50 border-blue-200';
+        return "text-blue-700 bg-blue-50 border-blue-200";
     }
   };
 
@@ -145,15 +150,14 @@ const ActivityCompletionTest = () => {
           <CardTitle>Activity Completion Test Component</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          
           {/* Role Selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Test as Role:</label>
             <div className="flex gap-2">
-              {['student', 'pio', 'admin'].map(role => (
+              {["student", "pio", "admin"].map((role) => (
                 <Button
                   key={role}
-                  variant={selectedRole === role ? 'default' : 'outline'}
+                  variant={selectedRole === role ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedRole(role)}
                 >
@@ -170,18 +174,25 @@ const ActivityCompletionTest = () => {
             <div className="grid gap-4">
               {mockTopic.activities.map((activity) => {
                 const isCompleted = isActivityCompleted(activity._id);
-                const canMarkComplete = selectedRole === 'student' || selectedRole === 'pio';
-                
+                const canMarkComplete =
+                  selectedRole === "student" || selectedRole === "pio";
+
                 return (
                   <div
                     key={activity._id}
                     className={`p-4 border rounded-lg ${
-                      isCompleted ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+                      isCompleted
+                        ? "bg-green-50 border-green-200"
+                        : "bg-white border-gray-200"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded ${isCompleted ? 'bg-green-100' : 'bg-gray-100'}`}>
+                        <div
+                          className={`p-2 rounded ${
+                            isCompleted ? "bg-green-100" : "bg-gray-100"
+                          }`}
+                        >
                           {isCompleted ? (
                             <CheckCircle className="w-5 h-5 text-green-600" />
                           ) : (
@@ -190,32 +201,40 @@ const ActivityCompletionTest = () => {
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
-                            <h4 className={`font-medium ${isCompleted ? 'text-green-800 line-through' : ''}`}>
+                            <h4
+                              className={`font-medium ${
+                                isCompleted ? "text-green-800 line-through" : ""
+                              }`}
+                            >
                               {activity.title}
                             </h4>
                             {isCompleted && (
-                              <Badge variant="secondary" className="bg-green-100 text-green-700">
+                              <Badge
+                                variant="secondary"
+                                className="bg-green-100 text-green-700"
+                              >
                                 Completed
                               </Badge>
                             )}
                           </div>
                           <div className="flex items-center space-x-4 text-sm text-gray-600">
                             <span className="flex items-center">
-                              <span className="capitalize">{activity.type}</span>
+                              <span className="capitalize">
+                                {activity.type}
+                              </span>
                             </span>
                             {activity.dueDate && (
                               <span className="flex items-center">
                                 <Calendar className="w-3 h-3 mr-1" />
-                                {new Date(activity.dueDate).toLocaleDateString()}
+                                {new Date(
+                                  activity.dueDate
+                                ).toLocaleDateString()}
                               </span>
-                            )}
-                            {activity.points > 0 && (
-                              <span>Points: {activity.points}</span>
                             )}
                           </div>
                         </div>
                       </div>
-                      
+
                       {canMarkComplete && !isCompleted && (
                         <Button
                           size="sm"
@@ -228,10 +247,12 @@ const ActivityCompletionTest = () => {
                           Mark as Done
                         </Button>
                       )}
-                      
+
                       {!canMarkComplete && (
                         <Badge variant="outline" className="text-gray-500">
-                          {selectedRole === 'admin' ? 'Admin View Only' : 'No Permission'}
+                          {selectedRole === "admin"
+                            ? "Admin View Only"
+                            : "No Permission"}
                         </Badge>
                       )}
                     </div>
@@ -247,7 +268,8 @@ const ActivityCompletionTest = () => {
               Clear Results
             </Button>
             <Badge variant="outline">
-              Completed: {completedActivityIds.length} / {mockTopic.activities.length}
+              Completed: {completedActivityIds.length} /{" "}
+              {mockTopic.activities.length}
             </Badge>
           </div>
 
@@ -257,13 +279,17 @@ const ActivityCompletionTest = () => {
               <h3 className="font-semibold">Test Results:</h3>
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {testResults.map((result, index) => (
-                  <div 
+                  <div
                     key={index}
-                    className={`flex items-center gap-2 p-2 rounded border text-sm ${getResultColor(result.type)}`}
+                    className={`flex items-center gap-2 p-2 rounded border text-sm ${getResultColor(
+                      result.type
+                    )}`}
                   >
                     {getResultIcon(result.type)}
                     <span className="flex-1">{result.message}</span>
-                    <span className="text-xs opacity-75">{result.timestamp}</span>
+                    <span className="text-xs opacity-75">
+                      {result.timestamp}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -272,7 +298,9 @@ const ActivityCompletionTest = () => {
 
           {/* Feature Checklist */}
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold mb-3">Activity Completion Features:</h3>
+            <h3 className="font-semibold mb-3">
+              Activity Completion Features:
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
@@ -300,7 +328,6 @@ const ActivityCompletionTest = () => {
               </div>
             </div>
           </div>
-
         </CardContent>
       </Card>
     </div>

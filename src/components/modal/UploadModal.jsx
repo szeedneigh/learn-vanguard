@@ -92,10 +92,14 @@ export const UploadModal = ({
       setTopicsLoading(true);
       import("@/services/topicService")
         .then((topicService) => {
+          // Fetch all topics without pagination limit
           topicService
-            .getTopicsBySubject(subject.id)
+            .getTopicsBySubject(subject.id, { limit: 1000 }) // Set high limit to get all topics
             .then((result) => {
               if (result.success && result.data) {
+                console.log(
+                  `UploadModal: Fetched ${result.data.length} topics for subject ${subject.id}`
+                );
                 setTopics(result.data);
 
                 // If selectedTopicState exists and is from this subject, ensure it's selected
@@ -118,6 +122,7 @@ export const UploadModal = ({
                   }
                 }
               } else {
+                console.log("UploadModal: No topics found or fetch failed");
                 setTopics([]);
               }
             })
@@ -411,7 +416,6 @@ export const UploadModal = ({
             >
               {isUploading ? (
                 <span className="flex items-center">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   {uploadProgress > 0
                     ? `Uploading ${uploadProgress}%`
                     : "Uploading..."}
