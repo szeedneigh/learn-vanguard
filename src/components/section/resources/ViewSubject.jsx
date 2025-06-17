@@ -15,6 +15,7 @@ import {
   MessageSquare,
   PlusCircle,
   Edit3,
+  Edit,
   Book,
   BookOpen,
   RefreshCw,
@@ -39,10 +40,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AddTopicModal } from "@/components/modal/AddTopicModal";
+import { EditTopicModal } from "@/components/modal/EditTopicModal";
 import { AddActivityModal } from "@/components/modal/AddActivityModal";
 import TopicResourceView from "./TopicResourceView";
 import TopicActivitiesView from "./TopicActivitiesView";
 import Pagination from "@/components/ui/pagination";
+import { deleteTopic } from "@/services/topicService";
+import { useToast } from "@/hooks/use-toast";
 
 const ViewSubject = ({
   currentSubject,
@@ -78,10 +82,15 @@ const ViewSubject = ({
   const [resourceToDelete, setResourceToDelete] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddTopicModalOpen, setIsAddTopicModalOpen] = useState(false);
+  const [isEditTopicModalOpen, setIsEditTopicModalOpen] = useState(false);
   const [isAddActivityModalOpen, setIsAddActivityModalOpen] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState(null);
+  const [topicToEdit, setTopicToEdit] = useState(null);
+  const [topicToDelete, setTopicToDelete] = useState(null);
+  const [isDeleteTopicDialogOpen, setIsDeleteTopicDialogOpen] = useState(false);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletingTopic, setIsDeletingTopic] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Pagination state for topics
@@ -90,6 +99,7 @@ const ViewSubject = ({
 
   const { hasPermission } = usePermission();
   const canCreateAnnouncement = hasPermission(PERMISSIONS.ANNOUNCE_SUBJECT);
+  const { toast } = useToast();
 
   // Enhanced filtering for resources
   const filteredResources = useMemo(() => {
@@ -274,6 +284,61 @@ const ViewSubject = ({
     }, 300);
   };
 
+  // Topic management functions
+  const handleEditTopic = (topic) => {
+    console.log("Editing topic:", topic);
+    setTopicToEdit(topic);
+    setIsEditTopicModalOpen(true);
+  };
+
+  const handleEditTopicSuccess = (updatedTopic) => {
+    toast({
+      title: "Success!",
+      description: "Topic has been successfully updated.",
+      variant: "default",
+    });
+    refetchAll();
+    setIsEditTopicModalOpen(false);
+    setTopicToEdit(null);
+  };
+
+  const handleDeleteTopicClick = (topic) => {
+    setTopicToDelete(topic);
+    setIsDeleteTopicDialogOpen(true);
+  };
+
+  const handleConfirmDeleteTopic = async () => {
+    if (!topicToDelete) return;
+
+    setIsDeletingTopic(true);
+    try {
+      const result = await deleteTopic(topicToDelete.id);
+
+      if (result.success) {
+        toast({
+          title: "Success!",
+          description: "Topic has been successfully deleted.",
+          variant: "default",
+        });
+        refetchAll();
+        setTopicToDelete(null);
+        setIsDeleteTopicDialogOpen(false);
+      } else {
+        throw new Error(result.error || "Failed to delete topic");
+      }
+    } catch (error) {
+      console.error("Error deleting topic:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to delete topic. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingTopic(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <AlertDialog
@@ -302,6 +367,49 @@ const ViewSubject = ({
                 </>
               ) : (
                 "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Topic Deletion Confirmation Dialog */}
+      <AlertDialog
+        open={isDeleteTopicDialogOpen}
+        onOpenChange={setIsDeleteTopicDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Topic Deletion</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Are you sure you want to delete the topic &ldquo;
+                {topicToDelete?.name}
+                &rdquo;?
+              </p>
+              <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded">
+                <strong>Warning:</strong> This will permanently delete the topic
+                and all its associated resources and activities. This action
+                cannot be undone.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingTopic}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteTopic}
+              disabled={isDeletingTopic}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingTopic ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Topic"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -502,6 +610,24 @@ const ViewSubject = ({
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => handleEditTopic(topic)}
+                                className="text-sm text-blue-600 hover:text-blue-800"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteTopicClick(topic)}
+                                className="text-sm text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Delete
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => handleAddActivity(topic.id)}
                                 className="text-sm"
                               >
@@ -511,25 +637,67 @@ const ViewSubject = ({
                             </div>
                           )}
                           {!canEditInCurrentContext && !isStudent && (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled
-                                  className="text-sm opacity-50"
-                                >
-                                  <PlusCircle className="w-3 h-3 mr-1" />
-                                  Add Activity
-                                  <Lock className="w-3 h-3 ml-1" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-sm">
-                                  Restricted to your assigned class
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <div className="flex space-x-2">
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                    className="text-sm opacity-50"
+                                  >
+                                    <Edit className="w-3 h-3 mr-1" />
+                                    Edit
+                                    <Lock className="w-3 h-3 ml-1" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-sm">
+                                    You can only edit topics in your assigned
+                                    class
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                    className="text-sm opacity-50"
+                                  >
+                                    <Trash2 className="w-3 h-3 mr-1" />
+                                    Delete
+                                    <Lock className="w-3 h-3 ml-1" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-sm">
+                                    You can only delete topics in your assigned
+                                    class
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                    className="text-sm opacity-50"
+                                  >
+                                    <PlusCircle className="w-3 h-3 mr-1" />
+                                    Add Activity
+                                    <Lock className="w-3 h-3 ml-1" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-sm">
+                                    Restricted to your assigned class
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
                           )}
                         </div>
                         {topic.description && (
@@ -951,6 +1119,16 @@ const ViewSubject = ({
         onClose={() => setIsAddTopicModalOpen(false)}
         onSuccess={handleTopicSuccess}
         subjectId={currentSubject?.id || ""}
+      />
+
+      <EditTopicModal
+        isOpen={isEditTopicModalOpen}
+        onClose={() => {
+          setIsEditTopicModalOpen(false);
+          setTopicToEdit(null);
+        }}
+        onSuccess={handleEditTopicSuccess}
+        topic={topicToEdit}
       />
 
       <AddActivityModal

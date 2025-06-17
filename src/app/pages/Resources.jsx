@@ -1028,9 +1028,10 @@ export default function Resources() {
           selectedTopic={selectedTopicForUpload}
         />
 
-        {currentSubject && canEditInCurrentContext && (
+        {/* Floating upload button hidden as requested */}
+        {/* {currentSubject && canEditInCurrentContext && (
           <FloatingUploadButton setIsModalOpen={setIsModalOpen} />
-        )}
+        )} */}
 
         <AddSubjectModal
           isOpen={isAddSubjectModalOpen}

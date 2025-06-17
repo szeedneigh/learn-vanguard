@@ -26,9 +26,7 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [avatarUrl, setAvatarUrl] = useState(
-    user?.avatarUrl || localStorage.getItem("lastAvatarUrl") || null
-  );
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null);
   // Add state for user profile data
   const [profileData, setProfileData] = useState(null);
 
@@ -53,6 +51,8 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
               lastName: result.data.lastName || "",
               email: result.data.email || "",
             });
+            // Update avatar URL from fresh profile data
+            setAvatarUrl(result.data.avatarUrl || user?.avatarUrl || null);
           }
         } catch (error) {
           console.error("Error fetching user profile:", error);
@@ -60,8 +60,13 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
       };
 
       fetchUserProfile();
+    } else {
+      // Reset state when modal is closed
+      setIsEditing(false);
+      setIsUploading(false);
+      setUploadProgress(0);
     }
-  }, [isOpen]);
+  }, [isOpen, user?.avatarUrl]);
 
   // Update form data and avatar when user changes
   useEffect(() => {
@@ -72,25 +77,23 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
         email: user.email || profileData?.email || "",
       });
 
-      // Use avatarUrl from user or localStorage
-      const avatarUrlToUse =
-        user.avatarUrl || localStorage.getItem("lastAvatarUrl") || null;
-      setAvatarUrl(avatarUrlToUse);
-
-      // Save avatar URL to localStorage if it exists
-      if (user.avatarUrl) {
-        localStorage.setItem("lastAvatarUrl", user.avatarUrl);
-      }
+      // Always use the current user's avatar URL only
+      const newAvatarUrl = user.avatarUrl || null;
+      console.log("ProfileModal: Setting avatar URL for user:", {
+        userId: user.id,
+        userEmail: user.email,
+        avatarUrl: newAvatarUrl,
+      });
+      setAvatarUrl(newAvatarUrl);
+    } else {
+      // Clear avatar when no user is present
+      console.log("ProfileModal: Clearing avatar URL - no user");
+      setAvatarUrl(null);
     }
   }, [user, profileData]);
 
   const handleLogout = async () => {
     try {
-      // Save current avatar URL before logout
-      if (avatarUrl) {
-        localStorage.setItem("lastAvatarUrl", avatarUrl);
-      }
-
       await logout();
       navigate("/login");
       onClose();
@@ -333,30 +336,22 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
               </p>
               <p className="text-xs text-gray-500 mt-1">{getEmail()}</p>
 
-              {/* Show Year Level and Course for Students and PIOs only */}
+              {/* Show Course and Year Level for Students and PIOs only */}
               {(user?.role === "student" ||
                 user?.role === "pio" ||
                 profileData?.role === "student" ||
                 profileData?.role === "pio") && (
-                <div className="mt-3 space-y-2">
-                  <div className="flex flex-col">
-                    <label className="text-xs text-gray-400 uppercase tracking-wide">
-                      Year Level
-                    </label>
-                    <p className="text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded border">
-                      {profileData?.yearLevel ||
-                        user?.yearLevel ||
-                        "Not specified"}
-                    </p>
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-xs text-gray-400 uppercase tracking-wide">
-                      Course
-                    </label>
-                    <p className="text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded border">
-                      {profileData?.course || user?.course || "Not specified"}
-                    </p>
-                  </div>
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500">
+                    {profileData?.course ||
+                      user?.course ||
+                      "Course not specified"}
+                  </p>
+                  <p className="text-xs text-gray-500 text-center">
+                    {profileData?.yearLevel ||
+                      user?.yearLevel ||
+                      "Year not specified"}
+                  </p>
                 </div>
               )}
 

@@ -151,6 +151,12 @@ export const createTopic = async (topicData) => {
  */
 export const updateTopic = async (topicId, topicData) => {
   console.log("topicService.js: Updating topic", topicId, topicData);
+  console.log(
+    "topicService.js: Topic ID type:",
+    typeof topicId,
+    "Value:",
+    topicId
+  );
 
   if (config.useMockData) {
     const index = MOCK_TOPICS.findIndex((t) => t.id === topicId);

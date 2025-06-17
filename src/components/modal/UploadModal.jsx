@@ -274,7 +274,7 @@ export const UploadModal = ({
                 htmlFor="topic-select"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Select Topic (Optional)
+                Select Topic
               </label>
               <select
                 id="topic-select"

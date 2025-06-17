@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }) => {
       // Add additional fields that might be needed
       studentNumber: userData.studentNumber,
       isEmailVerified: userData.isEmailVerified,
+      avatarUrl: userData.avatarUrl, // Include avatar URL in cached data
     };
 
     console.log("AuthContext: Caching user data:", {
@@ -137,13 +138,20 @@ export const AuthProvider = ({ children }) => {
       initializationInProgress.current = true;
       setLoading(true);
 
+      // Clean up any orphaned avatar data from previous sessions
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        // No token means no user session, so clean up avatar data
+        localStorage.removeItem("lastAvatarUrl");
+        console.log("AuthContext: Cleaned up orphaned avatar data");
+      }
+
       // First check for Google redirect results if Firebase is available
       if (firebaseAvailable) {
         await checkGoogleRedirect();
       }
 
       // Then check for token-based authentication
-      const token = localStorage.getItem("authToken");
       if (token) {
         console.log(
           "AuthContext: Found token in localStorage, initializing auth"
@@ -258,6 +266,9 @@ export const AuthProvider = ({ children }) => {
       await authService.logout();
       queryClient.setQueryData(["user"], null);
       localStorage.removeItem("authToken");
+      // Clear all user-related localStorage data to prevent cross-user persistence
+      localStorage.removeItem("lastAvatarUrl");
+      cacheUserData(null); // This will remove userData from localStorage
       queryClient.clear(); // Clear all queries from cache
       // Redirect to login page after logout
       window.location.href = "/login";
