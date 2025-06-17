@@ -182,7 +182,7 @@ const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" style={{ display: "none" }}>
             <Label htmlFor="order">Display Order</Label>
             <Input
               type="number"

@@ -226,8 +226,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             <div
               className={cn("flex items-center justify-center flex-shrink-0")}
               style={{
-                width: isCollapsed && !isMobile ? "64px" : "56px",
-                height: isCollapsed && !isMobile ? "64px" : "56px",
+                width: isCollapsed && !isMobile ? "63px" : "55px",
+                height: isCollapsed && !isMobile ? "63px" : "55px",
               }}
             >
               <img
@@ -236,15 +236,15 @@ const Sidebar = ({ isOpen, onClose }) => {
                 loading="lazy"
                 className="rounded-xl"
                 style={{
-                  width: isCollapsed && !isMobile ? "64px" : "56px",
-                  height: isCollapsed && !isMobile ? "64px" : "56px",
+                  width: isCollapsed && !isMobile ? "63px" : "55px",
+                  height: isCollapsed && !isMobile ? "63px" : "55px",
                 }}
                 onError={(e) => {
                   console.error("Logo image failed to load:", e);
                   // Fallback to text if image fails to load
                   e.target.style.display = "none";
                   e.target.parentNode.innerHTML =
-                    '<div style="width: 56px; height: 56px;" class="bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold">LV</div>';
+                    '<div style="width: 55px; height: 55px;" class="bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold">LV</div>';
                 }}
               />
             </div>

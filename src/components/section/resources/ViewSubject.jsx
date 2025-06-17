@@ -459,6 +459,7 @@ const ViewSubject = ({
                   setViewMode((prev) => (prev === "grid" ? "list" : "grid"))
                 }
                 className="px-4"
+                style={{ display: "none" }}
               >
                 {viewMode === "grid" ? (
                   <List className="w-5 h-5" />

@@ -314,10 +314,13 @@ export const UploadModal = ({
             {file ? (
               <div>
                 <div className="flex items-center justify-center mb-2">
-                  <FileText className="w-8 h-8 text-blue-500 mr-2" />
-                  <div className="text-left">
+                  <FileText className="w-8 h-8 text-blue-500 mr-2 flex-shrink-0" />
+                  <div className="text-left flex-1 min-w-0">
                     <p className="text-green-600 font-medium">File selected:</p>
-                    <p className="text-sm text-gray-600 truncate max-w-full">
+                    <p
+                      className="text-sm text-gray-600 truncate"
+                      style={{ maxWidth: "280px" }}
+                    >
                       {file.name}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -348,15 +351,17 @@ export const UploadModal = ({
 
           {/* Upload Progress Section */}
           {isUploading && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between mb-2 min-w-0">
+                <div className="flex items-center flex-1 min-w-0 mr-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-500 mr-2 flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-700 truncate">
                     {uploadStatus}
                   </span>
                 </div>
-                <span className="text-sm text-gray-500">{uploadProgress}%</span>
+                <span className="text-sm text-gray-500 flex-shrink-0">
+                  {uploadProgress}%
+                </span>
               </div>
 
               <Progress
@@ -365,12 +370,21 @@ export const UploadModal = ({
                 variant={uploadComplete ? "success" : "default"}
               />
 
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>
-                  {file && `${file.name} (${formatFileSize(file.size)})`}
-                </span>
+              <div className="flex items-center justify-between text-xs text-gray-500 min-w-0 gap-2">
+                <div className="flex-1 min-w-0">
+                  {file && (
+                    <span
+                      className="block truncate"
+                      style={{ maxWidth: "100%" }}
+                    >
+                      {file.name} ({formatFileSize(file.size)})
+                    </span>
+                  )}
+                </div>
                 {uploadSpeed > 0 && (
-                  <span>{formatUploadSpeed(uploadSpeed)}</span>
+                  <div className="flex-shrink-0">
+                    <span>{formatUploadSpeed(uploadSpeed)}</span>
+                  </div>
                 )}
               </div>
             </div>
