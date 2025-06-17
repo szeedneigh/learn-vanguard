@@ -154,6 +154,7 @@ const Home = () => {
   } = useTasks({ archived: "false" });
 
   // Filter and sort the upcoming tasks - Only show Tasks, not Events
+  // Include overdue tasks to ensure they remain visible
   const upcomingTasks = useMemo(() => {
     // Create consistent date boundaries - start of today to end of 7 days from now
     const now = new Date();
@@ -184,12 +185,22 @@ const Home = () => {
           return false;
         }
 
-        // Include tasks from today (inclusive) through the next 7 days (inclusive)
-        const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
+        // Check if task is completed
         const isNotCompleted =
           task.taskStatus !== "Completed" && task.taskStatus !== "completed";
 
-        return isInDateRange && isNotCompleted;
+        // Don't show completed tasks
+        if (!isNotCompleted) {
+          return false;
+        }
+
+        // Include tasks that are:
+        // 1. In the upcoming date range (today through next 7 days)
+        // 2. OR overdue (past due date but not completed)
+        const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
+        const isOverdue = taskDate < now;
+
+        return isInDateRange || isOverdue;
       })
       .sort((a, b) => {
         const dateA = a.taskDeadline

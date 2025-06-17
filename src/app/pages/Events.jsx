@@ -206,29 +206,98 @@ export default function Events() {
     announcementsError,
   ]);
 
-  // Combine events and announcements for calendar display, filtering out completed tasks and activities
+  // Combine events, tasks, and announcements for calendar display, filtering out completed tasks and activities
   const events = useMemo(() => {
     const combinedEvents = [];
+    const now = new Date();
 
-    // Add events (filter out completed tasks)
+    // Add events (filter out completed tasks and past events, but keep all tasks for calendar display)
     if (eventsData && Array.isArray(eventsData)) {
       const filteredEvents = eventsData.filter((event) => {
-        // If it's a task (has taskStatus or type='task'), filter out completed ones
+        // If it's a task (has taskStatus or type='task'), only filter out completed ones
+        // Tasks should appear in calendar regardless of due date (including overdue)
         if (event.taskStatus || event.type === "task") {
           const isCompleted =
             event.taskStatus === "Completed" || event.status === "Completed";
-          return !isCompleted;
+          return !isCompleted; // Show all non-completed tasks in calendar
         }
-        // For regular events, include all
+
+        // For regular events (not tasks), filter out past events
+        const eventDate = new Date(event.scheduleDate || event.date);
+        if (eventDate < now) {
+          return false; // Hide past events (but not past tasks)
+        }
+
+        // For regular events, include all (that are not in the past)
         return true;
       });
 
       combinedEvents.push(...filteredEvents);
     }
 
-    // Add announcements (filter out completed activities)
+    // Add personal tasks from the separate tasks query to ensure they appear in calendar
+    // This is a fallback in case tasks aren't included in eventsData
+    if (tasksResponse && Array.isArray(tasksResponse)) {
+      const transformedTasks = tasksResponse
+        .filter((task) => {
+          // Only include non-completed tasks
+          const isCompleted =
+            task.taskStatus === "Completed" || task.taskStatus === "completed";
+          return !isCompleted;
+        })
+        .map((task) => ({
+          // Transform task to match event format for calendar display
+          id: task._id,
+          _id: task._id,
+          title: task.taskName,
+          taskName: task.taskName,
+          description: task.taskDescription,
+          taskDescription: task.taskDescription,
+          scheduleDate: task.taskDeadline,
+          taskDeadline: task.taskDeadline,
+          date: task.taskDeadline ? task.taskDeadline.split("T")[0] : null,
+          status: task.taskStatus,
+          taskStatus: task.taskStatus,
+          priority: task.taskPriority,
+          taskPriority: task.taskPriority,
+          course: "Personal",
+          type: "task",
+          userId: task.userId,
+          personal: true,
+        }));
+
+      // Check if tasks are already included in eventsData to avoid duplicates
+      const existingTaskIds = new Set(
+        combinedEvents
+          .filter((event) => event.type === "task" || event.taskStatus)
+          .map((event) => event.id || event._id)
+      );
+
+      const newTasks = transformedTasks.filter(
+        (task) => !existingTaskIds.has(task.id)
+      );
+      combinedEvents.push(...newTasks);
+
+      console.log("Task integration debug:", {
+        tasksFromTasksResponse: tasksResponse.length,
+        transformedTasks: transformedTasks.length,
+        existingTasksInEvents: existingTaskIds.size,
+        newTasksAdded: newTasks.length,
+        totalCombinedEvents: combinedEvents.length,
+      });
+    }
+
+    // Add announcements (filter out completed activities and past announcements)
     if (announcements && Array.isArray(announcements)) {
       const filteredAnnouncements = announcements.filter((announcement) => {
+        // Filter out past announcements (announcements with due dates that have passed)
+        if (announcement.dueDate) {
+          const announcementDate = new Date(announcement.dueDate);
+          if (announcementDate < now) {
+            return false; // Hide past announcements
+          }
+        }
+
         // If announcement is linked to an activity, check if the activity is completed
         if (
           announcement.topicId &&
@@ -241,7 +310,7 @@ export default function Events() {
           );
           return !completed; // Exclude completed activities
         }
-        // For regular announcements (not activity-generated), include all
+        // For regular announcements (not activity-generated), include all (that are not in the past)
         return true;
       });
 
@@ -287,7 +356,7 @@ export default function Events() {
     });
 
     return combinedEvents;
-  }, [eventsData, announcements, isActivityCompleted]);
+  }, [eventsData, announcements, tasksResponse, isActivityCompleted]);
 
   // Calendar grid generation - moved after events definition to fix initialization order
   const calendarGrid = useMemo(() => {
@@ -295,6 +364,7 @@ export default function Events() {
   }, [currentDate, events]);
 
   // Filter and sort the upcoming tasks - Only show Tasks, not Events
+  // Include overdue tasks to ensure they remain visible
   const upcomingTasks = useMemo(() => {
     // Create consistent date boundaries - start of today to end of 7 days from now
     const now = new Date();
@@ -330,23 +400,22 @@ export default function Events() {
           return false;
         }
 
-        // Include tasks from today (inclusive) through the next 7 days (inclusive)
-        const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
+        // Check if task is completed
         const isNotCompleted =
           task.taskStatus !== "Completed" && task.taskStatus !== "completed";
 
-        // Additional check for activity-based tasks (if they exist)
-        // Note: Currently tasks are personal, but this provides future-proofing
-        // if activities are ever integrated as tasks
-        let isActivityNotCompleted = true;
-        if (task.topicId && task.activityId) {
-          isActivityNotCompleted = !isActivityCompleted(
-            task.topicId,
-            task.activityId
-          );
+        // Don't show completed tasks
+        if (!isNotCompleted) {
+          return false;
         }
 
-        return isInDateRange && isNotCompleted && isActivityNotCompleted;
+        // Include tasks that are:
+        // 1. In the upcoming date range (today through next 7 days)
+        // 2. OR overdue (past due date but not completed)
+        const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
+        const isOverdue = taskDate < now;
+
+        return isInDateRange || isOverdue;
       })
       .sort((a, b) => {
         const dateA = a.taskDeadline

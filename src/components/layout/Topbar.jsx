@@ -14,6 +14,10 @@ import { formatDistanceToNow } from "date-fns";
 import { getUserInitials } from "@/utils/userUtils";
 import { useToast } from "@/hooks/use-toast";
 
+// Feature flag to temporarily hide notifications
+// Set to false to hide notifications, true to show them
+const SHOW_NOTIFICATIONS = false;
+
 const Topbar = memo(({ onMenuClick }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -105,14 +109,16 @@ const Topbar = memo(({ onMenuClick }) => {
     }
   }, []);
 
-  // Fetch notifications on component mount
+  // Fetch notifications on component mount (only if notifications are enabled)
   useEffect(() => {
-    fetchNotifications();
+    if (SHOW_NOTIFICATIONS) {
+      fetchNotifications();
 
-    // Refresh notifications every 2 minutes
-    const intervalId = setInterval(fetchNotifications, 2 * 60 * 1000);
+      // Refresh notifications every 2 minutes
+      const intervalId = setInterval(fetchNotifications, 2 * 60 * 1000);
 
-    return () => clearInterval(intervalId);
+      return () => clearInterval(intervalId);
+    }
   }, [fetchNotifications]);
 
   const handleMarkAsRead = useCallback(
@@ -186,10 +192,12 @@ const Topbar = memo(({ onMenuClick }) => {
 
   const toggleProfile = useCallback(() => setShowProfile((prev) => !prev), []);
   const toggleNotifications = useCallback(() => {
-    setShowNotifications((prev) => !prev);
-    // Fetch fresh notifications when opening the popup
-    if (!showNotifications) {
-      fetchNotifications();
+    if (SHOW_NOTIFICATIONS) {
+      setShowNotifications((prev) => !prev);
+      // Fetch fresh notifications when opening the popup
+      if (!showNotifications) {
+        fetchNotifications();
+      }
     }
   }, [fetchNotifications, showNotifications]);
   const closeProfile = useCallback(() => setShowProfile(false), []);
@@ -213,33 +221,36 @@ const Topbar = memo(({ onMenuClick }) => {
 
         {/* Right side - Notifications, profile */}
         <div className="flex items-center space-x-3 sm:space-x-6">
-          <div className="relative">
-            <button
-              ref={notificationButtonRef}
-              onClick={toggleNotifications}
-              className={cn(
-                "p-2 rounded-xl transition-all duration-200",
-                "hover:bg-gray-100 active:bg-gray-200",
-                "group relative"
-              )}
-            >
-              <Bell className="h-5 w-5 text-gray-600 group-hover:text-gray-800 transition-colors duration-200" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                  <span className="text-white text-xs font-medium">
-                    {unreadCount}
+          {/* Conditionally render notifications based on feature flag */}
+          {SHOW_NOTIFICATIONS && (
+            <div className="relative">
+              <button
+                ref={notificationButtonRef}
+                onClick={toggleNotifications}
+                className={cn(
+                  "p-2 rounded-xl transition-all duration-200",
+                  "hover:bg-gray-100 active:bg-gray-200",
+                  "group relative"
+                )}
+              >
+                <Bell className="h-5 w-5 text-gray-600 group-hover:text-gray-800 transition-colors duration-200" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-white text-xs font-medium">
+                      {unreadCount}
+                    </span>
                   </span>
-                </span>
-              )}
-            </button>
-            <NotificationPopup
-              notifications={enhancedNotifications}
-              isOpen={showNotifications}
-              onClose={closeNotifications}
-              triggerRef={notificationButtonRef}
-              isLoading={isLoading}
-            />
-          </div>
+                )}
+              </button>
+              <NotificationPopup
+                notifications={enhancedNotifications}
+                isOpen={showNotifications}
+                onClose={closeNotifications}
+                triggerRef={notificationButtonRef}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
 
           <div className="relative">
             <button

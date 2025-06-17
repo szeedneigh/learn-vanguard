@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import PropTypes from "prop-types";
-import { Edit, Trash, Loader2, Info } from "lucide-react";
+import { Edit, Trash, Loader2, Info, BookOpen, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -258,6 +258,70 @@ function TaskDetailDialog({
                 Subject Announcement
               </p>
             </div>
+
+            {/* Subject/Course Information */}
+            {(task.subject || task.subjectName || task.subjectInfo?.name) && (
+              <div className="mb-3 p-3 bg-white rounded-md border border-purple-100">
+                <div className="flex items-center mb-2">
+                  <BookOpen className="h-4 w-4 text-purple-600 mr-2 flex-shrink-0" />
+                  <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
+                    Subject/Course:
+                  </span>
+                </div>
+                <p className="text-sm text-purple-800 font-medium ml-6">
+                  {task.subject || task.subjectName || task.subjectInfo?.name}
+                </p>
+
+                {/* Additional subject details if available */}
+                {task.subjectInfo && (
+                  <div className="ml-6 mt-2 space-y-1">
+                    {task.subjectInfo.code && (
+                      <p className="text-xs text-purple-600">
+                        <span className="font-medium">Code:</span>{" "}
+                        {task.subjectInfo.code}
+                      </p>
+                    )}
+                    {task.subjectInfo.description && (
+                      <p className="text-xs text-purple-600">
+                        <span className="font-medium">Description:</span>{" "}
+                        {task.subjectInfo.description}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Class/Section Information */}
+            {(task.yearLevel || task.course || task.section) && (
+              <div className="mb-3 p-3 bg-white rounded-md border border-purple-100">
+                <div className="flex items-center mb-2">
+                  <Users className="h-4 w-4 text-purple-600 mr-2 flex-shrink-0" />
+                  <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">
+                    Class/Section:
+                  </span>
+                </div>
+                <div className="ml-6 space-y-1">
+                  {task.course && (
+                    <p className="text-sm text-purple-800">
+                      <span className="font-medium">Course:</span> {task.course}
+                    </p>
+                  )}
+                  {task.yearLevel && (
+                    <p className="text-sm text-purple-800">
+                      <span className="font-medium">Year Level:</span>{" "}
+                      {task.yearLevel}
+                    </p>
+                  )}
+                  {task.section && (
+                    <p className="text-sm text-purple-800">
+                      <span className="font-medium">Section:</span>{" "}
+                      {task.section}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Announcement Type */}
             {task.type && (
