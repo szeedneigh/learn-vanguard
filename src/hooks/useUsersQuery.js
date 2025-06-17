@@ -9,6 +9,7 @@ import {
   updateUserStatus,
   assignPIORole,
   revertPIORole,
+  moveStudent,
 } from "@/lib/api/userApi";
 import { useToast } from "@/hooks/use-toast";
 
@@ -91,10 +92,10 @@ export const useAssignPIORole = () => {
         );
       }
 
-      console.log(
-        `Assigning PIO role to user ${userId}`,
-        { course, yearLevel }
-      );
+      console.log(`Assigning PIO role to user ${userId}`, {
+        course,
+        yearLevel,
+      });
 
       const result = await assignPIORole(userId, { course, yearLevel });
 
@@ -444,6 +445,65 @@ export const useRemoveUser = () => {
 };
 
 /**
+ * Hook for moving a student to different class (admin function)
+ */
+export const useMoveStudent = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ userId, moveData }) => {
+      const result = await moveStudent(userId, moveData);
+
+      // If the API returned an error, throw it to trigger onError
+      if (!result.success) {
+        throw new Error(result.error || "Failed to move student");
+      }
+
+      return result;
+    },
+    onSuccess: (data) => {
+      // Invalidate all user queries to force a refresh
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.users,
+      });
+
+      // Also invalidate specific program queries if we have the data
+      if (data?.data?.course && data?.data?.yearLevel) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.usersByProgram(
+            data.data.course,
+            data.data.yearLevel
+          ),
+        });
+      }
+
+      // Show success message with details
+      const user = data.data;
+      let message = `${user.firstName} ${user.lastName} moved successfully`;
+      if (user.roleChanged) {
+        message += " (converted from PIO to Student)";
+      }
+
+      toast({
+        title: "Student Moved",
+        description: message,
+      });
+    },
+    onError: (error) => {
+      console.error("Error in useMoveStudent:", error);
+      const errorMessage = error.message || "Failed to move student";
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+/**
  * Hook for updating user profile
  */
 export const useUpdateUserProfile = () => {
@@ -551,6 +611,7 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
   const assignPIOMutation = useAssignPIORole();
   const revertPIOMutation = useRevertPIORole();
   const removeUserMutation = useRemoveUser();
+  const moveStudentMutation = useMoveStudent();
 
   // Process students data to ensure consistent ID fields
   const processStudentsData = (students = []) => {
@@ -575,21 +636,25 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
     assignPIO: assignPIOMutation.mutate,
     revertPIO: revertPIOMutation.mutate,
     removeUser: removeUserMutation.mutate,
+    moveStudent: moveStudentMutation.mutate,
 
     // Loading states
     isAssigningPIO: assignPIOMutation.isPending,
     isRevertingPIO: revertPIOMutation.isPending,
     isRemovingUser: removeUserMutation.isPending,
+    isMovingStudent: moveStudentMutation.isPending,
 
     // Any mutation loading
     isMutating:
       assignPIOMutation.isPending ||
       revertPIOMutation.isPending ||
-      removeUserMutation.isPending,
+      removeUserMutation.isPending ||
+      moveStudentMutation.isPending,
 
     // Error states
     assignPIOError: assignPIOMutation.error,
     revertPIOError: revertPIOMutation.error,
     removeUserError: removeUserMutation.error,
+    moveStudentError: moveStudentMutation.error,
   };
 };

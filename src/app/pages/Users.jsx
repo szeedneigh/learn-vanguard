@@ -3,7 +3,8 @@ import PropTypes from "prop-types";
 import { useUsersPage } from "@/hooks/useUsersQuery";
 import { useAuth } from "@/context/AuthContext";
 import { programsData } from "@/lib/constants";
-import { Search, MoreHorizontal, ChevronRight } from "lucide-react";
+import { Search, MoreHorizontal, ChevronRight, Plus } from "lucide-react";
+import MoveStudentModal from "@/components/modal/MoveStudentModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +72,9 @@ function Users() {
   );
   const [selectedYear, setSelectedYear] = useState("1");
 
+  // Move Student Modal State
+  const [showMoveStudentModal, setShowMoveStudentModal] = useState(false);
+
   // React Query hooks
   const {
     students,
@@ -80,6 +84,8 @@ function Users() {
     assignPIO,
     revertPIO,
     removeUser,
+    moveStudent,
+    isMovingStudent,
   } = useUsersPage(selectedProgramId, selectedYear);
 
   // Computed values
@@ -320,6 +326,16 @@ function Users() {
     });
   };
 
+  const handleMoveStudent = async (userId, moveData) => {
+    try {
+      await moveStudent({ userId, moveData });
+      await refetch();
+    } catch (error) {
+      console.error("Move student error:", error);
+      throw error; // Re-throw to let the modal handle the error
+    }
+  };
+
   // Error fallback UI
   if (error) {
     return (
@@ -461,6 +477,18 @@ function Users() {
                 <SelectItem value="student">Students Only</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Move Student Button - Admin Only */}
+            {isCurrentUserAdmin && (
+              <Button
+                onClick={() => setShowMoveStudentModal(true)}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 shadow-sm"
+                disabled={isLoading || isMovingStudent}
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Move Student
+              </Button>
+            )}
           </div>
         </div>
         {/* Display errors */}
@@ -608,6 +636,13 @@ function Users() {
             </table>
           </div>
         </div>
+
+        {/* Move Student Modal */}
+        <MoveStudentModal
+          isOpen={showMoveStudentModal}
+          onClose={() => setShowMoveStudentModal(false)}
+          onMoveSuccess={handleMoveStudent}
+        />
       </div>
     );
   } catch (error) {
