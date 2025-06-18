@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createTopic } from "@/services/topicService";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-// import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Reset form when modal is opened
   useEffect(() => {
@@ -80,9 +81,21 @@ const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
       return;
     }
 
+    // Check if user is authenticated
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create a topic.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      console.log("Creating topic with data:", formData);
+
       const result = await createTopic(formData);
 
       if (result.success) {
@@ -169,7 +182,7 @@ const AddTopicModal = ({ isOpen, onClose, onSuccess, subjectId }) => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" style={{ display: "none" }}>
             <Label htmlFor="order">Display Order</Label>
             <Input
               type="number"

@@ -1,52 +1,51 @@
-import { useRef, useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
-import PropTypes from 'prop-types';
-import { cn } from '@/lib/utils';
+import { useRef, useEffect } from "react";
+import { X, Loader2 } from "lucide-react";
+import PropTypes from "prop-types";
+import { cn } from "@/lib/utils";
+import { useModal } from "@/hooks/useModal";
 
 /**
  * BaseModal component that provides consistent modal behavior and styling.
  * This can be used as a foundation for all modals in the application.
  */
-const BaseModal = ({ 
-  isOpen, 
-  onClose, 
-  children, 
+const BaseModal = ({
+  isOpen,
+  onClose,
+  children,
   title,
   description,
   className,
   showCloseButton = true,
   closeOnOutsideClick = true,
-  maxWidth = 'md',
+  maxWidth = "md",
   footerContent,
-  loading = false
+  loading = false,
 }) => {
   const modalRef = useRef(null);
+  const { handleBackdropClick } = useModal(isOpen, onClose, {
+    closeOnEscape: true,
+    preventBodyScroll: true,
+    closeOnOutsideClick: closeOnOutsideClick,
+  });
 
+  // Handle click outside for the modal content
   useEffect(() => {
-    const handleClickOutside = (event) => {   
-      if (closeOnOutsideClick && modalRef.current && !modalRef.current.contains(event.target)) {
-        onClose();
-      }
-    };
-
-    const handleEscKey = (event) => {
-      if (event.key === 'Escape') {
+    const handleClickOutside = (event) => {
+      if (
+        closeOnOutsideClick &&
+        modalRef.current &&
+        !modalRef.current.contains(event.target)
+      ) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleEscKey);
-      // Prevent scrolling on body when modal is open
-      document.body.style.overflow = 'hidden';
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscKey);
-      // Restore scrolling when modal is closed
-      document.body.style.overflow = 'auto';
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen, onClose, closeOnOutsideClick]);
 
@@ -55,20 +54,23 @@ const BaseModal = ({
   }
 
   const maxWidthClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    '2xl': 'max-w-2xl',
-    '3xl': 'max-w-3xl',
-    '4xl': 'max-w-4xl',
-    '5xl': 'max-w-5xl',
-    full: 'max-w-full',
+    sm: "max-w-sm",
+    md: "max-w-md",
+    lg: "max-w-lg",
+    xl: "max-w-xl",
+    "2xl": "max-w-2xl",
+    "3xl": "max-w-3xl",
+    "4xl": "max-w-4xl",
+    "5xl": "max-w-5xl",
+    full: "max-w-full",
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div 
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+    >
+      <div
         ref={modalRef}
         className={cn(
           "bg-white rounded-xl shadow-lg w-full overflow-hidden relative",
@@ -94,8 +96,17 @@ const BaseModal = ({
           <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
             {title && (
               <div>
-                <h2 id="modal-title" className="text-lg font-semibold text-gray-900">{title}</h2>
-                {description && <p id="modal-description" className="text-sm text-gray-500">{description}</p>}
+                <h2
+                  id="modal-title"
+                  className="text-lg font-semibold text-gray-900"
+                >
+                  {title}
+                </h2>
+                {description && (
+                  <p id="modal-description" className="text-sm text-gray-500">
+                    {description}
+                  </p>
+                )}
               </div>
             )}
             {showCloseButton && (
@@ -112,9 +123,7 @@ const BaseModal = ({
         )}
 
         {/* Content */}
-        <div className="px-6 py-4">
-          {children}
-        </div>
+        <div className="px-6 py-4">{children}</div>
 
         {/* Footer if provided */}
         {footerContent && (
@@ -136,9 +145,19 @@ BaseModal.propTypes = {
   className: PropTypes.string,
   showCloseButton: PropTypes.bool,
   closeOnOutsideClick: PropTypes.bool,
-  maxWidth: PropTypes.oneOf(['sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', 'full']),
+  maxWidth: PropTypes.oneOf([
+    "sm",
+    "md",
+    "lg",
+    "xl",
+    "2xl",
+    "3xl",
+    "4xl",
+    "5xl",
+    "full",
+  ]),
   footerContent: PropTypes.node,
   loading: PropTypes.bool,
 };
 
-export default BaseModal; 
+export default BaseModal;

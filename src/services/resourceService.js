@@ -162,9 +162,10 @@ export const getResources = async (filters = {}) => {
  * Upload a new resource file.
  * Uses backend API with fallback to mock behavior if API fails.
  * @param {FormData} formData - FormData containing file and metadata
+ * @param {Function} onProgress - Progress callback function (optional)
  * @returns {Promise<Object>} Upload result
  */
-export const uploadResource = async (formData) => {
+export const uploadResource = async (formData, onProgress = null) => {
   console.log(
     "resourceService.js: uploadResource called, USE_MOCK_DATA:",
     config.useMockData
@@ -181,7 +182,7 @@ export const uploadResource = async (formData) => {
     console.log(
       "resourceService.js: uploadResource - attempting to upload via API"
     );
-    const result = await resourceApi.uploadResource(formData);
+    const result = await resourceApi.uploadResource(formData, onProgress);
 
     if (result.success) {
       console.log(

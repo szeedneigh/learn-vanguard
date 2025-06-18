@@ -16,6 +16,8 @@ const storeToken = (token) => {
     return false;
   }
   try {
+    // Clear any existing token first
+    localStorage.removeItem("authToken");
     localStorage.setItem("authToken", token);
     return true;
   } catch (error) {
@@ -53,6 +55,8 @@ const normalizeUserData = (user) => {
     const normalizedUser = {
       ...user,
       role: roleMapping[user.role?.toLowerCase()] || user.role,
+      // Ensure assignedClass is preserved for PIO users
+      assignedClass: user.assignedClass,
     };
 
     console.log("Normalized user data:", {
@@ -76,6 +80,9 @@ export const login = async (credentials) => {
       ...credentials,
       password: "[REDACTED]",
     });
+
+    // Clear any existing token before login attempt
+    removeToken();
 
     const response = await apiClient.post("/auth/login", credentials);
     console.log("Login response:", {
@@ -116,6 +123,9 @@ export const login = async (credentials) => {
       };
     }
 
+    // Update React Query cache with user data
+    queryClient.setQueryData(["user"], normalizedUser);
+
     return {
       success: true,
       token,
@@ -123,6 +133,9 @@ export const login = async (credentials) => {
     };
   } catch (error) {
     console.error("Login failed:", error.response?.data || error);
+
+    // Clear token on login failure
+    removeToken();
 
     if (error.response?.status === 401) {
       return {
@@ -189,14 +202,33 @@ export const loginWithGoogle = async (useRedirect = false) => {
       }
 
       if (token) {
-        console.log("Storing authentication token");
+        console.log("Storing authentication token", token);
         storeToken(token);
+      } else {
+        console.error(
+          "No token received from backend after Google sign-in",
+          response.data
+        );
       }
 
+      // Normalize user data to ensure consistent handling
+      const normalizedUser = normalizeUserData(user);
+      if (!normalizedUser) {
+        console.error("Failed to normalize Firebase user data");
+        removeToken();
+        return {
+          success: false,
+          error: "Invalid user data received from Firebase authentication",
+        };
+      }
+
+      // Update React Query cache with normalized user data
+      queryClient.setQueryData(["user"], normalizedUser);
+
       return {
-        user,
+        user: normalizedUser,
         token,
-        success: true,
+        success: !!token,
         message: message || "Google sign-in successful",
       };
     } catch (apiError) {
@@ -206,6 +238,19 @@ export const loginWithGoogle = async (useRedirect = false) => {
         data: apiError.response?.data,
         message: apiError.message,
       });
+
+      // Handle token expiration specifically
+      if (
+        apiError.response?.status === 401 &&
+        apiError.response?.data?.tokenExpired
+      ) {
+        console.log("Firebase token expired, requesting user to sign in again");
+        return {
+          success: false,
+          tokenExpired: true,
+          error: "Your session has expired. Please sign in with Google again.",
+        };
+      }
 
       // Check if this is a "needs registration" response
       if (
@@ -285,8 +330,23 @@ export const checkGoogleRedirectResult = async () => {
     }
 
     if (token) storeToken(token);
+
+    // Normalize user data to ensure consistent handling
+    const normalizedUser = normalizeUserData(user);
+    if (!normalizedUser) {
+      console.error("Failed to normalize Firebase redirect user data");
+      removeToken();
+      return {
+        success: false,
+        error: "Invalid user data received from Firebase redirect",
+      };
+    }
+
+    // Update React Query cache with normalized user data
+    queryClient.setQueryData(["user"], normalizedUser);
+
     return {
-      user,
+      user: normalizedUser,
       token,
       success: true,
       message: message || "Google sign-in successful after redirect",
@@ -323,7 +383,7 @@ export const completeGoogleRegistration = async (registrationData) => {
       registrationData.course === "BSIS"
         ? "Bachelor of Science in Information Systems"
         : registrationData.course === "ACT"
-        ? "Associate of Computer Technology"
+        ? "Associate in Computer Technology"
         : registrationData.course;
 
     const mappedYearLevel =
@@ -340,7 +400,7 @@ export const completeGoogleRegistration = async (registrationData) => {
     // Format the data for the backend
     const formattedData = {
       idToken: registrationData.idToken,
-      studentNumber: registrationData.studentNo,
+      studentNumber: registrationData.studentNo, // Important: map studentNo to studentNumber
       course: mappedCourse,
       yearLevel: mappedYearLevel,
     };
@@ -350,23 +410,65 @@ export const completeGoogleRegistration = async (registrationData) => {
       idToken: "REDACTED",
     });
 
-    const response = await apiClient.post("/auth/firebase", formattedData);
-    const { message, token, user } = response.data;
-    if (token) storeToken(token);
-    return {
-      user,
-      token,
-      success: true,
-      message: message || "Registration completed successfully",
-    };
+    try {
+      const response = await apiClient.post("/auth/firebase", formattedData);
+      const { message, token, user, requiresEmailVerification } = response.data;
+      if (token) storeToken(token);
+
+      // Normalize user data to ensure consistent handling
+      const normalizedUser = normalizeUserData(user);
+      if (!normalizedUser) {
+        console.error("Failed to normalize Google registration user data");
+        removeToken();
+        return {
+          success: false,
+          error: "Invalid user data received after registration",
+        };
+      }
+
+      // Update React Query cache with normalized user data
+      queryClient.setQueryData(["user"], normalizedUser);
+
+      return {
+        user: normalizedUser,
+        token,
+        success: true,
+        requiresEmailVerification,
+        message: message || "Registration completed successfully",
+      };
+    } catch (error) {
+      console.error("Google registration failed:", error);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      console.error("Sent request data:", {
+        ...formattedData,
+        idToken: "[REDACTED]",
+      });
+
+      // Re-throw to be handled by outer catch
+      throw error;
+    }
   } catch (error) {
     console.error("Google registration failed:", error);
+
+    // Handle token expiration specifically
+    if (error.response?.status === 401 && error.response?.data?.tokenExpired) {
+      console.log(
+        "Token expired during registration, requesting user to sign in again"
+      );
+      return {
+        success: false,
+        tokenExpired: true,
+        error: "Your session has expired. Please sign in with Google again.",
+      };
+    }
+
     return {
       user: null,
       success: false,
       error:
         error.response?.data?.message ||
-        error.response?.data?.error?.message ||
+        error.response?.data?.error ||
         "Registration failed",
     };
   }
@@ -434,7 +536,7 @@ export const completeSignup = async (completeData) => {
       completeData.course === "BSIS"
         ? "Bachelor of Science in Information Systems"
         : completeData.course === "ACT"
-        ? "Associate of Computer Technology"
+        ? "Associate in Computer Technology"
         : completeData.course;
 
     const mappedYearLevel =
@@ -576,7 +678,18 @@ export const getCurrentUser = async () => {
 export const logout = async () => {
   try {
     console.log("Logging out user...");
-    await apiClient.post("/auth/logout");
+    const token = localStorage.getItem("authToken");
+
+    if (token) {
+      try {
+        await apiClient.post("/auth/logout");
+      } catch (error) {
+        console.warn("Logout API call failed:", error);
+        // Continue with local logout even if API call fails
+      }
+    }
+
+    // Always remove token and clear user data
     removeToken();
     return { success: true };
   } catch (error) {
@@ -603,13 +716,15 @@ export const requestPasswordReset = async (data) => {
 
     // Check for specific error types
     if (error.response?.status === 429) {
+      const retryAfter =
+        parseInt(error.response?.headers?.["retry-after"]) || 300;
       return {
         success: false,
         error:
           error.response?.data?.message ||
           "Too many requests. Please try again later.",
         isRateLimited: true,
-        retryAfter: error.response?.headers?.["retry-after"] || 60,
+        retryAfter,
       };
     }
 
@@ -743,7 +858,7 @@ export const verifyToken = async () => {
       if (response.data?.valid && response.data?.user) {
         const normalizedUser = normalizeUserData(response.data.user);
         // Update cached user data
-        queryClient.setQueryData(["auth", "user"], normalizedUser);
+        queryClient.setQueryData(["user"], normalizedUser);
         return {
           valid: true,
           user: normalizedUser,

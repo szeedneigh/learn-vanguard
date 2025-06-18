@@ -59,7 +59,15 @@ export const getEvents = async (filters = {}) => {
     console.log("Filters:", formattedFilters);
 
     const response = await apiClient.get(url);
-    console.log("Events response:", response.data);
+    console.log("Events API response:", {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data: response.data,
+      dataType: typeof response.data,
+      dataIsArray: Array.isArray(response.data),
+      dataLength: Array.isArray(response.data) ? response.data.length : "N/A",
+    });
 
     // Convert dates to proper format in the response
     if (Array.isArray(response.data)) {
@@ -147,15 +155,21 @@ export const createEvent = async (eventData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error creating event:", error);
+    // Enhanced error logging and handling
+    console.error("Error creating event:", {
+      error: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      eventData,
+    });
+
+    // Return structured error response
     return {
       data: null,
       success: false,
-      error:
-        error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        "Failed to create event",
-      details: error.response?.data?.error?.details || {},
+      error: error.response?.data?.message || "Failed to create event",
+      errorCode: error.response?.data?.error,
+      details: error.response?.data?.details || {},
     };
   }
 };

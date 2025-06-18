@@ -11,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { addActivity } from "@/services/topicService";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Calendar, Plus, X } from "lucide-react";
@@ -19,7 +27,7 @@ import { useAuth } from "@/context/AuthContext";
 const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    type: "material",
+    type: "assignment",
     title: "",
     description: "",
     dueDate: "",
@@ -35,7 +43,7 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        type: "material",
+        type: "assignment",
         title: "",
         description: "",
         dueDate: "",
@@ -47,10 +55,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
       setIsSubmitting(false);
     }
   }, [isOpen]);
-
-  if (!isOpen) {
-    return null;
-  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -73,14 +77,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
       ...prev,
       [name]: value,
     }));
-
-    // Reset points to 0 if switching to material type
-    if (name === "type" && value === "material") {
-      setFormData((prev) => ({
-        ...prev,
-        points: 0,
-      }));
-    }
 
     if (errors[name]) {
       setErrors((prev) => ({
@@ -118,10 +114,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
       newErrors.type = "Activity type is required";
     }
 
-    if (formData.points < 0) {
-      newErrors.points = "Points cannot be negative";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -136,7 +128,22 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
     setIsSubmitting(true);
 
     try {
-      const result = await addActivity(topicId, formData);
+      // Prepare the data for submission, ensuring proper format
+      const submissionData = {
+        type: formData.type,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        dueDate:
+          formData.dueDate && formData.dueDate.trim() !== ""
+            ? formData.dueDate
+            : null,
+        points: formData.points || 0, // Points for assignments and quizzes
+        fileUrls: formData.fileUrls || [],
+      };
+
+      console.log("AddActivityModal: Submitting data:", submissionData);
+
+      const result = await addActivity(topicId, submissionData);
 
       if (result.success) {
         toast({
@@ -172,27 +179,19 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
     }
   };
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
+  const handleModalClose = (open) => {
+    // Only call onClose when the dialog is closing
+    if (!open) {
       onClose();
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div
-        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="modal-title" className="text-xl font-semibold mb-6">
-          Add Activity
-        </h2>
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add Activity</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {errors.form && (
@@ -216,7 +215,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
                 <SelectValue placeholder="Select Activity Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="material">Learning Material</SelectItem>
                 <SelectItem value="assignment">Assignment</SelectItem>
                 <SelectItem value="quiz">Quiz</SelectItem>
               </SelectContent>
@@ -255,45 +253,22 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
             />
           </div>
 
-          {formData.type !== "material" && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="dueDate">Due Date</Label>
-                <div className="flex items-center">
-                  <Calendar className="mr-2 h-4 w-4 opacity-50" />
-                  <Input
-                    type="datetime-local"
-                    id="dueDate"
-                    name="dueDate"
-                    value={formData.dueDate}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  When this activity is due (optional)
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="points">Points</Label>
-                <Input
-                  type="number"
-                  id="points"
-                  name="points"
-                  value={formData.points}
-                  onChange={handleInputChange}
-                  min={0}
-                  className={errors.points ? "border-red-500" : ""}
-                />
-                {errors.points && (
-                  <p className="text-red-500 text-xs mt-1">{errors.points}</p>
-                )}
-                <p className="text-xs text-gray-500">
-                  Maximum points for this activity
-                </p>
-              </div>
-            </>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="dueDate">Due Date</Label>
+            <div className="flex items-center">
+              <Calendar className="mr-2 h-4 w-4 opacity-50" />
+              <Input
+                type="datetime-local"
+                id="dueDate"
+                name="dueDate"
+                value={formData.dueDate}
+                onChange={handleInputChange}
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              When this activity is due (optional)
+            </p>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="fileUrls">File URLs (Optional)</Label>
@@ -349,15 +324,12 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              onClick={onClose}
-              variant="outline"
-              type="button"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
+          <DialogFooter className="pt-4">
+            <DialogClose asChild>
+              <Button variant="outline" type="button" disabled={isSubmitting}>
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -372,10 +344,10 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
                 "Create Activity"
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

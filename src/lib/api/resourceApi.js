@@ -108,19 +108,30 @@ export const searchResources = async (query, filters = {}) => {
 /**
  * Upload a resource file with FormData
  * @param {FormData} formData - The form data containing file and resource metadata
+ * @param {Function} onProgress - Progress callback function (optional)
  * @returns {Promise<Object>} Upload result with created resource
  */
-export const uploadResource = async (formData) => {
+export const uploadResource = async (formData, onProgress = null) => {
   try {
     // Add a flag to make files public
     formData.append("isPublic", "true");
 
-    const response = await apiClient.post("/resources", formData, {
+    const config = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-      // Progress tracking removed
-    });
+    };
+
+    // Add progress tracking if callback provided
+    if (onProgress && typeof onProgress === "function") {
+      config.onUploadProgress = (progressEvent) => {
+        if (progressEvent.lengthComputable) {
+          onProgress(progressEvent);
+        }
+      };
+    }
+
+    const response = await apiClient.post("/resources", formData, config);
 
     return {
       data: response.data,

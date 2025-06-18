@@ -11,8 +11,48 @@ import ProtectedRoute from "./app/auth/ProtectedRoute";
 import UnauthorizedPage from "./app/pages/UnauthorizedPage";
 import ErrorBoundary from "./components/error/ErrorBoundary";
 import EmailVerification from "./app/EmailVerification";
+import React, { useEffect } from "react";
 
 function App() {
+  useEffect(() => {
+    const handleNetworkError = (e) => {
+      window.toast &&
+        window.toast({
+          title: "Network Error",
+          description:
+            e.detail?.message ||
+            "You appear to be offline. Some features may not work.",
+          variant: "destructive",
+        });
+    };
+    const handleTimeout = (e) => {
+      window.toast &&
+        window.toast({
+          title: "Request Timeout",
+          description: `Request to ${e.detail?.url || "the server"} timed out. Please check your connection.`,
+          variant: "destructive",
+        });
+    };
+    const handleServerError = (e) => {
+      window.toast &&
+        window.toast({
+          title: "Server Error",
+          description:
+            e.detail?.message ||
+            "A server error occurred. Please try again later.",
+          variant: "destructive",
+        });
+    };
+    window.addEventListener("api:network-error", handleNetworkError);
+    window.addEventListener("api:timeout", handleTimeout);
+    window.addEventListener("api:server-error", handleServerError);
+    return () => {
+      window.removeEventListener("api:network-error", handleNetworkError);
+      window.removeEventListener("api:timeout", handleTimeout);
+      window.removeEventListener("api:server-error", handleServerError);
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <Router>

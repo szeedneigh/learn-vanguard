@@ -40,18 +40,12 @@ const Tasks = () => {
 
   // Local state for UI
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [onHoldRemark, setOnHoldRemark] = useState("");
   const [statusChangeDialogOpen, setStatusChangeDialogOpen] = useState(false);
   const [statusChangeInfo, setStatusChangeInfo] = useState(null);
-
-  // Update showArchived state based on statusFilter
-  useEffect(() => {
-    setShowArchived(statusFilter === "archived");
-  }, [statusFilter]);
 
   // React Query hook for all task operations
   const {
@@ -74,15 +68,14 @@ const Tasks = () => {
     isMutating,
   } = useTasksPage({
     search: searchQuery,
-    status: statusFilter !== "all" ? statusFilter : undefined,
     archived: showArchived ? "true" : "false",
   });
 
-  // Refresh summary stats when filter changes or after operations
+  // Refresh summary stats when search changes or after operations
   useEffect(() => {
-    // Refresh stats after component mounts and when filter changes
+    // Refresh stats after component mounts and when search changes
     refetch();
-  }, [statusFilter, searchQuery, showArchived, refetch]);
+  }, [searchQuery, showArchived, refetch]);
 
   const taskStatusColumns = [
     "Not Started",
@@ -121,29 +114,38 @@ const Tasks = () => {
     return statusMap[displayStatus] || displayStatus;
   };
 
-  // Filter tasks for display based on search and status
+  // Filter tasks for display based on search and archived status
   const filteredTasks = tasks.filter((task) => {
     const searchMatch =
       !searchQuery ||
       task.taskName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.taskDescription?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Handle archived filter separately
-    if (statusFilter === "archived") {
-      return searchMatch && (task.isArchived || task.archived);
-    } else {
-      const statusMatch =
-        statusFilter === "all" ||
-        mapStatusForDisplay(task.taskStatus) === statusFilter;
-
-      return searchMatch && statusMatch && !(task.isArchived || task.archived);
-    }
+    // Only show archived tasks when showArchived is true
+    const archiveMatch = showArchived
+      ? task.isArchived || task.archived
+      : !(task.isArchived || task.archived);
+    return searchMatch && archiveMatch;
   });
 
   // Handler functions
   const handleTaskSubmit = (taskData) => {
     if (editingTask) {
-      updateTask({ taskId: editingTask.id, taskData });
+      // Make sure we have a valid ID by using either editingTask.id or editingTask._id
+      const taskId = editingTask.id || editingTask._id;
+      console.log("Editing task with ID:", taskId, "Data:", taskData);
+
+      if (!taskId) {
+        console.error("Cannot update task: Invalid task ID", editingTask);
+        toast({
+          title: "Error",
+          description: "Failed to update task: Invalid task ID",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      updateTask({ taskId, taskData });
     } else {
       createTask(taskData);
     }
@@ -262,7 +264,7 @@ const Tasks = () => {
     }
   };
 
-  const handleArchiveTask = (taskId) => {
+  const handleArchiveTask = (taskId, skipConfirmation = false) => {
     if (!taskId) {
       console.error("Cannot archive task: Task ID is undefined");
       toast({
@@ -285,6 +287,43 @@ const Tasks = () => {
     }
 
     const taskName = task.taskName || task.name;
+    const actualTaskId = task._id || task.id;
+
+    if (!actualTaskId) {
+      console.error("Cannot archive task: Invalid task ID", task);
+      toast({
+        title: "Error",
+        description: "Failed to archive task: Invalid task ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // If skipConfirmation is true, directly archive the task
+    if (skipConfirmation) {
+      archiveTask({
+        taskId: actualTaskId,
+        archived: true,
+      })
+        .then(() => {
+          // Force refresh the task list and stats
+          refetch();
+          // If we're in the archive view, refresh immediately
+          if (showArchived) {
+            setTimeout(() => refetch(), 300);
+          }
+          // Note: Success toast is handled by useArchiveTask hook
+        })
+        .catch((error) => {
+          console.error("Error archiving task:", error);
+          toast({
+            title: "Error",
+            description: "Failed to archive task. Please try again.",
+            variant: "destructive",
+          });
+        });
+      return;
+    }
 
     // Show toast with confirmation buttons
     toast({
@@ -296,43 +335,8 @@ const Tasks = () => {
             variant="default"
             size="sm"
             onClick={() => {
-              // Use the task's _id or id property (MongoDB uses _id)
-              const actualTaskId = task._id || task.id;
-
-              if (!actualTaskId) {
-                console.error("Cannot archive task: Invalid task ID", task);
-                toast({
-                  title: "Error",
-                  description: "Failed to archive task: Invalid task ID",
-                  variant: "destructive",
-                });
-                return;
-              }
-
-              archiveTask({
-                taskId: actualTaskId,
-                archived: true,
-              })
-                .then(() => {
-                  toast({
-                    title: "Task Archived",
-                    description: "The task has been moved to the archive.",
-                  });
-                  // Force refresh the task list and stats
-                  refetch();
-                  // If we're in the archive view, refresh immediately
-                  if (statusFilter === "archived") {
-                    setTimeout(() => refetch(), 300);
-                  }
-                })
-                .catch((error) => {
-                  console.error("Error archiving task:", error);
-                  toast({
-                    title: "Error",
-                    description: "Failed to archive task. Please try again.",
-                    variant: "destructive",
-                  });
-                });
+              // Archive with skipConfirmation to avoid nested toasts
+              handleArchiveTask(taskId, true);
             }}
           >
             Archive
@@ -352,41 +356,8 @@ const Tasks = () => {
   };
 
   const openArchiveDialog = (taskId) => {
-    const task = tasks.find((t) => t.id === taskId || t._id === taskId);
-    if (task) {
-      const taskName = task.taskName || task.name;
-
-      // Show confirmation toast instead of modal
-      toast({
-        title: "Archive Task?",
-        description: `Are you sure you want to archive "${taskName}"? You can restore it later from the Archive page.`,
-        action: (
-          <div className="flex gap-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                const actualTaskId = task._id || task.id;
-                if (actualTaskId) {
-                  handleArchiveTask(actualTaskId);
-                }
-              }}
-            >
-              Archive
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                // Do nothing, toast will dismiss
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        ),
-      });
-    }
+    // Simply call handleArchiveTask which already handles confirmation
+    handleArchiveTask(taskId);
   };
 
   const handleDragEnd = (result) => {
@@ -603,19 +574,6 @@ const Tasks = () => {
               />
             </div>
             <div className="flex items-center gap-3">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-auto md:w-[180px] bg-white shadow-sm rounded-md border-gray-300">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Not Started">Not Started</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                  <SelectItem value="On Hold">On Hold</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
               <Button
                 onClick={() => {
                   setEditingTask(null);
@@ -699,7 +657,12 @@ const Tasks = () => {
                                   status: mapStatusForDisplay(task.taskStatus),
                                 }}
                                 onEdit={() => {
-                                  setEditingTask(task);
+                                  console.log("Editing task:", task);
+                                  const taskWithId = {
+                                    ...task,
+                                    id: task._id || task.id, // Ensure ID is set properly
+                                  };
+                                  setEditingTask(taskWithId);
                                   setIsModalOpen(true);
                                 }}
                                 onDelete={() =>

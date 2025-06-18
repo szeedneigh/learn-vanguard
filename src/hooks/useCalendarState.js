@@ -1,11 +1,17 @@
 import { useState, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTasks, createTask, updateTask, deleteTask } from '@/services/tasks.js'; // Corrected path
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+} from "@/services/tasks.js"; // Corrected path
 
 // --- Constants ---
 
-export const courseColors = { // Export constants needed by UI
+export const courseColors = {
+  // Export constants needed by UI
   Physics: "bg-purple-500",
   Mathematics: "bg-green-500",
   English: "bg-amber-500",
@@ -13,20 +19,23 @@ export const courseColors = { // Export constants needed by UI
   Chemistry: "bg-pink-500",
 };
 
-export const statusClasses = { // Export constants needed by UI
+export const statusClasses = {
+  // Export constants needed by UI
   "not-started": "border-gray-300 bg-gray-100 text-gray-800",
   "in-progress": "border-blue-300 bg-blue-100 text-blue-800",
   "on-hold": "border-yellow-300 bg-yellow-100 text-yellow-800",
   completed: "border-green-300 bg-green-100 text-green-800",
 };
 
-export const capitalize = (s) => s.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()); // Export utility
+export const capitalize = (s) =>
+  s.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()); // Export utility
 
 // Helper function to get 'YYYY-MM-DD' string based on local date components
-export const toLocaleDateStringISO = (date) => { // Export the helper
+export const toLocaleDateStringISO = (date) => {
+  // Export the helper
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -41,16 +50,21 @@ export function useCalendarState() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: tasks = [], isLoading: tasksLoading, isError: tasksIsError, error: tasksError } = useQuery({
-    queryKey: ['tasks'], // Query key for tasks
-    queryFn: getTasks,    // Service function to fetch tasks
+  const {
+    data: tasks = [],
+    isLoading: tasksLoading,
+    isError: tasksIsError,
+    error: tasksError,
+  } = useQuery({
+    queryKey: ["tasks"], // Query key for tasks
+    queryFn: getTasks, // Service function to fetch tasks
     // You might want to add options like staleTime, cacheTime, refetchOnWindowFocus, etc.
   });
 
   const createTaskMutation = useMutation({
     mutationFn: createTask,
     onSuccess: (data) => {
-      queryClient.invalidateQueries(['tasks']);
+      queryClient.invalidateQueries(["tasks"]);
       toast({
         title: "Task Created",
         description: `Task "${data.title}" has been created successfully.`,
@@ -60,7 +74,8 @@ export function useCalendarState() {
     onError: (error) => {
       toast({
         title: "Error Creating Task",
-        description: error.message || "Could not create task. Please try again.",
+        description:
+          error.message || "Could not create task. Please try again.",
         variant: "destructive",
       });
     },
@@ -69,7 +84,7 @@ export function useCalendarState() {
   const updateTaskMutation = useMutation({
     mutationFn: (taskData) => updateTask(taskData.id, taskData),
     onSuccess: (data) => {
-      queryClient.invalidateQueries(['tasks']);
+      queryClient.invalidateQueries(["tasks"]);
       toast({
         title: "Task Updated",
         description: `Task "${data.title}" has been updated successfully.`,
@@ -79,7 +94,8 @@ export function useCalendarState() {
     onError: (error) => {
       toast({
         title: "Error Updating Task",
-        description: error.message || "Could not update task. Please try again.",
+        description:
+          error.message || "Could not update task. Please try again.",
         variant: "destructive",
       });
     },
@@ -87,8 +103,9 @@ export function useCalendarState() {
 
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTask, // Expects taskId
-    onSuccess: (data, taskId) => { // data might be undefined or {success: true} depending on backend
-      queryClient.invalidateQueries(['tasks']);
+    onSuccess: (data, taskId) => {
+      // data might be undefined or {success: true} depending on backend
+      queryClient.invalidateQueries(["tasks"]);
       toast({
         title: "Task Deleted",
         description: "Task has been permanently removed.",
@@ -99,7 +116,8 @@ export function useCalendarState() {
     onError: (error) => {
       toast({
         title: "Error Deleting Task",
-        description: error.message || "Could not delete task. Please try again.",
+        description:
+          error.message || "Could not delete task. Please try again.",
         variant: "destructive",
       });
     },
@@ -146,26 +164,37 @@ export function useCalendarState() {
     setSelectedTask(null);
   }, []);
 
-  const handleSaveTask = useCallback((taskData) => {
-    if (taskData.id) {
-      updateTaskMutation.mutate(taskData);
-    } else {
-      // For new tasks, ensure all required fields by backend are present.
-      // ID will be assigned by backend.
-      createTaskMutation.mutate(taskData);
-    }
-  }, [createTaskMutation, updateTaskMutation]);
+  const handleSaveTask = useCallback(
+    (taskData) => {
+      if (taskData.id) {
+        updateTaskMutation.mutate(taskData);
+      } else {
+        // For new tasks, ensure all required fields by backend are present.
+        // ID will be assigned by backend.
+        createTaskMutation.mutate(taskData);
+      }
+    },
+    [createTaskMutation, updateTaskMutation]
+  );
 
-  const handleDeleteTask = useCallback((taskId) => {
-    deleteTaskMutation.mutate(taskId);
-  }, [deleteTaskMutation]);
+  const handleDeleteTask = useCallback(
+    (taskId) => {
+      deleteTaskMutation.mutate(taskId);
+    },
+    [deleteTaskMutation]
+  );
 
-  const createCalendarCell = useCallback((date, isCurrentMonth) => ({
-    day: date.getDate(),
-    dateString: toLocaleDateStringISO(date), // Use local date string helper
-    isCurrentMonth,
-    tasks: Array.isArray(tasks) ? tasks.filter((task) => task.date === toLocaleDateStringISO(date)) : [], // Use helper here too for consistency
-  }), [tasks]);
+  const createCalendarCell = useCallback(
+    (date, isCurrentMonth) => ({
+      day: date.getDate(),
+      dateString: toLocaleDateStringISO(date), // Use local date string helper
+      isCurrentMonth,
+      tasks: Array.isArray(tasks)
+        ? tasks.filter((task) => task.date === toLocaleDateStringISO(date))
+        : [], // Use helper here too for consistency
+    }),
+    [tasks]
+  );
 
   const calendarGrid = useMemo(() => {
     const year = currentDate.getFullYear();
@@ -198,11 +227,11 @@ export function useCalendarState() {
             nextMonthDayCounter++;
           }
         }
-        if (week.some(cell => cell.isCurrentMonth) || weekIndex === 0) {
-             grid.push(week);
+        if (week.some((cell) => cell.isCurrentMonth) || weekIndex === 0) {
+          grid.push(week);
         }
       }
-      return grid.filter(week => week.some(cell => cell.isCurrentMonth));
+      return grid.filter((week) => week.some((cell) => cell.isCurrentMonth));
     }
 
     if (currentView === "week") {
@@ -218,21 +247,51 @@ export function useCalendarState() {
     }
 
     return [[createCalendarCell(currentDate, true)]];
-
   }, [currentView, currentDate, createCalendarCell]);
 
   const upcomingTasks = useMemo(() => {
+    // Create consistent date boundaries - start of today to end of 7 days from now
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
     const sevenDaysLater = new Date(today);
     sevenDaysLater.setDate(today.getDate() + 7);
+    sevenDaysLater.setHours(23, 59, 59, 999); // End of the 7th day
 
     return tasks
       .filter((task) => {
-        const taskDate = new Date(task.date + 'T00:00:00');
-        return taskDate >= today && taskDate < sevenDaysLater && task.status !== 'completed';
+        // Handle different date field names and formats
+        let taskDate;
+        if (task.taskDeadline) {
+          taskDate = new Date(task.taskDeadline);
+        } else if (task.date) {
+          taskDate = new Date(task.date + "T00:00:00");
+        } else {
+          return false; // Skip tasks without dates
+        }
+
+        // Check if task date is valid
+        if (isNaN(taskDate.getTime())) {
+          console.warn("Invalid task date:", task);
+          return false;
+        }
+
+        // Include tasks from today (inclusive) through the next 7 days (inclusive)
+        const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
+        const isNotCompleted =
+          (task.status || task.taskStatus) !== "completed" &&
+          (task.status || task.taskStatus) !== "Completed";
+
+        return isInDateRange && isNotCompleted;
       })
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      .sort((a, b) => {
+        const dateA = a.taskDeadline
+          ? new Date(a.taskDeadline)
+          : new Date(a.date);
+        const dateB = b.taskDeadline
+          ? new Date(b.taskDeadline)
+          : new Date(b.date);
+        return dateA - dateB;
+      });
   }, [tasks]);
 
   return {
@@ -254,10 +313,10 @@ export function useCalendarState() {
     openAddTaskForm,
     openEditTaskForm,
     closeTaskForm,
-    handleSaveTask,     // Now uses mutations
+    handleSaveTask, // Now uses mutations
     createTaskLoading: createTaskMutation.isLoading,
     updateTaskLoading: updateTaskMutation.isLoading,
-    handleDeleteTask,   // Now uses mutation
+    handleDeleteTask, // Now uses mutation
     deleteTaskLoading: deleteTaskMutation.isLoading,
     calendarGrid,
     upcomingTasks,

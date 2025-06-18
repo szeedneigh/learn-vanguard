@@ -99,6 +99,8 @@ export const createTopic = async (topicData) => {
  */
 export const updateTopic = async (topicId, topicData) => {
   try {
+    console.log("topicApi.js: Making PUT request to:", `/topics/${topicId}`);
+    console.log("topicApi.js: Request data:", topicData);
     const response = await apiClient.put(`/topics/${topicId}`, topicData);
 
     return {
@@ -108,6 +110,13 @@ export const updateTopic = async (topicId, topicData) => {
     };
   } catch (error) {
     console.error("Error updating topic:", error);
+    console.error("topicApi.js: Error details:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method,
+    });
     return {
       data: null,
       success: false,

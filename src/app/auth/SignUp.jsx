@@ -2,15 +2,14 @@ import React, { useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  EyeIcon,
-  EyeOffIcon,
+  Eye,
+  EyeOff,
   ArrowRight,
   ArrowLeft,
   User,
   Mail,
   Lock,
   GraduationCap,
-  BookOpen,
   Calendar,
   X,
 } from "lucide-react";
@@ -19,6 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as authService from "../../services/authService";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../hooks/use-toast";
+import { getCurrentUserToken } from "@/config/firebase";
 
 const smoothTransition = {
   type: "spring",
@@ -35,6 +35,7 @@ const FloatingLabelInput = React.memo(
     onChange,
     required = false,
     icon: Icon,
+    rightIcon,
     error,
   }) => {
     const [isFocused, setIsFocused] = useState(false);
@@ -57,14 +58,14 @@ const FloatingLabelInput = React.memo(
             value={value}
             onChange={onChange}
             required={required}
-            className={`w-full h-12 ${
-              Icon ? "pl-10" : "pl-3.5"
-            } pr-3.5 pt-3 pb-1 rounded-lg
-                    bg-white ring-1 ${
-                      error ? "ring-red-500" : "ring-gray-200"
-                    } focus:ring-2 focus:ring-blue-500
-                    text-gray-900 text-sm transition-all duration-200 outline-none
-                    peer placeholder-transparent`}
+            className={`w-full h-12 ${Icon ? "pl-10" : "pl-3.5"} ${
+              rightIcon ? "pr-10" : "pr-3.5"
+            } pt-3 pb-1 rounded-lg
+              bg-white ring-1 ${
+                error ? "ring-red-500" : "ring-gray-200"
+              } focus:ring-2 focus:ring-blue-500
+              text-gray-900 text-sm transition-all duration-200 outline-none
+              peer placeholder-transparent shadow-sm`}
             placeholder={label}
             onFocus={() => setIsFocused(true)}
             onBlur={() => value.length === 0 && setIsFocused(false)}
@@ -72,21 +73,26 @@ const FloatingLabelInput = React.memo(
             aria-describedby={error ? `${id}-error` : undefined}
             autoComplete={type === "password" ? "new-password" : "off"}
           />
-          <label
+          <motion.label
             htmlFor={id}
             className={`absolute left-0 ${
               Icon ? "ml-10" : "ml-3.5"
             } transition-all duration-200
-                    transform -translate-y-2 scale-75 top-2 z-10 origin-[0]
-                    peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0
-                    peer-focus:scale-75 peer-focus:-translate-y-2
-                    ${
-                      error ? "text-red-500" : "text-gray-500"
-                    } peer-focus:text-blue-500 text-sm`}
+              transform -translate-y-2 scale-75 top-2 z-10 origin-[0]
+              peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0
+              peer-focus:scale-75 peer-focus:-translate-y-2
+              ${
+                error ? "text-red-500" : "text-gray-500"
+              } peer-focus:text-blue-500 text-sm font-medium`}
           >
             {label}
             {required && <span className="text-red-500 ml-0.5">*</span>}
-          </label>
+          </motion.label>
+          {rightIcon && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              {rightIcon}
+            </div>
+          )}
         </div>
         {error && (
           <p id={`${id}-error`} className="text-red-500 text-sm mt-1 pl-3.5">
@@ -106,31 +112,35 @@ FloatingLabelInput.propTypes = {
   onChange: PropTypes.func.isRequired,
   required: PropTypes.bool,
   icon: PropTypes.elementType,
+  rightIcon: PropTypes.node,
   error: PropTypes.string,
 };
 FloatingLabelInput.displayName = "FloatingLabelInput";
 
 const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
   const [showPassword, setShowPassword] = useState(false);
+  const togglePasswordVisibility = useCallback(
+    () => setShowPassword((prev) => !prev),
+    []
+  );
 
   return (
-    <div className="relative">
-      <FloatingLabelInput
-        id={id}
-        label={label}
-        type={showPassword ? "text" : "password"}
-        value={value}
-        onChange={onChange}
-        required
-        icon={Lock}
-        error={error}
-      />
-      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+    <FloatingLabelInput
+      id={id}
+      label={label}
+      type={showPassword ? "text" : "password"}
+      value={value}
+      onChange={onChange}
+      required
+      icon={Lock}
+      error={error}
+      rightIcon={
         <motion.button
           type="button"
           aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-pressed={showPassword}
           className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
-          onClick={() => setShowPassword((prev) => !prev)}
+          onClick={togglePasswordVisibility}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -143,7 +153,7 @@ const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <EyeOffIcon className="h-4 w-4" />
+                <EyeOff className="h-4 w-4" />
               </motion.div>
             ) : (
               <motion.div
@@ -153,13 +163,13 @@ const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <EyeIcon className="h-4 w-4" />
+                <Eye className="h-4 w-4" />
               </motion.div>
             )}
           </AnimatePresence>
         </motion.button>
-      </div>
-    </div>
+      }
+    />
   );
 });
 
@@ -250,28 +260,32 @@ const SignUp = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [yearLevelOptions, setYearLevelOptions] = useState([
-    { value: "", label: "Select Year Level", disabled: true },
-    { value: "1", label: "First Year" },
-    { value: "2", label: "Second Year" },
-    { value: "3", label: "Third Year" },
-    { value: "4", label: "Fourth Year" },
-  ]);
+
+  const courseOptions = [
+    {
+      value: "Associate in Computer Technology",
+      label: "Associate in Computer Technology",
+    },
+    {
+      value: "Bachelor of Science in Information Systems",
+      label: "Bachelor of Science in Information Systems",
+    },
+  ];
 
   const validateField = useCallback((name, value) => {
     switch (name) {
       case "firstname":
         return !value.trim()
           ? "First name is required"
-          : /^[A-Za-z]+$/.test(value)
+          : /^[a-zA-Z\s]+$/.test(value.trim())
           ? ""
-          : "First name must contain only letters";
+          : "First name should only contain letters and spaces";
       case "lastname":
         return !value.trim()
           ? "Last name is required"
-          : /^[A-Za-z]+$/.test(value)
+          : /^[a-zA-Z\s]+$/.test(value.trim())
           ? ""
-          : "Last name must contain only letters";
+          : "Last name should only contain letters and spaces";
       case "email": {
         const emailRegex = /^[^\s@]+@student\.laverdad\.edu\.ph$/;
         if (!value) return "Email is required";
@@ -335,24 +349,8 @@ const SignUp = () => {
 
       // Update year level options based on selected course
       if (id === "course") {
-        if (value === "ACT") {
-          setYearLevelOptions([
-            { value: "", label: "Select Year Level", disabled: true },
-            { value: "1", label: "First Year" },
-            { value: "2", label: "Second Year" },
-          ]);
-          // Reset year level if it was set to 3 or 4
-          if (formData.yearLevel === "3" || formData.yearLevel === "4") {
-            setFormData((prev) => ({ ...prev, yearLevel: "" }));
-          }
-        } else {
-          setYearLevelOptions([
-            { value: "", label: "Select Year Level", disabled: true },
-            { value: "1", label: "First Year" },
-            { value: "2", label: "Second Year" },
-            { value: "3", label: "Third Year" },
-            { value: "4", label: "Fourth Year" },
-          ]);
+        if (value === "Associate in Computer Technology") {
+          setFormData((prev) => ({ ...prev, yearLevel: "" }));
         }
       }
     },
@@ -455,9 +453,10 @@ const SignUp = () => {
           formData.email && !localStorage.getItem("signupTempToken");
 
         if (isGoogleRegistration) {
-          // Handle Google registration completion
-          const idToken = localStorage.getItem("googleIdToken");
-          if (!idToken) {
+          // Get a fresh Firebase token instead of using the stored one
+          const freshToken = await getCurrentUserToken();
+
+          if (!freshToken) {
             toast({
               title: "Session Expired",
               description:
@@ -473,14 +472,14 @@ const SignUp = () => {
           }
 
           const completeData = {
-            idToken,
+            idToken: freshToken, // Use fresh token instead of stored one
             studentNo: formData.studentNo,
             course: formData.course,
             yearLevel: formData.yearLevel,
             email: formData.email,
           };
 
-          console.log("Completing Google registration", {
+          console.log("Completing Google registration with fresh token", {
             ...completeData,
             idToken: "[REDACTED]",
           });
@@ -496,9 +495,35 @@ const SignUp = () => {
               title: "Registration Successful",
               description: "Your account has been created successfully.",
             });
-            navigate("/dashboard");
+
+            // Check if email verification is required
+            if (result.requiresEmailVerification) {
+              toast({
+                title: "Email Verification Required",
+                description: "Please check your email to verify your account.",
+              });
+              navigate("/verify-email");
+            } else {
+              navigate("/dashboard");
+            }
           } else {
-            // Handle errors
+            // Check for token expiration specifically
+            if (result.tokenExpired) {
+              toast({
+                title: "Session Expired",
+                description:
+                  "Your Google sign-in session has expired. Please try again.",
+                variant: "destructive",
+              });
+              setErrors({
+                form: "Google sign-in session expired. Please try again.",
+              });
+              setStep(1);
+              setIsLoading(false);
+              return;
+            }
+
+            // Handle other errors
             let formErrorMessage =
               result.error ||
               "Registration failed. Please check your details and try again.";
@@ -633,7 +658,7 @@ const SignUp = () => {
         setIsLoading(false);
       }
     },
-    [formData, validateStep, navigate, toast]
+    [formData, validateStep, navigate, toast, getCurrentUserToken]
   );
 
   const handleGoogleSignUp = async (e) => {
@@ -927,38 +952,41 @@ const SignUp = () => {
 
                     <SelectInput
                       id="course"
+                      label="Course"
                       value={formData.course}
                       onChange={(e) =>
                         handleInputChange({
                           target: { id: "course", value: e.target.value },
                         })
                       }
-                      options={[
-                        { value: "", label: "Select Course", disabled: true },
-                        {
-                          value: "BSIS",
-                          label: "Bachelor of Science in Information Systems",
-                        },
-                        {
-                          value: "ACT",
-                          label: "Associate in Computer Technology",
-                        },
-                      ]}
-                      label="Select Course"
-                      icon={BookOpen}
+                      options={courseOptions}
+                      icon={GraduationCap}
                       error={errors.course}
                     />
 
                     <SelectInput
                       id="yearLevel"
+                      label="Year Level"
                       value={formData.yearLevel}
                       onChange={(e) =>
                         handleInputChange({
                           target: { id: "yearLevel", value: e.target.value },
                         })
                       }
-                      options={yearLevelOptions}
-                      label="Select Year Level"
+                      options={[
+                        ...(formData.course ===
+                        "Associate in Computer Technology"
+                          ? [
+                              { value: "First Year", label: "First Year" },
+                              { value: "Second Year", label: "Second Year" },
+                            ]
+                          : [
+                              { value: "First Year", label: "First Year" },
+                              { value: "Second Year", label: "Second Year" },
+                              { value: "Third Year", label: "Third Year" },
+                              { value: "Fourth Year", label: "Fourth Year" },
+                            ]),
+                      ]}
                       icon={Calendar}
                       error={errors.yearLevel}
                     />
@@ -997,7 +1025,7 @@ const SignUp = () => {
                           whileTap={{ scale: 0.98 }}
                         >
                           Terms and Conditions & Privacy Policy
-                          <span className="absolute bottom-0 left-0 w-full h-px bg-current origin-left transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100" />
+                          <span className="absolute bottom-0 left-0 w-full h-0.5 bg-current origin-left transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100" />
                         </motion.button>
                       </label>
                     </div>

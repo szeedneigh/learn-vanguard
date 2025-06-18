@@ -6,28 +6,18 @@ import {
   Edit,
   Trash2,
   Archive,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePermission } from "@/context/PermissionContext";
 import { useAuth } from "@/context/AuthContext";
 import { PERMISSIONS, ROLES } from "@/lib/constants";
+import { isTaskOverdue, formatDateTime } from "@/lib/calendarHelpers";
 import PropTypes from "prop-types";
 
 const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
   const { hasPermission } = usePermission();
   const { user } = useAuth();
-
-  // Extract properties from task, handling different formats
-  const taskId = task._id || task.id; // Handle both MongoDB _id and regular id
-  const taskName = task.name || task.taskName || "";
-  const taskDescription = task.description || task.taskDescription || "";
-  const taskDueDate = task.dueDate || task.taskDeadline || "";
-  const taskStatus = task.status || task.taskStatus || "";
-  const taskPriority = task.priority || task.taskPriority || "";
-  const taskCompletedAt = task.completedAt || task.dateCompleted || "";
-  const taskIsArchived = task.isArchived || task.archived || false;
-  // Extract all possible user ID fields for ownership check
-  const taskUserId = task.userId || task.creatorId || task.assigneeId;
 
   // Normalize status to handle different formats from backend
   const normalizeStatus = (status) => {
@@ -53,9 +43,6 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
     return status; // Return original if no match
   };
 
-  // Get normalized status
-  const normalizedStatus = normalizeStatus(taskStatus);
-
   // Map status to color
   const getStatusColor = (status) => {
     switch (status) {
@@ -64,7 +51,7 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
       case "In Progress":
         return "bg-blue-100 text-blue-800";
       case "On Hold":
-        return "bg-amber-100 text-amber-800";
+        return "bg-gray-100 text-gray-800";
       case "Completed":
         return "bg-green-100 text-green-800";
       default:
@@ -72,41 +59,31 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
     }
   };
 
-  // Get status badge color
-  const statusColor = getStatusColor(normalizedStatus);
-
   // Map backend priority format to frontend format
-  const normalizedPriority = taskPriority.includes("Priority")
-    ? taskPriority.replace(" Priority", "")
-    : taskPriority;
-
-  const priorityDisplay = {
-    High: { text: "High Priority", color: "text-red-600", bg: "bg-red-100" },
-    Medium: {
-      text: "Medium Priority",
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-    },
-    Low: { text: "Low Priority", color: "text-green-600", bg: "bg-green-100" },
+  const normalizePriority = (priority) => {
+    if (priority && priority.includes && priority.includes("Priority")) {
+      return priority.replace(" Priority", "");
+    }
+    return priority;
   };
 
-  const statusDisplayInfo = {
-    "Not Started": {
-      text: "Not Started",
-      bg: "bg-gray-500",
-      textColor: "text-white",
-    },
-    "In Progress": {
-      text: "In Progress",
-      bg: "bg-blue-500",
-      textColor: "text-white",
-    },
-    "On Hold": { text: "On Hold", bg: "bg-amber-500", textColor: "text-white" },
-    Completed: {
-      text: "Completed",
-      bg: "bg-green-500",
-      textColor: "text-white",
-    },
+  // Extract and normalize task properties
+  const taskId = task.id || task._id;
+  const taskName = task.name || task.taskName;
+  const taskDescription = task.description || task.taskDescription;
+  const taskDueDate = task.dueDate || task.taskDeadline;
+  const taskPriority = task.priority || task.taskPriority;
+  const taskCompletedAt = task.completedAt || task.dateCompleted;
+  const taskUserId = task.userId || task.creatorId || task.assigneeId;
+  // Normalize status
+  const normalizedStatus = normalizeStatus(task.status || task.taskStatus);
+  const normalizedPriority = normalizePriority(taskPriority);
+  const statusColor = getStatusColor(normalizedStatus);
+
+  const priorityDisplay = {
+    High: { text: "High", color: "text-red-700", bg: "bg-red-100" },
+    Medium: { text: "Medium", color: "text-amber-700", bg: "bg-amber-100" },
+    Low: { text: "Low", color: "text-green-700", bg: "bg-green-100" },
   };
 
   const currentPriority = priorityDisplay[normalizedPriority] || {
@@ -115,13 +92,8 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
     bg: "bg-gray-100",
   };
 
-  const currentStatus = statusDisplayInfo[normalizedStatus] || {
-    text: normalizedStatus,
-    bg: "bg-gray-400",
-    textColor: "text-white",
-  };
-
   const isCompleted = normalizedStatus === "Completed";
+  const isOverdue = isTaskOverdue(taskDueDate, normalizedStatus);
 
   // Permission checks
   const hasEditPermission = hasPermission(PERMISSIONS.EDIT_TASK);
@@ -142,7 +114,9 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
 
   // Only admin and PIO can delete tasks
   const canDeleteTask =
-    hasDeletePermission && (userRole === ROLES.ADMIN || userRole === ROLES.PIO);
+    (hasDeletePermission &&
+      (userRole === ROLES.ADMIN || userRole === ROLES.PIO)) ||
+    (userRole === ROLES.STUDENT && isOwnTask);
 
   // Admin and PIO can archive any task, students can archive their own completed tasks
   const canManageArchive =
@@ -208,31 +182,47 @@ const TaskCard = ({ task, onEdit, onDelete, onArchive }) => {
           {taskDescription}
         </p>
 
+        {/* Display on-hold remarks if task is on hold */}
+        {normalizedStatus === "On Hold" && task.onHoldRemark && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2 mt-2">
+            <div className="flex items-center text-yellow-700 text-sm">
+              <span className="mr-1">💬</span>
+              <span className="font-medium">On-Hold Reason:</span>
+            </div>
+            <p className="text-yellow-700 text-sm mt-1 italic">
+              {task.onHoldRemark}
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center text-gray-500 text-xs">
-            <Calendar size={14} className="mr-1.5 text-gray-400" />
+          <div
+            className={`flex items-center text-xs ${
+              isOverdue ? "text-red-600" : "text-gray-500"
+            }`}
+          >
+            <Calendar
+              size={14}
+              className={`mr-1.5 ${
+                isOverdue ? "text-red-500" : "text-gray-400"
+              }`}
+            />
+            {isOverdue && (
+              <AlertTriangle size={14} className="mr-1.5 text-red-500" />
+            )}
             <span>
-              Due:{" "}
-              {new Date(taskDueDate).toLocaleDateString("en-US", {
-                month: "short",
-                day: "2-digit",
-                year: "numeric",
-              })}
+              Due: {formatDateTime(taskDueDate)}
+              {isOverdue && (
+                <span className="ml-1 font-semibold text-red-600">
+                  (OVERDUE)
+                </span>
+              )}
             </span>
           </div>
           {isCompleted && taskCompletedAt && (
             <div className="flex items-center text-green-600 text-xs">
               <CheckCircle2 size={14} className="mr-1.5" />
-              <span>
-                Completed:{" "}
-                {new Date(taskCompletedAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
+              <span>Completed: {formatDateTime(taskCompletedAt)}</span>
             </div>
           )}
         </div>

@@ -73,9 +73,7 @@ const HeroSection = () => {
       <div className="relative p-8 sm:p-10">
         <div className="flex items-center gap-3 mb-6">
           <GraduationCap className="h-8 w-8 text-white" />
-          <h2 className="text-3xl font-bold text-white">
-            STUDENT RESOURCE HUB
-          </h2>
+          <h2 className="text-3xl font-bold text-white">LEARN VANGUARD</h2>
         </div>
 
         <p className="text-xl text-blue-50 max-w-2xl mb-8">

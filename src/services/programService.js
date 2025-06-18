@@ -33,6 +33,7 @@ const MOCK_SUBJECTS = {
       id: "act111",
       name: "Introduction to Computing",
       description: "Fundamentals of IT and basic computer concepts.",
+      instructor: "Prof. Maria Santos",
       programId: "act",
       year: 1,
       semester: "1st Semester",
@@ -41,6 +42,7 @@ const MOCK_SUBJECTS = {
       id: "act112",
       name: "Computer Programming 1",
       description: "Basic programming principles using Python.",
+      instructor: "Dr. John Rodriguez",
       programId: "act",
       year: 1,
       semester: "1st Semester",
@@ -50,7 +52,9 @@ const MOCK_SUBJECTS = {
     {
       id: "act121",
       name: "Data Structures and Algorithms",
-      description: "Fundamental data structures.",
+      description:
+        "Fundamental data structures and algorithmic problem-solving techniques.",
+      instructor: "Prof. Ana Garcia",
       programId: "act",
       year: 1,
       semester: "2nd Semester",
@@ -60,7 +64,9 @@ const MOCK_SUBJECTS = {
     {
       id: "act211",
       name: "Database Management Systems 1",
-      description: "Introduction to databases.",
+      description:
+        "Introduction to relational databases, SQL, and database design principles.",
+      instructor: "Dr. Carlos Mendoza",
       programId: "act",
       year: 2,
       semester: "1st Semester",
@@ -71,7 +77,9 @@ const MOCK_SUBJECTS = {
     {
       id: "bsis111",
       name: "IT Fundamentals",
-      description: "Overview of Information Technology.",
+      description:
+        "Comprehensive overview of Information Technology concepts and applications.",
+      instructor: "Prof. Elena Reyes",
       programId: "bsis",
       year: 1,
       semester: "1st Semester",
@@ -79,7 +87,9 @@ const MOCK_SUBJECTS = {
     {
       id: "bsis112",
       name: "Programming Fundamentals (Flowcharting & Pseudocode)",
-      description: "Logic formulation and problem-solving techniques.",
+      description:
+        "Logic formulation and problem-solving techniques using flowcharts and pseudocode.",
+      instructor: "Dr. Miguel Torres",
       programId: "bsis",
       year: 1,
       semester: "1st Semester",
@@ -89,7 +99,9 @@ const MOCK_SUBJECTS = {
     {
       id: "bsis121",
       name: "Object-Oriented Programming",
-      description: "OOP concepts using Java or C#.",
+      description:
+        "Object-oriented programming concepts and principles using Java or C#.",
+      instructor: "Prof. Sofia Delgado",
       programId: "bsis",
       year: 1,
       semester: "2nd Semester",
@@ -178,6 +190,10 @@ export const getSubjects = async ({ programId, year, semester }) => {
 
     if (result.success) {
       console.log("programService.js: getSubjects - API success:", result.data);
+      console.log(
+        "programService.js: getSubjects - First subject sample:",
+        result.data[0]
+      );
       return result.data;
     } else {
       console.warn(

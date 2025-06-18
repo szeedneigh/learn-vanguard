@@ -151,6 +151,12 @@ export const createTopic = async (topicData) => {
  */
 export const updateTopic = async (topicId, topicData) => {
   console.log("topicService.js: Updating topic", topicId, topicData);
+  console.log(
+    "topicService.js: Topic ID type:",
+    typeof topicId,
+    "Value:",
+    topicId
+  );
 
   if (config.useMockData) {
     const index = MOCK_TOPICS.findIndex((t) => t.id === topicId);
@@ -364,6 +370,18 @@ export const deleteActivity = async (topicId, activityId) => {
     };
   }
 };
+
+// Re-export activity completion functions for convenience
+export {
+  markActivityComplete,
+  getActivityCompletions,
+  checkActivityCompletion,
+  batchCheckActivityCompletions,
+  filterIncompleteActivities,
+  filterCompletedActivities,
+  areAllActivitiesCompleted,
+  getTopicCompletionProgress,
+} from "./activityService";
 
 export default {
   getTopicsBySubject,

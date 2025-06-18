@@ -9,8 +9,33 @@ import {
   updateUserStatus,
   assignPIORole,
   revertPIORole,
+  moveStudent,
 } from "@/lib/api/userApi";
 import { useToast } from "@/hooks/use-toast";
+
+/**
+ * Helper function to get program name from ID
+ */
+const getProgramNameFromId = (programId) => {
+  const programs = {
+    bsis: "Bachelor of Science in Information Systems",
+    act: "Associate in Computer Technology",
+  };
+  return programs[programId] || programId;
+};
+
+/**
+ * Helper function to get year level name
+ */
+const getYearLevelName = (year) => {
+  const yearLevels = {
+    1: "First Year",
+    2: "Second Year",
+    3: "Third Year",
+    4: "Fourth Year",
+  };
+  return yearLevels[year] || year;
+};
 
 /**
  * Hook for assigning PIO role
@@ -21,37 +46,59 @@ export const useAssignPIORole = () => {
 
   return useMutation({
     mutationFn: async (params) => {
-      // Handle both object with studentId and direct parameters
-      let userId, assignedClass;
+      // Handle both object and direct parameters
+      let userId, course, yearLevel;
 
       if (typeof params === "object") {
-        // Extract from object format
-        userId = params.studentId || null;
+        userId = params.studentId;
 
-        // Create assignedClass from program and yearLevel if provided
         if (params.program && params.yearLevel) {
-          const programName = getProgramNameFromId(params.program);
-          const yearLevelName = getYearLevelName(params.yearLevel);
-          assignedClass = `${programName} - ${yearLevelName}`;
+          // New format with program and yearLevel
+          course = getProgramNameFromId(params.program);
+          yearLevel = getYearLevelName(params.yearLevel);
+        } else if (typeof params.assignedClass === "string") {
+          // Legacy format with combined string - split it
+          const parts = params.assignedClass.split(" - ");
+          if (parts.length !== 2) {
+            throw new Error(
+              "Invalid assigned class format. Expected 'Course - Year Level'"
+            );
+          }
+          [course, yearLevel] = parts;
         } else {
-          assignedClass = params.assignedClass;
+          throw new Error(
+            "Invalid parameters. Need either program/yearLevel or assignedClass"
+          );
         }
       } else {
-        // Legacy format
+        // Direct parameters (legacy format)
         userId = params;
-        assignedClass = arguments[1];
+        const assignedClass = arguments[1];
+        if (typeof assignedClass !== "string") {
+          throw new Error("Invalid assigned class format");
+        }
+        const parts = assignedClass.split(" - ");
+        if (parts.length !== 2) {
+          throw new Error(
+            "Invalid assigned class format. Expected 'Course - Year Level'"
+          );
+        }
+        [course, yearLevel] = parts;
       }
 
-      if (!userId) {
-        throw new Error("User ID is required to assign PIO role");
+      if (!userId || !course || !yearLevel) {
+        throw new Error(
+          "User ID, course, and year level are all required to assign PIO role"
+        );
       }
 
-      console.log(
-        `Assigning PIO role to user ${userId} with class ${assignedClass}`
-      );
-      const result = await assignPIORole(userId, assignedClass);
+      console.log(`Assigning PIO role to user ${userId}`, {
+        course,
+        yearLevel,
+      });
 
-      // If the API returned an error, throw it to trigger onError
+      const result = await assignPIORole(userId, { course, yearLevel });
+
       if (!result.success) {
         throw new Error(result.error || "Failed to assign PIO role");
       }
@@ -129,33 +176,6 @@ export const useAssignPIORole = () => {
       // Don't invalidate queries on error to prevent potential loops
     },
   });
-};
-
-// Helper functions for the hooks
-const getProgramNameFromId = (programId) => {
-  switch (programId) {
-    case "bsis":
-      return "Bachelor of Science in Information Systems";
-    case "act":
-      return "Associate in Computer Technology";
-    default:
-      return programId;
-  }
-};
-
-const getYearLevelName = (year) => {
-  switch (year) {
-    case "1":
-      return "First Year";
-    case "2":
-      return "Second Year";
-    case "3":
-      return "Third Year";
-    case "4":
-      return "Fourth Year";
-    default:
-      return year;
-  }
 };
 
 /**
@@ -425,6 +445,65 @@ export const useRemoveUser = () => {
 };
 
 /**
+ * Hook for moving a student to different class (admin function)
+ */
+export const useMoveStudent = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ userId, moveData }) => {
+      const result = await moveStudent(userId, moveData);
+
+      // If the API returned an error, throw it to trigger onError
+      if (!result.success) {
+        throw new Error(result.error || "Failed to move student");
+      }
+
+      return result;
+    },
+    onSuccess: (data) => {
+      // Invalidate all user queries to force a refresh
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.users,
+      });
+
+      // Also invalidate specific program queries if we have the data
+      if (data?.data?.course && data?.data?.yearLevel) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.usersByProgram(
+            data.data.course,
+            data.data.yearLevel
+          ),
+        });
+      }
+
+      // Show success message with details
+      const user = data.data;
+      let message = `${user.firstName} ${user.lastName} moved successfully`;
+      if (user.roleChanged) {
+        message += " (converted from PIO to Student)";
+      }
+
+      toast({
+        title: "Student Moved",
+        description: message,
+      });
+    },
+    onError: (error) => {
+      console.error("Error in useMoveStudent:", error);
+      const errorMessage = error.message || "Failed to move student";
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+/**
  * Hook for updating user profile
  */
 export const useUpdateUserProfile = () => {
@@ -493,7 +572,7 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
       case "bsis":
         return "Bachelor of Science in Information Systems";
       case "act":
-        return "Associate of Computer Technology";
+        return "Associate in Computer Technology";
       default:
         return programId;
     }
@@ -532,6 +611,7 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
   const assignPIOMutation = useAssignPIORole();
   const revertPIOMutation = useRevertPIORole();
   const removeUserMutation = useRemoveUser();
+  const moveStudentMutation = useMoveStudent();
 
   // Process students data to ensure consistent ID fields
   const processStudentsData = (students = []) => {
@@ -556,21 +636,25 @@ export const useUsersPage = (selectedProgram, selectedYear) => {
     assignPIO: assignPIOMutation.mutate,
     revertPIO: revertPIOMutation.mutate,
     removeUser: removeUserMutation.mutate,
+    moveStudent: moveStudentMutation.mutate,
 
     // Loading states
     isAssigningPIO: assignPIOMutation.isPending,
     isRevertingPIO: revertPIOMutation.isPending,
     isRemovingUser: removeUserMutation.isPending,
+    isMovingStudent: moveStudentMutation.isPending,
 
     // Any mutation loading
     isMutating:
       assignPIOMutation.isPending ||
       revertPIOMutation.isPending ||
-      removeUserMutation.isPending,
+      removeUserMutation.isPending ||
+      moveStudentMutation.isPending,
 
     // Error states
     assignPIOError: assignPIOMutation.error,
     revertPIOError: revertPIOMutation.error,
     removeUserError: removeUserMutation.error,
+    moveStudentError: moveStudentMutation.error,
   };
 };

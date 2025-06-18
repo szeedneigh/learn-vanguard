@@ -1,4 +1,4 @@
-import apiClient from './client';
+import apiClient from "./client";
 
 /**
  * Announcement Management API Service
@@ -13,26 +13,29 @@ import apiClient from './client';
 export const getAnnouncements = async (filters = {}) => {
   try {
     const params = new URLSearchParams();
-    
+
     // Add filters to params
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         params.append(key, value);
       }
     });
-    
+
     const response = await apiClient.get(`/announcements?${params.toString()}`);
     return {
       data: response.data.data || response.data,
       pagination: response.data.pagination,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching announcements:', error);
+    console.error("Error fetching announcements:", error);
     return {
       data: [],
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch announcements'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch announcements",
     };
   }
 };
@@ -47,14 +50,17 @@ export const getAnnouncementById = async (announcementId) => {
     const response = await apiClient.get(`/announcements/${announcementId}`);
     return {
       data: response.data.announcement || response.data,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error fetching announcement by ID:', error);
+    console.error("Error fetching announcement by ID:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to fetch announcement'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch announcement",
     };
   }
 };
@@ -66,19 +72,37 @@ export const getAnnouncementById = async (announcementId) => {
  */
 export const createAnnouncement = async (announcementData) => {
   try {
-    const response = await apiClient.post('/announcements', announcementData);
+    const response = await apiClient.post("/announcements", announcementData);
     return {
       data: response.data.announcement,
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error creating announcement:', error);
+    console.error("Error creating announcement:", error);
+    console.error("Full error response:", error.response?.data);
+
+    // Handle validation errors (400 status)
+    if (error.response?.status === 400 && error.response?.data?.errors) {
+      const validationErrors = error.response.data.errors
+        .map((err) => err.msg)
+        .join(", ");
+      return {
+        data: null,
+        success: false,
+        error: `Validation failed: ${validationErrors}`,
+        details: error.response.data.errors,
+      };
+    }
+
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to create announcement',
-      details: error.response?.data?.error?.details || {}
+      error:
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to create announcement",
+      details: error.response?.data || {},
     };
   }
 };
@@ -91,19 +115,25 @@ export const createAnnouncement = async (announcementData) => {
  */
 export const updateAnnouncement = async (announcementId, announcementData) => {
   try {
-    const response = await apiClient.put(`/announcements/${announcementId}`, announcementData);
+    const response = await apiClient.put(
+      `/announcements/${announcementId}`,
+      announcementData
+    );
     return {
       data: response.data.announcement,
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error updating announcement:', error);
+    console.error("Error updating announcement:", error);
     return {
       data: null,
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update announcement',
-      details: error.response?.data?.error?.details || {}
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to update announcement",
+      details: error.response?.data?.error?.details || {},
     };
   }
 };
@@ -118,13 +148,16 @@ export const deleteAnnouncement = async (announcementId) => {
     const response = await apiClient.delete(`/announcements/${announcementId}`);
     return {
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error deleting announcement:', error);
+    console.error("Error deleting announcement:", error);
     return {
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to delete announcement'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to delete announcement",
     };
   }
 };
@@ -139,23 +172,63 @@ export const getAnnouncementsBySubject = async (subjectId) => {
 };
 
 /**
+ * Get announcements for calendar view with access control
+ * @param {Object} filters - Optional filters (startDate, endDate)
+ * @returns {Promise<Object>} Calendar announcements list
+ */
+export const getCalendarAnnouncements = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+
+    // Add filters to params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        params.append(key, value);
+      }
+    });
+
+    const response = await apiClient.get(
+      `/announcements/calendar?${params.toString()}`
+    );
+    return {
+      data: response.data.data || response.data,
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error fetching calendar announcements:", error);
+    return {
+      success: false,
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to fetch calendar announcements",
+    };
+  }
+};
+
+/**
  * Mark announcement as read
  * @param {string} announcementId - Announcement ID
  * @returns {Promise<Object>} Update result
  */
 export const markAnnouncementAsRead = async (announcementId) => {
   try {
-    const response = await apiClient.patch(`/announcements/${announcementId}/read`);
+    const response = await apiClient.patch(
+      `/announcements/${announcementId}/read`
+    );
     return {
       data: response.data,
       message: response.data.message,
-      success: true
+      success: true,
     };
   } catch (error) {
-    console.error('Error marking announcement as read:', error);
+    console.error("Error marking announcement as read:", error);
     return {
       success: false,
-      error: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to mark announcement as read'
+      error:
+        error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Failed to mark announcement as read",
     };
   }
 };
@@ -167,5 +240,6 @@ export default {
   updateAnnouncement,
   deleteAnnouncement,
   getAnnouncementsBySubject,
+  getCalendarAnnouncements,
   markAnnouncementAsRead,
-}; 
+};

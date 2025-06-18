@@ -80,7 +80,10 @@ apiClient.interceptors.request.use(
     // If token exists, add to headers
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    } else {
+    } else if (
+      !config.url.includes("/auth/login") &&
+      !config.url.includes("/auth/signup")
+    ) {
       console.warn("No auth token found for request:", config.url);
     }
 
@@ -118,7 +121,6 @@ apiClient.interceptors.response.use(
         headers: originalRequest?.headers,
         withCredentials: originalRequest?.withCredentials,
       },
-      // Log additional error details for debugging
       message: error.message,
       code: error.code,
       name: error.name,
@@ -127,11 +129,15 @@ apiClient.interceptors.response.use(
 
     // Handle unauthorized error (401)
     if (error.response?.status === 401) {
-      console.warn("Unauthorized API request - clearing auth tokens");
-      // Clear tokens and trigger auth required event
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("refreshToken");
-      window.dispatchEvent(new CustomEvent("auth:required"));
+      // Don't clear token for login/signup requests
+      if (
+        !originalRequest?.url?.includes("/auth/login") &&
+        !originalRequest?.url?.includes("/auth/signup")
+      ) {
+        console.warn("Unauthorized API request - clearing auth tokens");
+        localStorage.removeItem("authToken");
+        window.dispatchEvent(new CustomEvent("auth:required"));
+      }
       return Promise.reject(error);
     }
 

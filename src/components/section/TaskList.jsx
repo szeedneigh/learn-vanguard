@@ -3,15 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
+import { formatDateTime } from "@/lib/calendarHelpers";
 import PropTypes from "prop-types";
-
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-  });
-};
 
 const TaskPreviewCard = ({ task }) => {
   // Handle both frontend and backend property naming conventions
@@ -26,7 +19,7 @@ const TaskPreviewCard = ({ task }) => {
         <p className="text-xs text-gray-500">{taskDescription}</p>
         <div className="flex items-center gap-1 text-gray-500 text-xs pt-1">
           <Calendar className="h-3 w-3" />
-          <span>{formatDate(taskDueDate)}</span>
+          <span>{formatDateTime(taskDueDate)}</span>
         </div>
       </CardContent>
     </Card>

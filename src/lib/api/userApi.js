@@ -324,27 +324,30 @@ export const uploadUserAvatar = async (file, onProgress = null) => {
 };
 
 /**
- * Assign PIO role to a user
- * @param {string} userId - User ID
- * @param {string} assignedClass - Class to assign to PIO
+ * Assigns PIO role to a user
+ * @param {string} userId - The ID of the user to make PIO
+ * @param {Object} data - The role assignment data
+ * @param {string} data.course - The course the PIO will be assigned to
+ * @param {string} data.yearLevel - The year level the PIO will be assigned to
  * @returns {Promise<Object>} Updated user
  */
-export const assignPIORole = async (userId, assignedClass) => {
+export const assignPIORole = async (userId, data) => {
   try {
     if (!userId) {
       throw new Error("User ID is required to assign PIO role");
     }
 
-    if (!assignedClass) {
-      throw new Error("Assigned class is required");
+    if (!data || !data.course || !data.yearLevel) {
+      throw new Error("Course and year level are required to assign PIO role");
     }
 
     console.log(
-      `API: Assigning PIO role to user ${userId} with class ${assignedClass}`
+      `API: Assigning PIO role to user ${userId} with course ${data.course} and year level ${data.yearLevel}`
     );
 
     const response = await apiClient.post(`/users/pio/${userId}`, {
-      assignedClass,
+      course: data.course,
+      yearLevel: data.yearLevel,
     });
 
     console.log("PIO role assignment response:", response.data);
@@ -426,6 +429,45 @@ export const revertPIORole = async (userId) => {
   }
 };
 
+/**
+ * Move student to different class
+ * @param {string} userId - User ID to move
+ * @param {Object} moveData - Move data containing targetCourse and targetYearLevel
+ * @returns {Promise<Object>} Move result
+ */
+export const moveStudent = async (userId, moveData) => {
+  try {
+    const response = await apiClient.put(`/users/move/${userId}`, moveData);
+    return {
+      data: response.data.user || response.data,
+      message: response.data.message || "Student moved successfully",
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error moving student:", error);
+    console.error("Error details:", {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+    });
+
+    // Extract the most useful error message
+    let errorMessage = "Failed to move student";
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    return {
+      data: null,
+      success: false,
+      error: errorMessage,
+    };
+  }
+};
+
 export default {
   getUsers,
   getUser,
@@ -440,4 +482,5 @@ export default {
   uploadUserAvatar,
   assignPIORole,
   revertPIORole,
+  moveStudent,
 };
