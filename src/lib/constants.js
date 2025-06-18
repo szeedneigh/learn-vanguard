@@ -81,6 +81,10 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EDIT_EVENT,
     PERMISSIONS.DELETE_EVENT,
 
+    // Archive permissions - full access
+    PERMISSIONS.VIEW_ARCHIVE,
+    PERMISSIONS.MANAGE_ARCHIVE,
+
     // User management - full access
     PERMISSIONS.VIEW_USERS,
     PERMISSIONS.CREATE_USER,
@@ -144,6 +148,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_TASKS,
     PERMISSIONS.COMPLETE_TASK,
     PERMISSIONS.EDIT_TASK,
+    PERMISSIONS.DELETE_TASK,
 
     // Event permissions - read only
     PERMISSIONS.VIEW_EVENTS,

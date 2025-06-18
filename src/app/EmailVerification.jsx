@@ -20,6 +20,18 @@ function EmailVerification() {
     userId && code ? "verifying" : "instructions"
   );
   const [errorMessage, setErrorMessage] = useState("");
+  const [canResend, setCanResend] = useState(true);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [resendSuccess, setResendSuccess] = useState(false);
+
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (resendTimer === 0 && !canResend) {
+      setCanResend(true);
+    }
+  }, [resendTimer, canResend]);
 
   useEffect(() => {
     const verifyEmailAddress = async () => {
@@ -47,10 +59,17 @@ function EmailVerification() {
   }, [userId, code, verifyEmail, navigate]);
 
   const handleResendVerification = async () => {
+    if (!canResend) return;
+
+    setCanResend(false);
+    setResendTimer(30); // 30 seconds cooldown
+    setResendSuccess(false);
+
     const result = await resendVerificationEmail();
 
     if (result.success) {
       setErrorMessage("");
+      setResendSuccess(true);
     } else {
       setErrorMessage(result.error || "Failed to send verification email.");
     }
@@ -107,6 +126,22 @@ function EmailVerification() {
                     <Alert variant="destructive" className="mb-4">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>{errorMessage}</AlertDescription>
+                    </Alert>
+                  </motion.div>
+                )}
+
+                {/* Success Message */}
+                {resendSuccess && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <Alert className="mb-4 bg-green-50 border-green-200">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <AlertDescription className="text-green-700">
+                        Verification email has been resent successfully.
+                      </AlertDescription>
                     </Alert>
                   </motion.div>
                 )}
@@ -172,13 +207,16 @@ function EmailVerification() {
 
                     <motion.button
                       onClick={handleResendVerification}
-                      disabled={isLoading}
-                      className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-600 
-                               text-white rounded-xl font-medium shadow-lg shadow-blue-500/10
+                      disabled={isLoading || !canResend}
+                      className={`w-full h-12 rounded-xl font-medium shadow-lg
                                flex items-center justify-center gap-2 relative overflow-hidden
-                               hover:shadow-blue-500/20 transition-all"
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
+                               transition-all ${
+                                 canResend
+                                   ? "bg-gradient-to-r from-blue-600 to-blue-600 text-white hover:shadow-blue-500/20"
+                                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                               }`}
+                      whileHover={canResend ? { scale: 1.01 } : {}}
+                      whileTap={canResend ? { scale: 0.98 } : {}}
                       transition={smoothTransition}
                     >
                       {isLoading ? (
@@ -191,8 +229,10 @@ function EmailVerification() {
                             ease: "linear",
                           }}
                         />
-                      ) : (
+                      ) : canResend ? (
                         "Resend Verification Email"
+                      ) : (
+                        `Resend available in ${resendTimer}s`
                       )}
                     </motion.button>
                   </motion.div>
@@ -211,20 +251,27 @@ function EmailVerification() {
                     <h2 className="text-xl font-semibold text-gray-800 mb-2">
                       Verify Your Email
                     </h2>
-                    <p className="text-gray-500 mb-6">
+                    <p className="text-gray-500 mb-2">
                       We&apos;ve sent a verification email to your address.
                       Please check your inbox and click the verification link.
+                    </p>
+                    <p className="text-gray-500 mb-6 text-sm">
+                      If you don&apos;t see the email in your inbox, please
+                      check your spam folder.
                     </p>
 
                     <motion.button
                       onClick={handleResendVerification}
-                      disabled={isLoading}
-                      className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-600 
-                               text-white rounded-xl font-medium shadow-lg shadow-blue-500/10
+                      disabled={isLoading || !canResend}
+                      className={`w-full h-12 rounded-xl font-medium shadow-lg
                                flex items-center justify-center gap-2 relative overflow-hidden
-                               hover:shadow-blue-500/20 transition-all"
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
+                               transition-all ${
+                                 canResend
+                                   ? "bg-gradient-to-r from-blue-600 to-blue-600 text-white hover:shadow-blue-500/20"
+                                   : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                               }`}
+                      whileHover={canResend ? { scale: 1.01 } : {}}
+                      whileTap={canResend ? { scale: 0.98 } : {}}
                       transition={smoothTransition}
                     >
                       {isLoading ? (
@@ -237,8 +284,10 @@ function EmailVerification() {
                             ease: "linear",
                           }}
                         />
-                      ) : (
+                      ) : canResend ? (
                         "Resend Verification Email"
+                      ) : (
+                        `Resend available in ${resendTimer}s`
                       )}
                     </motion.button>
 

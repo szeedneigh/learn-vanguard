@@ -1,5 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import {
+  CheckCircle,
+  AlertCircle,
+  Upload,
+  FileText,
+  Loader2,
+} from "lucide-react";
 
 export const UploadModal = ({
   isOpen,
@@ -14,7 +31,43 @@ export const UploadModal = ({
   const [selectedTopicState, setSelectedTopicState] = useState(null);
   const [topicsLoading, setTopicsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadSpeed, setUploadSpeed] = useState(0);
+  const [uploadError, setUploadError] = useState(null);
+  const [uploadComplete, setUploadComplete] = useState(false);
   const fileInputRef = useRef(null);
+  const uploadStartTime = useRef(null);
+  const uploadedBytes = useRef(0);
+
+  // Utility functions for upload progress
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const formatUploadSpeed = (bytesPerSecond) => {
+    if (bytesPerSecond === 0) return "0 KB/s";
+    const k = 1024;
+    const sizes = ["B/s", "KB/s", "MB/s", "GB/s"];
+    const i = Math.floor(Math.log(bytesPerSecond) / Math.log(k));
+    return (
+      parseFloat((bytesPerSecond / Math.pow(k, i)).toFixed(1)) + " " + sizes[i]
+    );
+  };
+
+  const resetUploadState = () => {
+    setUploadProgress(0);
+    setUploadStatus("");
+    setUploadSpeed(0);
+    setUploadError(null);
+    setUploadComplete(false);
+    uploadStartTime.current = null;
+    uploadedBytes.current = 0;
+  };
 
   // Use the selectedTopic prop if provided
   useEffect(() => {
@@ -39,10 +92,14 @@ export const UploadModal = ({
       setTopicsLoading(true);
       import("@/services/topicService")
         .then((topicService) => {
+          // Fetch all topics without pagination limit
           topicService
-            .getTopicsBySubject(subject.id)
+            .getTopicsBySubject(subject.id, { limit: 1000 }) // Set high limit to get all topics
             .then((result) => {
               if (result.success && result.data) {
+                console.log(
+                  `UploadModal: Fetched ${result.data.length} topics for subject ${subject.id}`
+                );
                 setTopics(result.data);
 
                 // If selectedTopicState exists and is from this subject, ensure it's selected
@@ -65,6 +122,7 @@ export const UploadModal = ({
                   }
                 }
               } else {
+                console.log("UploadModal: No topics found or fetch failed");
                 setTopics([]);
               }
             })
@@ -84,6 +142,8 @@ export const UploadModal = ({
       setTopics([]);
     }
   }, [subject]);
+
+  // Body scroll is handled by Dialog component automatically
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -120,6 +180,34 @@ export const UploadModal = ({
   const handleUpload = () => {
     if (file) {
       setIsUploading(true);
+      resetUploadState();
+      setUploadStatus("Preparing upload...");
+      uploadStartTime.current = Date.now();
+
+      // Create progress callback
+      const onProgress = (progressEvent) => {
+        if (progressEvent.lengthComputable) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percentCompleted);
+          uploadedBytes.current = progressEvent.loaded;
+
+          // Calculate upload speed
+          const elapsedTime = (Date.now() - uploadStartTime.current) / 1000;
+          if (elapsedTime > 0) {
+            const speed = progressEvent.loaded / elapsedTime;
+            setUploadSpeed(speed);
+          }
+
+          // Update status based on progress
+          if (percentCompleted < 100) {
+            setUploadStatus("Uploading...");
+          } else {
+            setUploadStatus("Processing...");
+          }
+        }
+      };
 
       onUpload(
         file,
@@ -128,22 +216,25 @@ export const UploadModal = ({
         // Success callback
         () => {
           console.log("Upload completed successfully, closing modal");
-          // Don't show toast here as it's already shown in Resources.jsx
+          setUploadProgress(100);
+          setUploadStatus("Upload Complete!");
+          setUploadComplete(true);
           setIsUploading(false);
 
-          // Close modal after success
-          handleClose();
+          // Close modal after a brief delay to show completion
+          setTimeout(() => {
+            handleClose();
+          }, 1500);
         },
         // Error callback
-        // eslint-disable-next-line no-unused-vars
         (error) => {
-          console.log("Upload failed, closing modal");
-          // Don't show toast here as it's already shown in Resources.jsx
+          console.log("Upload failed:", error);
+          setUploadError(error?.message || "Upload failed. Please try again.");
+          setUploadStatus("Upload Failed");
           setIsUploading(false);
-
-          // Also close the modal on error
-          onClose();
-        }
+        },
+        // Progress callback
+        onProgress
       );
     }
   };
@@ -155,33 +246,35 @@ export const UploadModal = ({
     setFile(null);
     setSelectedTopicState(null);
     setIsUploading(false);
+    resetUploadState();
     onClose();
   };
 
-  if (!isOpen) return null;
+  const handleModalClose = (open) => {
+    // Only call onClose when the dialog is closing and not uploading
+    if (!open && !isUploading) {
+      handleClose();
+    }
+  };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={!isUploading ? handleClose : undefined}
-    >
-      <div
-        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl font-semibold mb-4">Upload Resource</h2>
-        <div className="mb-4">
-          <p className="text-sm text-gray-500 mb-2">
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Upload Resource</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
             {subject ? `Uploading to: ${subject.name}` : "No subject selected"}
           </p>
 
           {subject && topics.length > 0 && (
-            <div className="mb-4">
+            <div>
               <label
                 htmlFor="topic-select"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Select Topic (Optional)
+                Select Topic
               </label>
               <select
                 id="topic-select"
@@ -220,16 +313,25 @@ export const UploadModal = ({
           >
             {file ? (
               <div>
-                <p className="text-green-600 font-medium">File selected:</p>
-                <p className="text-sm text-gray-600 mt-1 truncate max-w-full">
-                  {file.name}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                </p>
+                <div className="flex items-center justify-center mb-2">
+                  <FileText className="w-8 h-8 text-blue-500 mr-2 flex-shrink-0" />
+                  <div className="text-left flex-1 min-w-0">
+                    <p className="text-green-600 font-medium">File selected:</p>
+                    <p
+                      className="text-sm text-gray-600 truncate"
+                      style={{ maxWidth: "280px" }}
+                    >
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {formatFileSize(file.size)}
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <div>
+                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">
                   Drag and drop your file here, or click to select
                 </p>
@@ -246,31 +348,115 @@ export const UploadModal = ({
               disabled={isUploading}
             />
           </div>
+
+          {/* Upload Progress Section */}
+          {isUploading && (
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between mb-2 min-w-0">
+                <div className="flex items-center flex-1 min-w-0 mr-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-500 mr-2 flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-700 truncate">
+                    {uploadStatus}
+                  </span>
+                </div>
+                <span className="text-sm text-gray-500 flex-shrink-0">
+                  {uploadProgress}%
+                </span>
+              </div>
+
+              <Progress
+                value={uploadProgress}
+                className="mb-3"
+                variant={uploadComplete ? "success" : "default"}
+              />
+
+              <div className="flex items-center justify-between text-xs text-gray-500 min-w-0 gap-2">
+                <div className="flex-1 min-w-0">
+                  {file && (
+                    <span
+                      className="block truncate"
+                      style={{ maxWidth: "100%" }}
+                    >
+                      {file.name} ({formatFileSize(file.size)})
+                    </span>
+                  )}
+                </div>
+                {uploadSpeed > 0 && (
+                  <div className="flex-shrink-0">
+                    <span>{formatUploadSpeed(uploadSpeed)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Upload Error Section */}
+          {uploadError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center">
+                <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
+                <span className="text-sm text-red-700">{uploadError}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Upload Complete Section */}
+          {uploadComplete && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                <span className="text-sm text-green-700">
+                  File uploaded successfully!
+                </span>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="flex justify-end space-x-3">
-          <button
-            onClick={handleClose}
-            className={`px-4 py-2 text-sm border border-gray-300 rounded-md ${
-              isUploading ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
-            }`}
-            disabled={isUploading}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleUpload}
-            disabled={!file || !subject || isUploading}
-            className={`px-4 py-2 text-sm bg-blue-600 text-white rounded-md ${
-              !file || !subject || isUploading
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-blue-700"
-            }`}
-          >
-            {isUploading ? "Uploading..." : "Upload"}
-          </button>
-        </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button
+              variant="outline"
+              disabled={isUploading && !uploadComplete && !uploadError}
+            >
+              {uploadComplete ? "Close" : "Cancel"}
+            </Button>
+          </DialogClose>
+          {!uploadComplete && (
+            <Button
+              onClick={handleUpload}
+              disabled={!file || !subject || isUploading}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              loading={isUploading}
+            >
+              {isUploading ? (
+                <span className="flex items-center">
+                  {uploadProgress > 0
+                    ? `Uploading ${uploadProgress}%`
+                    : "Uploading..."}
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload
+                </span>
+              )}
+            </Button>
+          )}
+          {uploadError && (
+            <Button
+              onClick={() => {
+                setUploadError(null);
+                resetUploadState();
+              }}
+              variant="outline"
+              className="text-blue-600 border-blue-600 hover:bg-blue-50"
+            >
+              Try Again
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

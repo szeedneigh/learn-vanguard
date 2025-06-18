@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import HeroSection from "@/components/section/HeroSection";
 import TaskList from "@/components/section/TaskList";
 import { Calendar } from "@/components/ui/calendar";
@@ -12,6 +12,9 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import { useEvents } from "@/hooks/useEventsQuery";
+import { useTasks } from "@/hooks/useTasksQuery";
+import UpcomingDeadlines from "@/components/calendar/UpcomingDeadlines";
+import TaskDetailDialog from "@/components/calendar/TaskDetailDialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { format, isSameDay, parseISO } from "date-fns";
 
@@ -19,26 +22,71 @@ const Home = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isDateChanging, setIsDateChanging] = useState(false);
+
+  // Task-related state for upcoming deadlines
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
+
+  // Debounced date selection handler
+  const handleDateSelect = useCallback((date) => {
+    if (!date || isNaN(date.getTime())) {
+      console.error("Invalid date selected:", date);
+      return;
+    }
+
+    setIsDateChanging(true);
+    try {
+      setSelectedDate(date);
+    } catch (err) {
+      console.error("Error setting date:", err);
+      setError(new Error("Failed to update date"));
+    } finally {
+      // Reset the changing state after a short delay
+      setTimeout(() => setIsDateChanging(false), 300);
+    }
+  }, []);
 
   // Format the selected date for display
   const formattedDate = useMemo(() => {
-    return format(selectedDate, "MMMM d, yyyy");
+    try {
+      return format(selectedDate, "MMMM d, yyyy");
+    } catch (err) {
+      console.error("Error formatting date:", err);
+      return "Invalid date";
+    }
   }, [selectedDate]);
 
   // Get all events for the current month to show indicators
   const currentMonth = useMemo(() => {
-    const date = new Date(selectedDate);
-    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    return {
-      firstDay: firstDay.toISOString().split("T")[0],
-      lastDay: lastDay.toISOString().split("T")[0],
-    };
+    try {
+      const date = new Date(selectedDate);
+      if (isNaN(date.getTime())) {
+        throw new Error("Invalid date");
+      }
+      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      return {
+        firstDay: firstDay.toISOString().split("T")[0],
+        lastDay: lastDay.toISOString().split("T")[0],
+      };
+    } catch (err) {
+      console.error("Error calculating month range:", err);
+      return {
+        firstDay: format(new Date(), "yyyy-MM-dd"),
+        lastDay: format(new Date(), "yyyy-MM-dd"),
+      };
+    }
   }, [selectedDate]);
 
   // Format the selected date for API query
   const dateString = useMemo(() => {
-    return format(selectedDate, "yyyy-MM-dd");
+    try {
+      return format(selectedDate, "yyyy-MM-dd");
+    } catch (err) {
+      console.error("Error formatting date string:", err);
+      return format(new Date(), "yyyy-MM-dd");
+    }
   }, [selectedDate]);
 
   // Get events for the selected day
@@ -53,12 +101,12 @@ const Home = () => {
       endDate: dateString,
     },
     {
-      // Force refetch when the date changes
+      enabled: !isDateChanging, // Don't fetch while date is changing
       refetchOnMount: true,
       refetchOnWindowFocus: true,
-      cacheTime: 0, // Don't cache this query
-      staleTime: 0, // Consider data stale immediately
-      retry: 1, // Retry once if the request fails
+      cacheTime: 0,
+      staleTime: 0,
+      retry: 1,
       onSuccess: (data) => {
         console.log(
           `Successfully fetched ${data.length} events for ${dateString}`
@@ -72,8 +120,10 @@ const Home = () => {
 
   // Effect to refetch selected day events when date changes
   useEffect(() => {
-    refetchSelectedDayEvents();
-  }, [dateString, refetchSelectedDayEvents]);
+    if (!isDateChanging) {
+      refetchSelectedDayEvents();
+    }
+  }, [dateString, refetchSelectedDayEvents, isDateChanging]);
 
   const {
     data: monthEvents = [],
@@ -95,6 +145,92 @@ const Home = () => {
   useEffect(() => {
     refetchMonthEvents();
   }, [currentMonth, refetchMonthEvents]);
+
+  // Fetch tasks separately for upcoming deadlines view (excludes events)
+  const {
+    data: tasksResponse,
+    isLoading: tasksLoading,
+    isError: tasksIsError,
+  } = useTasks({ archived: "false" });
+
+  // Filter and sort the upcoming tasks - Only show Tasks, not Events
+  // Include overdue tasks to ensure they remain visible
+  const upcomingTasks = useMemo(() => {
+    // Create consistent date boundaries - start of today to end of 7 days from now
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
+    const sevenDaysLater = new Date(today);
+    sevenDaysLater.setDate(today.getDate() + 7);
+    sevenDaysLater.setHours(23, 59, 59, 999); // End of the 7th day
+
+    // The useTasks hook from useTasksQuery.js already selects data?.data || []
+    // So tasksResponse should be the array directly
+    const tasks = Array.isArray(tasksResponse) ? tasksResponse : [];
+
+    return tasks
+      .filter((task) => {
+        // Handle task deadline date
+        let taskDate;
+        if (task.taskDeadline) {
+          taskDate = new Date(task.taskDeadline);
+        } else if (task.date) {
+          taskDate = new Date(task.date + "T00:00:00");
+        } else {
+          return false;
+        }
+
+        // Check if task date is valid
+        if (isNaN(taskDate.getTime())) {
+          console.warn("Invalid task date:", task);
+          return false;
+        }
+
+        // Check if task is completed
+        const isNotCompleted =
+          task.taskStatus !== "Completed" && task.taskStatus !== "completed";
+
+        // Don't show completed tasks
+        if (!isNotCompleted) {
+          return false;
+        }
+
+        // Include tasks that are:
+        // 1. In the upcoming date range (today through next 7 days)
+        // 2. OR overdue (past due date but not completed)
+        const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
+        const isOverdue = taskDate < now;
+
+        return isInDateRange || isOverdue;
+      })
+      .sort((a, b) => {
+        const dateA = a.taskDeadline
+          ? new Date(a.taskDeadline)
+          : new Date(a.date);
+        const dateB = b.taskDeadline
+          ? new Date(b.taskDeadline)
+          : new Date(b.date);
+        return dateA - dateB;
+      })
+      .map((task) => ({
+        // Transform task to match the expected format for UpcomingDeadlines component
+        id: task._id,
+        title: task.taskName,
+        description: task.taskDescription,
+        // Don't strip time from date - keep full datetime for proper display
+        scheduleDate: task.taskDeadline,
+        dueDate: task.taskDeadline, // Also provide as dueDate for consistency
+        status: task.taskStatus,
+        priority: task.taskPriority,
+        course: "Personal", // Tasks are personal
+        type: "task",
+      }));
+  }, [tasksResponse]);
+
+  // Task click handler
+  const handleTaskClick = (task) => {
+    setSelectedTask(task);
+    setIsTaskDetailOpen(true);
+  };
 
   // Create a function to check if a date has events
   const hasEventOnDate = (date) => {
@@ -246,7 +382,7 @@ const Home = () => {
   }
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || tasksLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
@@ -290,6 +426,12 @@ const Home = () => {
               ? parseISO(event.scheduleDate)
               : new Date(event.scheduleDate);
 
+          // Validate the date
+          if (isNaN(eventDate.getTime())) {
+            console.error("Invalid event date:", event.scheduleDate);
+            return "Time not specified";
+          }
+
           return eventDate.toLocaleTimeString("en-US", {
             hour: "numeric",
             minute: "2-digit",
@@ -297,21 +439,29 @@ const Home = () => {
           });
         })();
 
+      // Validate the date for the formatted date
+      const eventDate =
+        typeof event.scheduleDate === "string"
+          ? parseISO(event.scheduleDate)
+          : new Date(event.scheduleDate);
+
+      const formattedDate = isNaN(eventDate.getTime())
+        ? "Invalid date"
+        : event._formattedDate || format(eventDate, "yyyy-MM-dd");
+
       return {
         id: event._id || event.id,
         title: event.title,
         time,
         type: event.label?.text?.toLowerCase() || event.type || "event",
-        date:
-          event._formattedDate ||
-          format(parseISO(event.scheduleDate), "yyyy-MM-dd"),
+        date: formattedDate,
       };
     } catch (err) {
       console.error("Error formatting event for display:", err, event);
       return {
         id: event._id || event.id,
         title: event.title,
-        time: "Invalid time",
+        time: "Time not specified",
         type: event.label?.text?.toLowerCase() || event.type || "event",
         date: "Invalid date",
       };
@@ -325,9 +475,10 @@ const Home = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           <div className="lg:col-span-2 space-y-8">
             <HeroSection />
-            <Card>
-              <TaskList />
-            </Card>
+            <UpcomingDeadlines
+              tasks={upcomingTasks}
+              onTaskClick={handleTaskClick}
+            />
           </div>
 
           <div className="space-y-6">
@@ -337,8 +488,9 @@ const Home = () => {
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    className="rounded-lg"
+                    onSelect={handleDateSelect}
+                    className="rounded-lg [&_.rdp-day_selected]:!bg-blue-600 [&_.rdp-day_selected]:!text-white [&_.rdp-day_selected]:!hover:bg-blue-700 [&_.rdp-day_selected]:!hover:text-white [&_.rdp-day_selected.hasEvent]:!text-white"
+                    disabled={isDateChanging}
                     modifiers={{
                       hasEvent: (date) => hasEventOnDate(date),
                     }}
@@ -346,7 +498,17 @@ const Home = () => {
                       hasEvent: {
                         fontWeight: "bold",
                         textDecoration: "underline",
-                        color: "var(--blue-600)",
+                        color: "rgb(37 99 235)",
+                      },
+                      selected: {
+                        backgroundColor: "rgb(37 99 235)",
+                        color: "white !important",
+                      },
+                      "selected.hasEvent": {
+                        backgroundColor: "rgb(37 99 235)",
+                        color: "white !important",
+                        textDecoration: "underline",
+                        fontWeight: "bold",
                       },
                     }}
                   />
@@ -358,20 +520,6 @@ const Home = () => {
                       Events on {formattedDate}
                     </h2>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          console.log(
-                            "Force refetching events for:",
-                            dateString
-                          );
-                          refetchSelectedDayEvents();
-                        }}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      >
-                        Refresh
-                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -459,6 +607,16 @@ const Home = () => {
             </Card>
           </div>
         </div>
+
+        {/* Task Detail Dialog */}
+        <TaskDetailDialog
+          task={selectedTask}
+          open={isTaskDetailOpen}
+          onOpenChange={setIsTaskDetailOpen}
+          onEdit={() => {}} // Tasks are read-only from home page
+          onDelete={() => {}} // Tasks are read-only from home page
+          isDeleting={false}
+        />
       </div>
     );
   } catch (err) {

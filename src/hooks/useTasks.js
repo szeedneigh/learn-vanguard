@@ -110,6 +110,10 @@ export const useTasks = (toast) => {
         };
       });
 
+      // Invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
       toast({
         title: "Task Created",
         description: "New task added successfully!",
@@ -155,6 +159,10 @@ export const useTasks = (toast) => {
       return { previousTasks };
     },
     onSuccess: (data, { taskId, taskData }) => {
+      // Invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
       toast({
         title: "Task Updated",
         description: "Task updated successfully!",
@@ -197,6 +205,10 @@ export const useTasks = (toast) => {
       return { previousTasks };
     },
     onSuccess: () => {
+      // Invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
       toast({
         title: "Task Deleted",
         description: "Task removed successfully!",
@@ -265,6 +277,7 @@ export const useTasks = (toast) => {
 
       // First invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
 
       return updateTaskMutation
         .mutateAsync({
@@ -279,6 +292,7 @@ export const useTasks = (toast) => {
           // Force a refetch to ensure the UI is up-to-date
           setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+            queryClient.invalidateQueries({ queryKey: queryKeys.events });
           }, 300);
           return result;
         });
@@ -290,6 +304,7 @@ export const useTasks = (toast) => {
     (taskId) => {
       // First invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
 
       return updateTaskMutation
         .mutateAsync({
@@ -304,6 +319,7 @@ export const useTasks = (toast) => {
           // Force a refetch to ensure the UI is up-to-date
           setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
+            queryClient.invalidateQueries({ queryKey: queryKeys.events });
           }, 300);
           return result;
         });

@@ -207,18 +207,20 @@ const addStudentAPI = async (studentId, programId, year) => {
 };
 
 // Mock function to assign PIO role - Replace with actual API call
-const assignRoleAPI = async (studentId, role, assignedClass) => {
+const assignRoleAPI = async (studentId, role, classInfo) => {
   try {
     console.log(
-      `API CALL: Assigning role ${role} to student ${studentId} with class ${assignedClass}`
+      `API CALL: Assigning role ${role} to student ${studentId}`,
+      classInfo
     );
 
     // Use the actual API function with proper ID handling
-    // The backend expects MongoDB ObjectId, but our mock data might have custom IDs
-    // In a real app, you'd use the _id property from the MongoDB document
     const userId = studentId._id || studentId;
 
-    const result = await assignPIORole(userId, assignedClass);
+    const result = await assignPIORole(userId, {
+      course: classInfo.course,
+      yearLevel: classInfo.yearLevel,
+    });
 
     if (!result.success) {
       throw new Error(result.error || "Failed to assign role");
@@ -272,9 +274,7 @@ const Users = () => {
   const [searchQuery, setSearchQuery] = useState(""); // For filtering the main student list
   const [filterOption, setFilterOption] = useState("all"); // 'all', 'pio', 'student'
   const [programs] = useState(programsData); // Could be fetched from API
-  const [selectedProgramId, setSelectedProgramId] = useState(
-    programsData[0].id
-  ); // Default to first program
+  const [selectedProgramId, setSelectedProgramId] = useState("bsis"); // Default to first program
   const [selectedYear, setSelectedYear] = useState("1"); // Default to year 1
 
   const [students, setStudents] = useState([]); // Students currently displayed for the selected program/year
@@ -323,6 +323,7 @@ const Users = () => {
 
   // Add toast
   const { toast } = useToast();
+  const assignPIOMutation = useAssignPIORole();
 
   // --- Derived State ---
   const currentProgram =
@@ -385,21 +386,16 @@ const Users = () => {
 
   // Handles selecting a program (from breadcrumb dropdown)
   const handleProgramChange = (programId) => {
-    if (programId !== selectedProgramId) {
-      setSelectedProgramId(programId);
-      setSelectedYear("1"); // Reset to year 1 when changing programs
-      setSearchQuery(""); // Clear search when changing context
-      setFilterOption("all"); // Reset filter
+    setSelectedProgramId(programId);
+    // Reset year if switching from BSIS (4 years) to ACT (2 years)
+    if (programId === "act" && selectedYear > 2) {
+      setSelectedYear("1");
     }
   };
 
   // Handles selecting a year tab
   const handleYearChange = (year) => {
-    if (year !== selectedYear) {
-      setSelectedYear(year);
-      setSearchQuery(""); // Clear search
-      setFilterOption("all"); // Reset filter
-    }
+    setSelectedYear(year);
   };
 
   // Filter and sort students for display
@@ -559,58 +555,51 @@ const Users = () => {
     setIsActionLoading(true);
     setError(null);
     try {
-      // Get the full program name and year level
-      const programName =
-        selectedProgramId === "bsis"
-          ? "Bachelor of Science in Information Systems"
-          : "Associate in Computer Technology";
-
-      const yearLevel = {
-        1: "First Year",
-        2: "Second Year",
-        3: "Third Year",
-        4: "Fourth Year",
-      }[selectedYear];
-
-      const assignedClass = `${programName} - ${yearLevel}`;
-
       // Use the MongoDB-style _id if available, otherwise fall back to the display id
       const userId = studentToAssignRole._id || studentToAssignRole.id;
 
       console.log("Assigning PIO role with:", {
         student: studentToAssignRole,
         userId,
-        assignedClass,
+        program: selectedProgramId,
+        yearLevel: selectedYear
       });
 
-      // Pass the MongoDB _id to the API
-      await assignRoleAPI(userId, "pio", assignedClass);
-
-      // Update the role in the local state
-      setStudents((prev) =>
-        prev.map((student) =>
-          student.id === studentToAssignRole.id
-            ? { ...student, role: "pio" }
-            : student
-        )
-      );
-
-      console.log(`${studentToAssignRole.name} has been assigned as PIO.`);
-      toast({
-        title: "Role Assigned",
-        description: `${studentToAssignRole.name} is now a PIO.`,
+      // Pass the parameters in the new format
+      const result = await assignPIOMutation.mutateAsync({
+        studentId: userId,
+        program: selectedProgramId,
+        yearLevel: selectedYear.toString()
       });
-      closeAssignRoleModal();
-    } catch (err) {
-      console.error("Error assigning role:", err);
-      setError(err.message || "Failed to assign role. Please try again.");
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `${studentToAssignRole.name} has been assigned as PIO.`
+        });
+
+        // Update the local state with the response data
+        setStudents((prev) =>
+          prev.map((student) =>
+            student.id === studentToAssignRole.id
+              ? { ...student, ...result.data }
+              : student
+          )
+        );
+      } else {
+        throw new Error(result.error || "Failed to assign PIO role");
+      }
+    } catch (error) {
+      console.error("Error assigning PIO role:", error);
+      setError(error.message);
       toast({
         title: "Error",
-        description: err.message || "Failed to assign role.",
-        variant: "destructive",
+        description: error.message || "Failed to assign PIO role",
+        variant: "destructive"
       });
     } finally {
       setIsActionLoading(false);
+      onCloseDialog();
     }
   };
 
@@ -1173,61 +1162,92 @@ const Users = () => {
       </Dialog>
       {/* Assign Role Modal - Modified to handle both assigning PIO and reverting to student */}
       <Dialog open={showAssignRoleModal} onOpenChange={setShowAssignRoleModal}>
-        <DialogContent
-          className="sm:max-w-md"
-          aria-describedby="assign-role-description"
-        >
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">
+            <DialogTitle>
               {studentToAssignRole?.role === "pio"
                 ? "Revert to Student"
                 : "Assign PIO Role"}
             </DialogTitle>
-            <DialogDescription
-              id="assign-role-description"
-              className="py-4 text-gray-600"
-            >
-              {studentToAssignRole?.role === "pio" ? (
-                <>
-                  Are you sure you want to revert{" "}
-                  <span className="font-medium">{studentToAssignRole?.name}</span>{" "}
-                  ({studentToAssignRole?.id}) back to a regular student?
-                </>
-              ) : (
-                <>
-                  Are you sure you want to assign{" "}
-                  <span className="font-medium">{studentToAssignRole?.name}</span>{" "}
-                  ({studentToAssignRole?.id}) as a PIO (Public Information
-                  Officer)?
-                </>
-              )}
+            <DialogDescription>
+              {studentToAssignRole?.role === "pio"
+                ? "Are you sure you want to revert this PIO back to a student?"
+                : "Select the class to assign this student as PIO."}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+
+          {studentToAssignRole?.role !== "pio" && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="program" className="text-sm font-medium">
+                    Program
+                  </label>
+                  <Select
+                    value={selectedProgramId}
+                    onValueChange={handleProgramChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select program" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bsis">BS Information Systems</SelectItem>
+                      <SelectItem value="act">Associate in Computer Technology</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label htmlFor="yearLevel" className="text-sm font-medium">
+                    Year Level
+                  </label>
+                  <Select
+                    value={selectedYear.toString()}
+                    onValueChange={handleYearChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select year level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">First Year</SelectItem>
+                      <SelectItem value="2">Second Year</SelectItem>
+                      {selectedProgramId === "bsis" && (
+                        <>
+                          <SelectItem value="3">Third Year</SelectItem>
+                          <SelectItem value="4">Fourth Year</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-sm">{error}</div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
             <Button
               variant="outline"
-              onClick={closeAssignRoleModal}
-              className="w-full sm:w-auto border-gray-300"
+              onClick={onCloseDialog}
               disabled={isActionLoading}
             >
               Cancel
             </Button>
             <Button
-              onClick={
-                studentToAssignRole?.role === "pio"
-                  ? handleRevertToStudent
-                  : handleAssignRole
-              }
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={studentToAssignRole?.role === "pio" ? handleRevertRole : handleAssignRole}
               disabled={isActionLoading}
             >
-              {isActionLoading
-                ? studentToAssignRole?.role === "pio"
-                  ? "Reverting..."
-                  : "Assigning..."
-                : studentToAssignRole?.role === "pio"
-                ? "Revert to Student"
-                : "Assign Role"}
+              {isActionLoading ? (
+                <span className="flex items-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {studentToAssignRole?.role === "pio" ? "Reverting..." : "Assigning..."}
+                </span>
+              ) : (
+                studentToAssignRole?.role === "pio" ? "Revert to Student" : "Assign as PIO"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

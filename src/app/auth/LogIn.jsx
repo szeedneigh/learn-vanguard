@@ -1,13 +1,13 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { motion, AnimatePresence } from "framer-motion";
 import { EyeIcon, EyeOffIcon, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Lock } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
-import GoogleRegistration from "./GoogleRegistration";
-import { getCurrentUserToken } from "@/config/firebase";
+import { useAuth } from "@/context/AuthContext";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const smoothTransition = {
   type: "spring",
@@ -109,7 +109,7 @@ FloatingLabelInput.propTypes = {
  */
 const PasswordInput = React.memo(({ id, label, value, onChange, error }) => {
   const [showPassword, setShowPassword] = useState(false);
-  const togglePasswordVisibility = useCallback(
+  const togglePasswordVisibility = React.useCallback(
     () => setShowPassword((prev) => !prev),
     []
   );
@@ -178,7 +178,14 @@ PasswordInput.propTypes = {
  */
 export default function LogIn() {
   const navigate = useNavigate();
-  const { login, loginWithGoogle, isLoading: authIsLoading } = useAuth();
+  const { toast } = useToast();
+  const {
+    login,
+    loginWithGoogle,
+    isLoading: authIsLoading,
+    user,
+    loading,
+  } = useAuth();
   const [formErrors, setFormErrors] = useState({});
   const [apiError, setApiError] = useState(null);
   const [formData, setFormData] = useState({
@@ -186,11 +193,12 @@ export default function LogIn() {
     password: "",
   });
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [showGoogleRegistration, setShowGoogleRegistration] = useState(false);
-  const [googleRegistrationData, setGoogleRegistrationData] = useState({
-    email: "",
-    idToken: "",
-  });
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const validateForm = () => {
     const errors = {};
@@ -262,31 +270,27 @@ export default function LogIn() {
     setIsGoogleLoading(true);
 
     try {
-      // Use redirect method (true) to avoid popup blocking issues
-      const result = await loginWithGoogle(true);
+      const result = await loginWithGoogle();
 
       if (result?.success) {
-        // Wait a moment to ensure auth state is updated
+        if (result.user) {
+          queryClient.setQueryData(["user"], result.user);
+        }
         setTimeout(() => {
           navigate("/dashboard");
         }, 500);
       } else if (result?.needsRegistration) {
-        // Get the Firebase ID token for registration
-        const idToken = await getCurrentUserToken();
-
-        if (idToken && result.email) {
-          // Show the Google registration form
-          setGoogleRegistrationData({
-            email: result.email,
-            idToken: idToken,
-          });
-          setShowGoogleRegistration(true);
-        } else {
-          setApiError("Failed to get authentication token for registration.");
-        }
-      } else if (result?.inProgress) {
-        // Redirect is in progress, show a message
-        setApiError("Redirecting to Google sign-in...");
+        // Instead of showing registration form, direct user to sign up page
+        toast({
+          title: "Account Required",
+          description: "No account found for this email. Please sign up first.",
+          variant: "destructive",
+        });
+        navigate("/signup");
+      } else if (result?.tokenExpired) {
+        setApiError(
+          "Your session has expired. Please sign in with Google again."
+        );
       } else {
         setApiError(
           result?.error || "Google sign-in failed. Please try again."
@@ -300,35 +304,13 @@ export default function LogIn() {
     }
   };
 
-  // Handle successful Google registration
-  const handleGoogleRegistrationSuccess = (result) => {
-    if (result.success) {
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 500);
-    } else {
-      setApiError("Registration failed. Please try again.");
-      setShowGoogleRegistration(false);
-    }
-  };
-
-  // Handle Google registration cancellation
-  const handleGoogleRegistrationCancel = () => {
-    setShowGoogleRegistration(false);
-    setGoogleRegistrationData({ email: "", idToken: "" });
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/95 via-indigo-50/95 to-violet-50/95 backdrop-blur-sm">
       <div className="flex flex-col lg:flex-row min-h-screen">
-        <motion.div
-          className="w-full lg:w-1/2 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-        >
-          {/* Back link */}
+        {/* Left Side - Login Form */}
+        <motion.div className="w-full lg:w-1/2 flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-8">
           <div className="max-w-md mx-auto w-full space-y-6">
+            {/* Back link */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -343,181 +325,178 @@ export default function LogIn() {
               </Link>
             </motion.div>
 
-            {/* Form card */}
-            <AnimatePresence mode="wait">
-              {showGoogleRegistration ? (
-                <GoogleRegistration
-                  email={googleRegistrationData.email}
-                  idToken={googleRegistrationData.idToken}
-                  onSuccess={handleGoogleRegistrationSuccess}
-                  onCancel={handleGoogleRegistrationCancel}
-                />
-              ) : (
+            {/* Main content */}
+            <motion.div
+              key="loginForm"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {apiError && (
                 <motion.div
-                  key="loginForm"
-                  initial={{ opacity: 0, y: -20 }}
+                  initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, y: -10 }}
                 >
-                  {apiError && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                    >
-                      <Alert
-                        variant="destructive"
-                        className="shadow-lg"
-                        role="alert"
-                        aria-live="assertive"
-                      >
-                        <AlertDescription>{apiError}</AlertDescription>
-                      </Alert>
-                    </motion.div>
-                  )}
-
-                  <div className="text-center space-y-2 mb-6">
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
-                      Welcome back
-                    </h1>
-                    <p className="text-gray-600 text-sm">
-                      Don&apos;t have an account?{" "}
-                      <Link
-                        to="/signup"
-                        className="text-blue-600 font-medium hover:text-blue-700"
-                      >
-                        Sign up
-                      </Link>
-                    </p>
-                  </div>
-
-                  <form
-                    onSubmit={handleSubmit}
-                    className="space-y-5"
-                    noValidate
+                  <Alert
+                    variant="destructive"
+                    className="shadow-lg"
+                    role="alert"
+                    aria-live="assertive"
                   >
-                    {/* Email/Username */}
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <FloatingLabelInput
-                        id="emailOrUsername"
-                        label="Email or Username"
-                        value={formData.emailOrUsername}
-                        onChange={handleChange("emailOrUsername")}
-                        required
-                        icon={User}
-                        error={formErrors.emailOrUsername}
-                      />
-                      <p className="text-xs text-gray-500 mt-1 pl-3.5">
-                        For email login, use your @student.laverdad.edu.ph
-                        address
-                      </p>
-                    </motion.div>
+                    <AlertDescription>{apiError}</AlertDescription>
+                  </Alert>
+                </motion.div>
+              )}
 
-                    {/* Password */}
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <PasswordInput
-                        id="password"
-                        label="Password"
-                        value={formData.password}
-                        onChange={handleChange("password")}
-                        error={formErrors.password}
-                      />
-                    </motion.div>
+              <div className="text-center space-y-2 mb-6">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
+                  Welcome back
+                </h1>
+                <p className="text-gray-600 text-sm">
+                  Don&apos;t have an account?{" "}
+                  <Link
+                    to="/signup"
+                    className="text-blue-600 font-medium hover:text-blue-700"
+                  >
+                    Sign up
+                  </Link>
+                </p>
+              </div>
 
-                    {/* Forgot password */}
-                    <motion.div
-                      className="flex justify-end"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <Link
-                        to="/forgot-password"
-                        className="text-sm text-blue-600 hover:text-blue-700"
-                      >
-                        Forgot your password?
-                      </Link>
-                    </motion.div>
+              <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+                {/* Email/Username */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <FloatingLabelInput
+                    id="emailOrUsername"
+                    label="Email or Username"
+                    value={formData.emailOrUsername}
+                    onChange={handleChange("emailOrUsername")}
+                    required
+                    icon={User}
+                    error={formErrors.emailOrUsername}
+                  />
+                  <p className="text-xs text-gray-500 mt-1 pl-3.5">
+                    For email login, use your @student.laverdad.edu.ph address
+                  </p>
+                </motion.div>
 
-                    {/* Sign in button */}
-                    <motion.div
-                      className="mt-6"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.6 }}
-                    >
-                      <button
-                        type="submit"
-                        disabled={authIsLoading}
-                        className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
-                      >
-                        {authIsLoading ? (
-                          <>
-                            <svg
-                              className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              />
-                            </svg>
-                            Signing In...
-                          </>
-                        ) : (
-                          "Sign In"
-                        )}
-                      </button>
-                    </motion.div>
+                {/* Password */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <PasswordInput
+                    id="password"
+                    label="Password"
+                    value={formData.password}
+                    onChange={handleChange("password")}
+                    error={formErrors.password}
+                  />
+                </motion.div>
 
-                    {/* Or continue with Google (or other) */}
-                    <motion.div
-                      className="relative text-center my-6"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.6 }}
-                    >
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
-                      </div>
-                      <div className="relative z-10 px-2 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 text-sm text-gray-500">
-                        Or continue with
-                      </div>
-                    </motion.div>
+                {/* Forgot password */}
+                <motion.div
+                  className="flex justify-end"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    Forgot your password?
+                  </Link>
+                </motion.div>
 
-                    <motion.button
-                      onClick={handleGoogleSignIn}
-                      disabled={isGoogleLoading || authIsLoading}
-                      className="w-full h-12 border border-gray-300 text-gray-700 rounded-lg font-medium flex items-center justify-center gap-2 shadow-sm hover:border-gray-400 hover:shadow-md bg-white relative transition-all duration-300"
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.98 }}
+                {/* Sign in button */}
+                <motion.div
+                  className="mt-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                >
+                  <button
+                    type="submit"
+                    disabled={authIsLoading}
+                    className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+                  >
+                    {authIsLoading ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Signing In...
+                      </>
+                    ) : (
+                      "Sign In"
+                    )}
+                  </button>
+                </motion.div>
+
+                {/* Or continue with Google (or other) */}
+                <motion.div
+                  className="relative text-center my-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative z-10 px-2 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 text-sm text-gray-500">
+                    Or continue with
+                  </div>
+                </motion.div>
+
+                {/* Google Sign-in Button */}
+                <motion.button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleLoading}
+                  className="w-full h-12 bg-white text-gray-700 rounded-xl font-medium shadow-lg
+                                 flex items-center justify-center gap-2 relative overflow-hidden
+                                 hover:shadow-gray-200/50 transition-all border border-gray-200"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={smoothTransition}
+                >
+                  {isGoogleLoading ? (
+                    <motion.div
+                      className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
                       transition={{
-                        type: "spring",
-                        stiffness: 260,
-                        damping: 25,
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
                       }}
-                    >
-                      {/* SVG Google icon */}
+                    />
+                  ) : (
+                    <>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
@@ -540,21 +519,16 @@ export default function LogIn() {
                           fill="#EA4335"
                         />
                       </svg>
-                      <span>
-                        {isGoogleLoading
-                          ? "Processing..."
-                          : "Sign in or Sign up with Google"}
-                      </span>
-                      <div className="absolute inset-0 bg-black/5 opacity-0 hover:opacity-100 transition-opacity rounded-lg" />
-                    </motion.button>
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Google sign-in is restricted to @student.laverdad.edu.ph
-                      accounts
-                    </p>
-                  </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      Sign in with Google
+                    </>
+                  )}
+                </motion.button>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Google sign-in is restricted to @student.laverdad.edu.ph
+                  accounts
+                </p>
+              </form>
+            </motion.div>
           </div>
         </motion.div>
 
@@ -571,9 +545,9 @@ export default function LogIn() {
           >
             <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-blue-600/30 to-blue-600/30 backdrop-blur-sm" />
             <img
-              src="/images/headLogo.png"
-              alt="Logo"
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1/2 drop-shadow-xl"
+              src="/images/LearnVanguard_LOGO.png"
+              alt="Learn Vanguard Logo"
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/5 max-w-[600px] drop-shadow-xl"
             />
           </div>
         </motion.div>

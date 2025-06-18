@@ -19,7 +19,7 @@ export const useTasks = (filters = {}, options = {}) => {
   console.log("useTasks hook called with filters:", filters);
 
   return useQuery({
-    queryKey: queryKeys.tasks.concat([filters]),
+    queryKey: [...queryKeys.tasks, filters],
     queryFn: () => getTasks(filters),
     select: (data) => data?.data || [],
     ...options,
@@ -64,7 +64,7 @@ export const useCreateTask = () => {
       const apiTaskData = {
         taskName: taskData.name,
         taskDescription: taskData.description,
-        taskDeadline: taskData.dueDate,
+        taskDeadline: taskData.taskDeadline || taskData.dueDate, // Support both new datetime and legacy date
         taskPriority:
           taskData.priority === "High"
             ? "High Priority"
@@ -89,6 +89,10 @@ export const useCreateTask = () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      // Invalidate any other task-related queries
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
       toast({
         title: "Success",
@@ -114,14 +118,27 @@ export const useUpdateTask = () => {
 
   return useMutation({
     mutationFn: ({ taskId, taskData }) => {
+      // Ensure we have a valid task ID
+      if (!taskId && taskData.id) {
+        taskId = taskData.id;
+      }
+
+      console.log("Updating task with ID:", taskId, "and data:", taskData);
+
+      if (!taskId) {
+        throw new Error("Task ID is required for updating a task");
+      }
+
       // Map the form data to the API expected format
       const apiTaskData = {};
 
       if (taskData.name !== undefined) apiTaskData.taskName = taskData.name;
       if (taskData.description !== undefined)
         apiTaskData.taskDescription = taskData.description;
-      if (taskData.dueDate !== undefined)
-        apiTaskData.taskDeadline = taskData.dueDate;
+      if (taskData.taskDeadline !== undefined)
+        apiTaskData.taskDeadline = taskData.taskDeadline;
+      else if (taskData.dueDate !== undefined)
+        apiTaskData.taskDeadline = taskData.dueDate; // Backward compatibility
 
       // Handle priority conversion
       if (taskData.priority !== undefined) {
@@ -157,14 +174,18 @@ export const useUpdateTask = () => {
 
       return updateTask(taskId, apiTaskData);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      // Invalidate any other task-related queries
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
       toast({
         title: "Success",
-        description: data.message || "Task updated successfully",
+        description: "Task updated successfully",
       });
     },
     onError: (error) => {
@@ -186,14 +207,18 @@ export const useDeleteTask = () => {
 
   return useMutation({
     mutationFn: (taskId) => deleteTask(taskId),
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks for upcoming deadlines
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
+      // Invalidate any other task-related queries
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
       toast({
         title: "Success",
-        description: data.message || "Task deleted successfully",
+        description: "Task deleted successfully",
       });
     },
     onError: (error) => {
@@ -231,10 +256,12 @@ export const useUpdateTaskStatus = () => {
       }
       return updateTask(taskId, updateData);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
 
       toast({
         title: "Success",
@@ -264,6 +291,8 @@ export const useArchiveTask = () => {
       // Invalidate and refetch tasks queries
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
       queryClient.invalidateQueries({ queryKey: queryKeys.taskSummary });
+      // Also invalidate events queries since they include tasks
+      queryClient.invalidateQueries({ queryKey: queryKeys.events });
 
       toast({
         title: "Success",

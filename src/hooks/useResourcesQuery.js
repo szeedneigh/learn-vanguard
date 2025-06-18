@@ -248,7 +248,13 @@ export const useFileUpload = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ file, resourceData, onSuccess, onError }) => {
+    mutationFn: async ({
+      file,
+      resourceData,
+      onSuccess,
+      onError,
+      onProgress,
+    }) => {
       const formData = new FormData();
       formData.append("file", file);
 
@@ -263,7 +269,7 @@ export const useFileUpload = () => {
       formData.append("isPublic", "true");
 
       try {
-        const result = await uploadResource(formData);
+        const result = await uploadResource(formData, onProgress);
 
         // Call the success callback if provided
         if (onSuccess && typeof onSuccess === "function") {
