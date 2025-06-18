@@ -75,6 +75,17 @@ As pioneers in educational technology, "Vanguard" embodies our dedication to:
 [<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/react/react-original.svg" width="48" height="48" alt="React" />](https://reactjs.org/)
 [<img src="https://skillicons.dev/icons?i=tailwind" width="48" height="48" alt="Tailwind" />](https://tailwindcss.com/)
 
+### Backend Core
+[<img src="https://skillicons.dev/icons?i=nodejs" width="48" height="48" alt="Node.js" />](https://nodejs.org/)
+[<img src="https://skillicons.dev/icons?i=express" width="48" height="48" alt="Express.js" />](https://expressjs.com/)
+[<img src="https://skillicons.dev/icons?i=mongodb" width="48" height="48" alt="MongoDB" />](https://www.mongodb.com/)
+[<img src="https://skillicons.dev/icons?i=firebase" width="48" height="48" alt="Firebase" />](https://firebase.google.com/)
+
+### Cloud & Services
+[<img src="https://skillicons.dev/icons?i=cloudflare" width="48" height="48" alt="Cloudinary" />](https://cloudinary.com/)
+[<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/socketio/socketio-original.svg" width="48" height="48" alt="Socket.io" />](https://socket.io/)
+[<img src="https://jwt.io/img/pic_logo.svg" width="48" height="48" alt="JWT" />](https://jwt.io/)
+
 ### Design & UI
 [<img src="https://skillicons.dev/icons?i=figma" width="48" height="48" alt="Figma" />](https://www.figma.com/)
 [<img src="https://ui.shadcn.com/favicon.ico" width="48" height="48" alt="shadcn/ui" />](https://ui.shadcn.com/)
