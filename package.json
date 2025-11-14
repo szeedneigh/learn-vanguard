@@ -37,6 +37,7 @@
     "axios": "^1.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "dayjs": "^1.11.13",
     "firebase": "^11.8.1",
@@ -57,7 +58,11 @@
   },
   "devDependencies": {
     "@axe-core/react": "^4.11.0",
+    "@chromatic-com/storybook": "^4.1.2",
     "@eslint/js": "^9.13.0",
+    "@storybook/addon-docs": "^10.0.7",
+    "@storybook/addon-onboarding": "^10.0.7",
+    "@storybook/react-vite": "^10.0.7",
     "@tanstack/react-query-devtools": "^5.77.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
@@ -67,17 +72,13 @@
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
+    "eslint-plugin-storybook": "^10.0.7",
     "globals": "^15.11.0",
     "postcss": "^8.4.49",
+    "prop-types": "^15.8.1",
+    "storybook": "^10.0.7",
     "tailwindcss": "^3.4.16",
     "ts-node": "^10.9.2",
-    "vite": "^5.4.10",
-    "storybook": "^10.0.7",
-    "@storybook/react-vite": "^10.0.7",
-    "@chromatic-com/storybook": "^4.1.2",
-    "@storybook/addon-docs": "^10.0.7",
-    "@storybook/addon-onboarding": "^10.0.7",
-    "prop-types": "^15.8.1",
-    "eslint-plugin-storybook": "^10.0.7"
+    "vite": "^5.4.10"
   }
 }

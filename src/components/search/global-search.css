@@ -1,0 +1,109 @@
+/**
+ * GLOBAL SEARCH STYLES
+ * Styles for the command palette (Cmd+K)
+ */
+
+.global-search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 1rem 1rem;
+}
+
+.global-search-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.global-search-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  background-color: hsl(var(--background));
+  border-radius: 12px;
+  box-shadow: var(--shadow-xl);
+  animation: slideDown 0.2s ease-out;
+  border: 1px solid hsl(var(--border));
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Command group heading */
+[cmdk-group-heading] {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Command item */
+[cmdk-item] {
+  outline: none;
+}
+
+/* Command list */
+[cmdk-list] {
+  outline: none;
+}
+
+/* Command separator */
+[cmdk-separator] {
+  height: 1px;
+  background-color: hsl(var(--border));
+  margin: 0.5rem 0;
+}
+
+/* Dark mode adjustments */
+.dark .global-search-dialog {
+  background-color: hsl(var(--card));
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .global-search-overlay {
+    padding-top: 2rem;
+  }
+
+  .global-search-dialog {
+    margin: 0;
+    max-width: calc(100% - 2rem);
+  }
+}
+
+/* Focus visible support */
+@media (prefers-reduced-motion: reduce) {
+  .global-search-dialog {
+    animation: none;
+  }
+
+  .global-search-backdrop {
+    animation: none;
+  }
+}
