@@ -3,6 +3,7 @@ import { Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfileModal from "../modal/ProfileModal";
 import NotificationPopup from "../modal/NotificationPopup";
+import GlobalSearch from "@/components/search/GlobalSearch";
 import { useAuth } from "@/context/AuthContext";
 import PropTypes from "prop-types";
 import {
@@ -205,7 +206,7 @@ const Topbar = memo(({ onMenuClick }) => {
 
   return (
     <div className="bg-white shadow-sm px-4 sm:px-6 py-4 sticky top-0 z-40">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-4">
         {/* Left side - Menu button on mobile */}
         <div className="flex items-center">
           {isMobile && (
@@ -217,6 +218,11 @@ const Topbar = memo(({ onMenuClick }) => {
               <Menu className="h-5 w-5 text-gray-600" />
             </button>
           )}
+        </div>
+
+        {/* Center - Global Search (desktop only) */}
+        <div className="flex-1 max-w-md hidden md:block">
+          <GlobalSearch />
         </div>
 
         {/* Right side - Notifications, profile */}
