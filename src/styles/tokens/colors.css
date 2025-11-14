@@ -1,0 +1,200 @@
+/**
+ * COLOR TOKENS
+ * Enhanced semantic color system with educational theme
+ * Maintains existing shadcn/ui color variables while adding new ones
+ */
+
+@layer base {
+  :root {
+    /* Base Colors - Light Mode */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    /* Surface Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Brand Colors */
+    --primary: 221.2 83.2% 53.3%;      /* Blue - main brand color */
+    --primary-foreground: 210 40% 98%;
+    --primary-hover: 221.2 83.2% 45%;   /* Darker on hover */
+    --primary-active: 221.2 83.2% 40%;  /* Even darker on active */
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary-hover: 210 40% 92%;
+
+    /* Semantic Colors */
+    --success: 142 76% 36%;             /* Green - for positive actions */
+    --success-foreground: 0 0% 100%;
+    --success-light: 142 76% 96%;       /* Light background for success states */
+
+    --warning: 38 92% 50%;              /* Orange - for warnings */
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 95%;
+
+    --error: 0 84.2% 60.2%;             /* Red - for errors */
+    --error-foreground: 210 40% 98%;
+    --error-light: 0 84.2% 97%;
+
+    --info: 199 89% 48%;                /* Cyan - for informational */
+    --info-foreground: 0 0% 100%;
+    --info-light: 199 89% 96%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Neutral Colors */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    /* Border & Input */
+    --border: 214.3 31.8% 91.4%;
+    --border-strong: 214.3 31.8% 80%;   /* Stronger borders */
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+
+    /* Educational Theme Colors */
+    --learning: 142 76% 36%;            /* Green - learning/growth */
+    --achievement: 45 93% 47%;          /* Gold - achievements/badges */
+    --resource: 221.2 83.2% 53.3%;      /* Blue - resources */
+    --task: 271 91% 65%;                /* Purple - tasks */
+    --event: 338 78% 56%;               /* Pink - events */
+    --deadline: 0 84.2% 60.2%;          /* Red - deadlines */
+
+    /* Chart Colors - Enhanced for data visualization */
+    --chart-1: 221.2 83.2% 53.3%;       /* Blue */
+    --chart-2: 142 76% 36%;             /* Green */
+    --chart-3: 271 91% 65%;             /* Purple */
+    --chart-4: 38 92% 50%;              /* Orange */
+    --chart-5: 338 78% 56%;             /* Pink */
+    --chart-6: 199 89% 48%;             /* Cyan */
+
+    /* Elevation/Shadow colors */
+    --shadow-color: 222.2 84% 4.9%;
+    --shadow-opacity-sm: 0.05;
+    --shadow-opacity-md: 0.1;
+    --shadow-opacity-lg: 0.15;
+    --shadow-opacity-xl: 0.2;
+
+    /* Interactive States */
+    --hover-overlay: 0 0% 0%;
+    --hover-opacity: 0.04;
+    --active-overlay: 0 0% 0%;
+    --active-opacity: 0.08;
+    --focus-ring-width: 2px;
+    --focus-ring-offset: 2px;
+
+    /* Radius */
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+    --radius-full: 9999px;
+  }
+
+  /* Dark Mode Colors */
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    /* Surface Colors */
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Brand Colors */
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-hover: 217.2 91.2% 65%;
+    --primary-active: 217.2 91.2% 70%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --secondary-hover: 217.2 32.6% 22%;
+
+    /* Semantic Colors - Dark Mode */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 142 70% 15%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 15%;
+
+    --error: 0 72% 51%;
+    --error-foreground: 210 40% 98%;
+    --error-light: 0 72% 15%;
+
+    --info: 199 89% 55%;
+    --info-foreground: 0 0% 100%;
+    --info-light: 199 89% 15%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Neutral Colors */
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Border & Input */
+    --border: 217.2 32.6% 17.5%;
+    --border-strong: 217.2 32.6% 25%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    /* Educational Theme Colors - Dark Mode */
+    --learning: 142 70% 45%;
+    --achievement: 45 93% 55%;
+    --resource: 217.2 91.2% 59.8%;
+    --task: 271 91% 70%;
+    --event: 338 78% 60%;
+    --deadline: 0 72% 51%;
+
+    /* Chart Colors - Dark Mode */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --chart-6: 199 89% 55%;
+
+    /* Elevation/Shadow colors - Dark Mode */
+    --shadow-color: 0 0% 0%;
+    --shadow-opacity-sm: 0.2;
+    --shadow-opacity-md: 0.3;
+    --shadow-opacity-lg: 0.4;
+    --shadow-opacity-xl: 0.5;
+
+    /* Interactive States */
+    --hover-overlay: 255 255% 255%;
+    --hover-opacity: 0.08;
+    --active-overlay: 255 255% 255%;
+    --active-opacity: 0.12;
+  }
+
+  /* High Contrast Mode - for accessibility */
+  .high-contrast {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --primary: 221.2 100% 40%;
+    --border: 0 0% 0%;
+    --border-strong: 0 0% 0%;
+  }
+
+  .high-contrast.dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --primary: 221.2 100% 70%;
+    --border: 0 0% 100%;
+    --border-strong: 0 0% 100%;
+  }
+}

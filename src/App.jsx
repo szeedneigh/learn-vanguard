@@ -1,17 +1,30 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "@/components/ui/toaster";
-import LandingPage from "./app/pages/LandingPage";
-import SignUp from "./app/auth/SignUp";
-import LogIn from "./app/auth/LogIn";
-import Dashboard from "./app/pages/Dashboard";
-import NotFound from "./app/pages/NotFound";
-import ForgotPassword from "./app/auth/ForgotPassword";
-import ProtectedRoute from "./app/auth/ProtectedRoute";
-import UnauthorizedPage from "./app/pages/UnauthorizedPage";
 import ErrorBoundary from "./components/error/ErrorBoundary";
-import EmailVerification from "./app/EmailVerification";
-import React, { useEffect } from "react";
+import SkipNav from "./components/accessibility/SkipNav";
+import React, { lazy, Suspense, useEffect } from "react";
+
+// Code splitting - lazy load routes
+const LandingPage = lazy(() => import("./app/pages/LandingPage"));
+const SignUp = lazy(() => import("./app/auth/SignUp"));
+const LogIn = lazy(() => import("./app/auth/LogIn"));
+const Dashboard = lazy(() => import("./app/pages/Dashboard"));
+const NotFound = lazy(() => import("./app/pages/NotFound"));
+const ForgotPassword = lazy(() => import("./app/auth/ForgotPassword"));
+const ProtectedRoute = lazy(() => import("./app/auth/ProtectedRoute"));
+const UnauthorizedPage = lazy(() => import("./app/pages/UnauthorizedPage"));
+const EmailVerification = lazy(() => import("./app/EmailVerification"));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 function App() {
   useEffect(() => {
@@ -55,35 +68,38 @@ function App() {
 
   return (
     <ErrorBoundary>
+      <SkipNav />
       <Router>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/login" element={<LogIn />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/login" element={<LogIn />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-          {/* Protected dashboard route - open to any authenticated user */}
-          <Route
-            path="/dashboard/*"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected dashboard route - open to any authenticated user */}
+            <Route
+              path="/dashboard/*"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Email verification routes */}
-          <Route path="/verify-email" element={<EmailVerification />} />
-          <Route
-            path="/verify-email/:userId/:code"
-            element={<EmailVerification />}
-          />
+            {/* Email verification routes */}
+            <Route path="/verify-email" element={<EmailVerification />} />
+            <Route
+              path="/verify-email/:userId/:code"
+              element={<EmailVerification />}
+            />
 
-          {/* Catch-all route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
         <Toaster />
       </Router>
       {/* React Query DevTools - only in development */}

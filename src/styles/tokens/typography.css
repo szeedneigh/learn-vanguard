@@ -1,0 +1,201 @@
+/**
+ * TYPOGRAPHY TOKENS
+ * Systematic type scale with proper line heights and letter spacing
+ * Using Poppins font family as primary typeface
+ */
+
+@layer base {
+  :root {
+    /* Font Families */
+    --font-primary: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "Monaco", "Courier New", monospace;
+
+    /* Font Weights */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Font Sizes & Line Heights */
+    /* Display - for hero sections */
+    --font-size-display: 3.75rem;      /* 60px */
+    --line-height-display: 4.5rem;     /* 72px */
+    --letter-spacing-display: -0.02em;
+
+    /* Headings */
+    --font-size-h1: 3rem;              /* 48px */
+    --line-height-h1: 3.5rem;          /* 56px */
+    --letter-spacing-h1: -0.015em;
+
+    --font-size-h2: 2.25rem;           /* 36px */
+    --line-height-h2: 2.75rem;         /* 44px */
+    --letter-spacing-h2: -0.01em;
+
+    --font-size-h3: 1.875rem;          /* 30px */
+    --line-height-h3: 2.25rem;         /* 36px */
+    --letter-spacing-h3: -0.01em;
+
+    --font-size-h4: 1.5rem;            /* 24px */
+    --line-height-h4: 2rem;            /* 32px */
+    --letter-spacing-h4: -0.005em;
+
+    --font-size-h5: 1.25rem;           /* 20px */
+    --line-height-h5: 1.75rem;         /* 28px */
+    --letter-spacing-h5: -0.005em;
+
+    --font-size-h6: 1.125rem;          /* 18px */
+    --line-height-h6: 1.75rem;         /* 28px */
+    --letter-spacing-h6: 0;
+
+    /* Body Text */
+    --font-size-body-lg: 1.125rem;     /* 18px */
+    --line-height-body-lg: 1.75rem;    /* 28px */
+    --letter-spacing-body-lg: 0;
+
+    --font-size-body: 1rem;            /* 16px */
+    --line-height-body: 1.5rem;        /* 24px */
+    --letter-spacing-body: 0;
+
+    --font-size-body-sm: 0.875rem;     /* 14px */
+    --line-height-body-sm: 1.25rem;    /* 20px */
+    --letter-spacing-body-sm: 0;
+
+    /* Captions & Labels */
+    --font-size-caption: 0.75rem;      /* 12px */
+    --line-height-caption: 1rem;       /* 16px */
+    --letter-spacing-caption: 0.01em;
+
+    --font-size-overline: 0.625rem;    /* 10px */
+    --line-height-overline: 0.875rem;  /* 14px */
+    --letter-spacing-overline: 0.08em;
+
+    /* Code & Monospace */
+    --font-size-code: 0.875rem;        /* 14px */
+    --line-height-code: 1.25rem;       /* 20px */
+  }
+}
+
+/* Typography Utility Classes */
+@layer components {
+  /* Display */
+  .text-display {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-display);
+    line-height: var(--line-height-display);
+    letter-spacing: var(--letter-spacing-display);
+    font-weight: var(--font-weight-bold);
+  }
+
+  /* Headings */
+  .heading-1 {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h1);
+    line-height: var(--line-height-h1);
+    letter-spacing: var(--letter-spacing-h1);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .heading-2 {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h2);
+    line-height: var(--line-height-h2);
+    letter-spacing: var(--letter-spacing-h2);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .heading-3 {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h3);
+    line-height: var(--line-height-h3);
+    letter-spacing: var(--letter-spacing-h3);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .heading-4 {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h4);
+    line-height: var(--line-height-h4);
+    letter-spacing: var(--letter-spacing-h4);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .heading-5 {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h5);
+    line-height: var(--line-height-h5);
+    letter-spacing: var(--letter-spacing-h5);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .heading-6 {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h6);
+    line-height: var(--line-height-h6);
+    letter-spacing: var(--letter-spacing-h6);
+    font-weight: var(--font-weight-medium);
+  }
+
+  /* Body Text */
+  .body-large {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body-lg);
+    line-height: var(--line-height-body-lg);
+    letter-spacing: var(--letter-spacing-body-lg);
+    font-weight: var(--font-weight-regular);
+  }
+
+  .body {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+    letter-spacing: var(--letter-spacing-body);
+    font-weight: var(--font-weight-regular);
+  }
+
+  .body-small {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body-sm);
+    line-height: var(--line-height-body-sm);
+    letter-spacing: var(--letter-spacing-body-sm);
+    font-weight: var(--font-weight-regular);
+  }
+
+  /* Captions */
+  .caption {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    letter-spacing: var(--letter-spacing-caption);
+    font-weight: var(--font-weight-regular);
+  }
+
+  .overline {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-overline);
+    line-height: var(--line-height-overline);
+    letter-spacing: var(--letter-spacing-overline);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+  }
+
+  /* Code */
+  .code {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-code);
+    line-height: var(--line-height-code);
+  }
+}
+
+/* Responsive Typography - Mobile adjustments */
+@media (max-width: 768px) {
+  :root {
+    --font-size-display: 2.5rem;       /* 40px on mobile */
+    --line-height-display: 3rem;       /* 48px on mobile */
+
+    --font-size-h1: 2rem;              /* 32px on mobile */
+    --line-height-h1: 2.5rem;          /* 40px on mobile */
+
+    --font-size-h2: 1.75rem;           /* 28px on mobile */
+    --line-height-h2: 2.25rem;         /* 36px on mobile */
+  }
+}

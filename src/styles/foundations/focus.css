@@ -1,0 +1,153 @@
+/**
+ * ENHANCED FOCUS INDICATORS
+ * Provides accessible, visible focus states for keyboard navigation
+ * Implements WCAG 2.1 Success Criterion 2.4.7 (Focus Visible)
+ */
+
+@layer base {
+  /*
+   * Remove default browser focus outline and apply custom
+   * This ensures consistent focus indicators across browsers
+   */
+  *:focus {
+    outline: none;
+  }
+
+  /*
+   * Enhanced focus visible state for keyboard navigation
+   * Only shows when navigating with keyboard, not mouse clicks
+   */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Focus within - for containers that have focused children */
+  *:focus-within {
+    /* Container can have subtle indicator */
+  }
+
+  /* Enhanced focus for interactive elements */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible,
+  [role="link"]:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px hsl(var(--ring) / 0.1);
+  }
+
+  /* Specific focus states for form elements */
+  input[type="text"]:focus-visible,
+  input[type="email"]:focus-visible,
+  input[type="password"]:focus-visible,
+  input[type="number"]:focus-visible,
+  input[type="tel"]:focus-visible,
+  input[type="url"]:focus-visible,
+  input[type="search"]:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 0px;
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+  }
+
+  /* Checkbox and radio focus states */
+  input[type="checkbox"]:focus-visible,
+  input[type="radio"]:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+  }
+
+  /* Button focus states with variants */
+  button:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px hsl(var(--ring) / 0.15);
+  }
+
+  /* Primary button focus */
+  button.bg-primary:focus-visible,
+  [class*="bg-primary"]:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.2);
+  }
+
+  /* Link focus states */
+  a:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 4px;
+    background-color: hsl(var(--primary) / 0.05);
+  }
+
+  /* Card/container focus states */
+  [role="article"]:focus-visible,
+  [role="region"]:focus-visible,
+  .card:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 4px;
+    box-shadow: 0 0 0 6px hsl(var(--ring) / 0.1);
+  }
+
+  /* Skip link specific focus */
+  .skip-nav-link:focus {
+    outline: 3px solid hsl(var(--primary));
+    outline-offset: 4px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  *:focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline-width: 3px;
+    box-shadow: 0 0 0 6px hsl(var(--ring) / 0.2);
+  }
+}
+
+/* Reduced motion support - simplify focus animations */
+@media (prefers-reduced-motion: reduce) {
+  *:focus-visible {
+    transition: none;
+  }
+}
+
+/* Focus utility classes */
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  .focus-ring-primary {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+
+  .focus-ring-error {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2;
+  }
+
+  .focus-ring-success {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-2;
+  }
+
+  .focus-ring-inset {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset;
+  }
+}

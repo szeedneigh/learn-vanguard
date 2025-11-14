@@ -1,0 +1,115 @@
+/**
+ * SHADOW & ELEVATION TOKENS
+ * 5-level elevation system for visual hierarchy and depth
+ * Provides consistent shadows across light and dark modes
+ */
+
+@layer base {
+  :root {
+    /* Shadow Elevation Levels */
+
+    /* Level 0 - No elevation (flat) */
+    --shadow-none: none;
+
+    /* Level 1 - Subtle lift (cards, inputs at rest) */
+    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / var(--shadow-opacity-sm));
+
+    /* Level 2 - Default elevation (cards on hover, dropdowns) */
+    --shadow-md:
+      0 2px 4px -1px hsl(var(--shadow-color) / var(--shadow-opacity-sm)),
+      0 4px 6px -1px hsl(var(--shadow-color) / var(--shadow-opacity-md));
+
+    /* Level 3 - Moderate elevation (modals, popovers) */
+    --shadow-lg:
+      0 4px 6px -2px hsl(var(--shadow-color) / var(--shadow-opacity-md)),
+      0 10px 15px -3px hsl(var(--shadow-color) / var(--shadow-opacity-lg));
+
+    /* Level 4 - High elevation (important modals, overlays) */
+    --shadow-xl:
+      0 10px 10px -5px hsl(var(--shadow-color) / var(--shadow-opacity-md)),
+      0 20px 25px -5px hsl(var(--shadow-color) / var(--shadow-opacity-lg));
+
+    /* Level 5 - Maximum elevation (critical alerts, notifications) */
+    --shadow-2xl:
+      0 20px 25px -5px hsl(var(--shadow-color) / var(--shadow-opacity-lg)),
+      0 25px 50px -12px hsl(var(--shadow-color) / var(--shadow-opacity-xl));
+
+    /* Specialized Shadows */
+
+    /* Inner shadow - for inset effects */
+    --shadow-inner: inset 0 2px 4px 0 hsl(var(--shadow-color) / var(--shadow-opacity-sm));
+
+    /* Focus ring shadow - for keyboard navigation */
+    --shadow-focus: 0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+                    0 0 0 calc(var(--focus-ring-width) + var(--focus-ring-offset)) hsl(var(--ring));
+
+    /* Glow effects - for active states or highlights */
+    --shadow-glow-primary: 0 0 20px hsl(var(--primary) / 0.3);
+    --shadow-glow-success: 0 0 20px hsl(var(--success) / 0.3);
+    --shadow-glow-error: 0 0 20px hsl(var(--error) / 0.3);
+
+    /* Colored shadows for floating buttons */
+    --shadow-primary:
+      0 4px 6px -2px hsl(var(--primary) / 0.2),
+      0 10px 15px -3px hsl(var(--primary) / 0.3);
+
+    --shadow-success:
+      0 4px 6px -2px hsl(var(--success) / 0.2),
+      0 10px 15px -3px hsl(var(--success) / 0.3);
+
+    --shadow-error:
+      0 4px 6px -2px hsl(var(--error) / 0.2),
+      0 10px 15px -3px hsl(var(--error) / 0.3);
+  }
+}
+
+/* Elevation Utility Classes */
+@layer utilities {
+  .elevation-0 { box-shadow: var(--shadow-none); }
+  .elevation-1 { box-shadow: var(--shadow-sm); }
+  .elevation-2 { box-shadow: var(--shadow-md); }
+  .elevation-3 { box-shadow: var(--shadow-lg); }
+  .elevation-4 { box-shadow: var(--shadow-xl); }
+  .elevation-5 { box-shadow: var(--shadow-2xl); }
+
+  .shadow-inner { box-shadow: var(--shadow-inner); }
+  .shadow-focus { box-shadow: var(--shadow-focus); }
+
+  .shadow-glow-primary { box-shadow: var(--shadow-glow-primary); }
+  .shadow-glow-success { box-shadow: var(--shadow-glow-success); }
+  .shadow-glow-error { box-shadow: var(--shadow-glow-error); }
+
+  /* Hover elevation transitions */
+  .hover-elevation {
+    transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-elevation-1:hover { box-shadow: var(--shadow-sm); }
+  .hover-elevation-2:hover { box-shadow: var(--shadow-md); }
+  .hover-elevation-3:hover { box-shadow: var(--shadow-lg); }
+  .hover-elevation-4:hover { box-shadow: var(--shadow-xl); }
+  .hover-elevation-5:hover { box-shadow: var(--shadow-2xl); }
+}
+
+/* Animation keyframes for elevation changes */
+@keyframes elevate {
+  from {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(0);
+  }
+  to {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: var(--shadow-md);
+  }
+  50% {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+}
