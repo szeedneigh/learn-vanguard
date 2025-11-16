@@ -19,6 +19,7 @@ import { ROLES } from "@/lib/constants";
 import { normalizeRole, checkApiConnection, API_BASE_URL } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import RouteBreadcrumbs from "@/components/navigation/RouteBreadcrumbs";
 
 // Map route paths to components
 const routeComponents = {
@@ -126,6 +127,7 @@ const DashboardLayout = ({ children }) => {
           connectionStatus={connectionStatus}
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-100">
+          <RouteBreadcrumbs className="mb-6" />
           {children}
           <Toaster />
         </main>

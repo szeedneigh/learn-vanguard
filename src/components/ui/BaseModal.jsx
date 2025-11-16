@@ -3,6 +3,7 @@ import { X, Loader2 } from "lucide-react";
 import PropTypes from "prop-types";
 import { cn } from "@/lib/utils";
 import { useModal } from "@/hooks/useModal";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 /**
  * BaseModal component that provides consistent modal behavior and styling.
@@ -22,6 +23,7 @@ const BaseModal = ({
   loading = false,
 }) => {
   const modalRef = useRef(null);
+  const focusTrapRef = useFocusTrap(isOpen);
   const { handleBackdropClick } = useModal(isOpen, onClose, {
     closeOnEscape: true,
     preventBodyScroll: true,
@@ -71,11 +73,15 @@ const BaseModal = ({
       onClick={handleBackdropClick}
     >
       <div
-        ref={modalRef}
+        ref={(el) => {
+          modalRef.current = el;
+          focusTrapRef.current = el;
+        }}
         className={cn(
-          "bg-white rounded-xl shadow-lg w-full overflow-hidden relative",
+          "bg-white dark:bg-card rounded-xl shadow-lg w-full overflow-hidden relative",
           "transition-all duration-300 ease-in-out transform",
           "opacity-100 scale-100",
+          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
           maxWidthClasses[maxWidth],
           loading && "pointer-events-none opacity-75",
           className
@@ -84,6 +90,7 @@ const BaseModal = ({
         aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}
         aria-describedby={description ? "modal-description" : undefined}
+        tabIndex={-1}
       >
         {/* Loading Overlay */}
         {loading && (
