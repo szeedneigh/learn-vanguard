@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import ProfileModal from "../modal/ProfileModal";
 import NotificationPopup from "../modal/NotificationPopup";
 import GlobalSearch from "@/components/search/GlobalSearch";
+import RecentlyViewed from "@/components/navigation/RecentlyViewed";
 import { useAuth } from "@/context/AuthContext";
 import PropTypes from "prop-types";
 import {
@@ -225,8 +226,11 @@ const Topbar = memo(({ onMenuClick }) => {
           <GlobalSearch />
         </div>
 
-        {/* Right side - Notifications, profile */}
+        {/* Right side - Recently viewed, Notifications, profile */}
         <div className="flex items-center space-x-3 sm:space-x-6">
+          {/* Recently Viewed */}
+          <RecentlyViewed limit={10} />
+
           {/* Conditionally render notifications based on feature flag */}
           {SHOW_NOTIFICATIONS && (
             <div className="relative">
