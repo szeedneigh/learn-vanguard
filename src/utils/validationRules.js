@@ -24,15 +24,148 @@ export const required = (message = 'This field is required') => (value) => {
 };
 
 /**
- * Email format validator
+ * Email format validator (improved)
+ * Uses RFC 5322 compliant regex for better accuracy
  * @param {string} message - Custom error message
  * @returns {Function} Validator function
  */
 export const email = (message = 'Invalid email address') => (value) => {
   if (!value) return null; // Optional field, use required() separately
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // RFC 5322 compliant email regex (simplified but robust)
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
   return emailRegex.test(value) ? null : message;
+};
+
+/**
+ * School email domain validator
+ * Validates email is from specific domain
+ * @param {string} domain - Required email domain (e.g., '@student.laverdad.edu.ph')
+ * @param {string} message - Custom error message
+ * @returns {Function} Validator function
+ */
+export const emailDomain = (domain, message) => (value) => {
+  if (!value) return null;
+
+  const defaultMessage = `Email must be from ${domain}`;
+  return value.endsWith(domain) ? null : (message || defaultMessage);
+};
+
+/**
+ * Password strength validator
+ * Checks for complexity requirements
+ * @param {Object} options - Validation options
+ * @param {number} options.minLength - Minimum length (default: 8)
+ * @param {boolean} options.requireUppercase - Require uppercase letter (default: true)
+ * @param {boolean} options.requireLowercase - Require lowercase letter (default: true)
+ * @param {boolean} options.requireNumber - Require number (default: true)
+ * @param {boolean} options.requireSpecial - Require special character (default: false)
+ * @returns {Function} Validator function
+ */
+export const passwordStrength = (options = {}) => (value) => {
+  if (!value) return null;
+
+  const {
+    minLength = 8,
+    requireUppercase = true,
+    requireLowercase = true,
+    requireNumber = true,
+    requireSpecial = false,
+  } = options;
+
+  const errors = [];
+
+  if (value.length < minLength) {
+    errors.push(`at least ${minLength} characters`);
+  }
+
+  if (requireUppercase && !/[A-Z]/.test(value)) {
+    errors.push('one uppercase letter');
+  }
+
+  if (requireLowercase && !/[a-z]/.test(value)) {
+    errors.push('one lowercase letter');
+  }
+
+  if (requireNumber && !/\d/.test(value)) {
+    errors.push('one number');
+  }
+
+  if (requireSpecial && !/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+    errors.push('one special character');
+  }
+
+  if (errors.length > 0) {
+    return `Password must contain ${errors.join(', ')}`;
+  }
+
+  return null;
+};
+
+/**
+ * Calculate password strength score
+ * Returns a score from 0-100 and a label
+ * @param {string} password - Password to score
+ * @returns {Object} { score: number, label: string, feedback: string[] }
+ */
+export const getPasswordStrength = (password) => {
+  if (!password) {
+    return { score: 0, label: 'None', feedback: ['Enter a password'] };
+  }
+
+  let score = 0;
+  const feedback = [];
+
+  // Length scoring
+  if (password.length >= 8) score += 20;
+  else feedback.push('Use at least 8 characters');
+
+  if (password.length >= 12) score += 10;
+  if (password.length >= 16) score += 10;
+
+  // Character variety
+  if (/[a-z]/.test(password)) score += 10;
+  else feedback.push('Add lowercase letters');
+
+  if (/[A-Z]/.test(password)) score += 15;
+  else feedback.push('Add uppercase letters');
+
+  if (/\d/.test(password)) score += 15;
+  else feedback.push('Add numbers');
+
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 15;
+  else feedback.push('Add special characters');
+
+  // Pattern penalties
+  if (/(.)\1{2,}/.test(password)) {
+    score -= 10;
+    feedback.push('Avoid repeated characters');
+  }
+
+  if (/^[a-z]+$|^[A-Z]+$|^\d+$/.test(password)) {
+    score -= 15;
+    feedback.push('Mix different character types');
+  }
+
+  // Common patterns penalty
+  const commonPatterns = ['password', '123456', 'qwerty', 'abc123', 'letmein'];
+  if (commonPatterns.some(p => password.toLowerCase().includes(p))) {
+    score -= 20;
+    feedback.push('Avoid common password patterns');
+  }
+
+  // Ensure score is within bounds
+  score = Math.max(0, Math.min(100, score));
+
+  // Determine label
+  let label;
+  if (score < 20) label = 'Very Weak';
+  else if (score < 40) label = 'Weak';
+  else if (score < 60) label = 'Fair';
+  else if (score < 80) label = 'Strong';
+  else label = 'Very Strong';
+
+  return { score, label, feedback };
 };
 
 /**
