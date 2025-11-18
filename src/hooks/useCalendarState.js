@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,10 +7,9 @@ import {
   createTask,
   updateTask,
   deleteTask,
-} from "@/services/tasks.js"; // Corrected path
+} from "@/lib/api/taskApi";
 
 // --- Constants ---
-
 export const courseColors = {
   // Export constants needed by UI
   Physics: "bg-purple-500",
@@ -18,18 +18,13 @@ export const courseColors = {
   "Computer Science": "bg-blue-500",
   Chemistry: "bg-pink-500",
 };
-
 export const statusClasses = {
-  // Export constants needed by UI
   "not-started": "border-gray-300 bg-gray-100 text-gray-800",
   "in-progress": "border-blue-300 bg-blue-100 text-blue-800",
   "on-hold": "border-yellow-300 bg-yellow-100 text-yellow-800",
   completed: "border-green-300 bg-green-100 text-green-800",
-};
-
 export const capitalize = (s) =>
   s.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()); // Export utility
-
 // Helper function to get 'YYYY-MM-DD' string based on local date components
 export const toLocaleDateStringISO = (date) => {
   // Export the helper
@@ -37,10 +32,7 @@ export const toLocaleDateStringISO = (date) => {
   const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
 // --- Custom Hook for State Management ---
-
 export function useCalendarState() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState("month");
@@ -49,7 +41,6 @@ export function useCalendarState() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
   const {
     data: tasks = [],
     isLoading: tasksLoading,
@@ -57,10 +48,12 @@ export function useCalendarState() {
     error: tasksError,
   } = useQuery({
     queryKey: ["tasks"], // Query key for tasks
-    queryFn: getTasks, // Service function to fetch tasks
+    queryFn: async () => {
+      const result = await getTasks();
+      return result.success ? result.data : [];
+    },
     // You might want to add options like staleTime, cacheTime, refetchOnWindowFocus, etc.
   });
-
   const createTaskMutation = useMutation({
     mutationFn: createTask,
     onSuccess: (data) => {
@@ -72,57 +65,26 @@ export function useCalendarState() {
       closeTaskForm();
     },
     onError: (error) => {
-      toast({
         title: "Error Creating Task",
         description:
           error.message || "Could not create task. Please try again.",
         variant: "destructive",
-      });
-    },
-  });
-
   const updateTaskMutation = useMutation({
     mutationFn: (taskData) => updateTask(taskData.id, taskData),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries(["tasks"]);
-      toast({
         title: "Task Updated",
         description: `Task "${data.title}" has been updated successfully.`,
-      });
-      closeTaskForm();
-    },
-    onError: (error) => {
-      toast({
         title: "Error Updating Task",
-        description:
           error.message || "Could not update task. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTask, // Expects taskId
     onSuccess: (data, taskId) => {
       // data might be undefined or {success: true} depending on backend
-      queryClient.invalidateQueries(["tasks"]);
-      toast({
         title: "Task Deleted",
         description: "Task has been permanently removed.",
-      });
       setIsTaskDetailOpen(false);
       setSelectedTask(null);
-    },
-    onError: (error) => {
-      toast({
         title: "Error Deleting Task",
-        description:
           error.message || "Could not delete task. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const handlePrevious = useCallback(() => {
     setCurrentDate((prevDate) => {
       const newDate = new Date(prevDate);
@@ -132,38 +94,21 @@ export function useCalendarState() {
       return newDate;
     });
   }, [currentView]);
-
   const handleNext = useCallback(() => {
-    setCurrentDate((prevDate) => {
-      const newDate = new Date(prevDate);
       if (currentView === "month") newDate.setMonth(newDate.getMonth() + 1);
       else if (currentView === "week") newDate.setDate(newDate.getDate() + 7);
       else newDate.setDate(newDate.getDate() + 1);
-      return newDate;
-    });
-  }, [currentView]);
-
   const handleTaskClick = useCallback((task) => {
     setSelectedTask(task);
     setIsTaskDetailOpen(true);
   }, []);
-
   const openAddTaskForm = useCallback(() => {
     setSelectedTask(null);
     setIsTaskFormOpen(true);
-  }, []);
-
   const openEditTaskForm = useCallback((task) => {
-    setSelectedTask(task);
     setIsTaskDetailOpen(false);
-    setIsTaskFormOpen(true);
-  }, []);
-
   const closeTaskForm = useCallback(() => {
     setIsTaskFormOpen(false);
-    setSelectedTask(null);
-  }, []);
-
   const handleSaveTask = useCallback(
     (taskData) => {
       if (taskData.id) {
@@ -173,17 +118,12 @@ export function useCalendarState() {
         // ID will be assigned by backend.
         createTaskMutation.mutate(taskData);
       }
-    },
     [createTaskMutation, updateTaskMutation]
   );
-
   const handleDeleteTask = useCallback(
     (taskId) => {
       deleteTaskMutation.mutate(taskId);
-    },
     [deleteTaskMutation]
-  );
-
   const createCalendarCell = useCallback(
     (date, isCurrentMonth) => ({
       day: date.getDate(),
@@ -194,12 +134,9 @@ export function useCalendarState() {
         : [], // Use helper here too for consistency
     }),
     [tasks]
-  );
-
   const calendarGrid = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-
     if (currentView === "month") {
       const firstDayOfMonth = new Date(year, month, 1);
       const startDayOfWeek = firstDayOfMonth.getDay();
@@ -208,7 +145,6 @@ export function useCalendarState() {
       const grid = [];
       let currentDayCounter = 1;
       let nextMonthDayCounter = 1;
-
       for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
         const week = [];
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
@@ -223,17 +159,13 @@ export function useCalendarState() {
             currentDayCounter++;
           } else {
             const date = new Date(year, month + 1, nextMonthDayCounter);
-            week.push(createCalendarCell(date, false));
             nextMonthDayCounter++;
           }
         }
         if (week.some((cell) => cell.isCurrentMonth) || weekIndex === 0) {
           grid.push(week);
-        }
-      }
       return grid.filter((week) => week.some((cell) => cell.isCurrentMonth));
     }
-
     if (currentView === "week") {
       const startOfWeek = new Date(currentDate);
       startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
@@ -242,13 +174,9 @@ export function useCalendarState() {
         const dayDate = new Date(startOfWeek);
         dayDate.setDate(startOfWeek.getDate() + i);
         week.push(createCalendarCell(dayDate, dayDate.getMonth() === month));
-      }
       return [week];
-    }
-
     return [[createCalendarCell(currentDate, true)]];
   }, [currentView, currentDate, createCalendarCell]);
-
   const upcomingTasks = useMemo(() => {
     // Create consistent date boundaries - start of today to end of 7 days from now
     const now = new Date();
@@ -256,7 +184,6 @@ export function useCalendarState() {
     const sevenDaysLater = new Date(today);
     sevenDaysLater.setDate(today.getDate() + 7);
     sevenDaysLater.setHours(23, 59, 59, 999); // End of the 7th day
-
     return tasks
       .filter((task) => {
         // Handle different date field names and formats
@@ -267,20 +194,15 @@ export function useCalendarState() {
           taskDate = new Date(task.date + "T00:00:00");
         } else {
           return false; // Skip tasks without dates
-        }
-
         // Check if task date is valid
         if (isNaN(taskDate.getTime())) {
-          console.warn("Invalid task date:", task);
+          logger.warn("Invalid task date:", task);
           return false;
-        }
-
         // Include tasks from today (inclusive) through the next 7 days (inclusive)
         const isInDateRange = taskDate >= today && taskDate <= sevenDaysLater;
         const isNotCompleted =
           (task.status || task.taskStatus) !== "completed" &&
           (task.status || task.taskStatus) !== "Completed";
-
         return isInDateRange && isNotCompleted;
       })
       .sort((a, b) => {
@@ -291,9 +213,7 @@ export function useCalendarState() {
           ? new Date(b.taskDeadline)
           : new Date(b.date);
         return dateA - dateB;
-      });
   }, [tasks]);
-
   return {
     currentDate,
     currentView,

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/lib/utils';
+import logger from '@/utils/logger';
 
 class WebSocketService {
   constructor() {
@@ -19,7 +20,7 @@ class WebSocketService {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log('WebSocket connected');
+        logger.log('WebSocket connected');
         this.isConnected = true;
         this.connectionStatus = 'connected';
         this.reconnectAttempts = 0;
@@ -47,7 +48,7 @@ class WebSocketService {
               this.notifySubscribers(data.type, data);
               break;
             default:
-              console.log('Unknown message type:', data.type);
+              logger.log('Unknown message type:', data.type);
           }
 
           // Send acknowledgment if required
@@ -58,12 +59,12 @@ class WebSocketService {
             }));
           }
         } catch (error) {
-          console.error('Error processing WebSocket message:', error);
+          logger.error('Error processing WebSocket message:', error);
         }
       };
 
       this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
+        logger.log('WebSocket disconnected');
         this.isConnected = false;
         this.connectionStatus = 'disconnected';
         this.notifySubscribers('connection', { status: 'disconnected' });
@@ -71,7 +72,7 @@ class WebSocketService {
       };
 
       this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        logger.error('WebSocket error:', error);
         this.connectionStatus = 'error';
         this.notifySubscribers('connection', { status: 'error', error });
       };
@@ -80,7 +81,7 @@ class WebSocketService {
       this.startHeartbeat();
 
     } catch (error) {
-      console.error('Error creating WebSocket connection:', error);
+      logger.error('Error creating WebSocket connection:', error);
       this.attemptReconnect(token);
     }
   }
@@ -171,7 +172,7 @@ useEffect(() => {
   websocketService.connect(token);
 
   const unsubscribe = websocketService.subscribe('task_update', (data) => {
-    console.log('Task updated:', data);
+    logger.log('Task updated:', data);
     // Handle task update
   });
 

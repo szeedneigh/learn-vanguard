@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { ROLE_PERMISSIONS } from "@/lib/constants";
 
 /**
@@ -8,7 +9,7 @@ import { ROLE_PERMISSIONS } from "@/lib/constants";
  */
 export const hasPermission = (user, permission) => {
   if (!user || !user.role || !permission) {
-    console.log(
+    logger.log(
       `hasPermission check failed: missing user, role, or permission`,
       {
         hasUser: !!user,
@@ -24,14 +25,14 @@ export const hasPermission = (user, permission) => {
   const userPermissions = ROLE_PERMISSIONS[normalizedRole];
 
   if (!userPermissions) {
-    console.log(
+    logger.log(
       `hasPermission: No permissions found for role ${normalizedRole}`
     );
     return false;
   }
 
   const hasPermission = userPermissions.includes(permission);
-  console.log(
+  logger.log(
     `hasPermission: ${normalizedRole} checking for "${permission}": ${hasPermission}`,
     {
       availablePermissions: userPermissions,
@@ -49,7 +50,7 @@ export const hasPermission = (user, permission) => {
  */
 export const hasAnyPermission = (user, permissions = []) => {
   if (!user || !user.role || !permissions.length) {
-    console.log(
+    logger.log(
       `hasAnyPermission check failed: missing user, role, or permissions`,
       {
         hasUser: !!user,
@@ -63,7 +64,7 @@ export const hasAnyPermission = (user, permissions = []) => {
   const result = permissions.some((permission) =>
     hasPermission(user, permission)
   );
-  console.log(`hasAnyPermission result:`, result);
+  logger.log(`hasAnyPermission result:`, result);
   return result;
 };
 
@@ -75,7 +76,7 @@ export const hasAnyPermission = (user, permissions = []) => {
  */
 export const hasAllPermissions = (user, permissions = []) => {
   if (!user || !user.role || !permissions.length) {
-    console.log(
+    logger.log(
       `hasAllPermissions check failed: missing user, role, or permissions`,
       {
         hasUser: !!user,
@@ -89,7 +90,7 @@ export const hasAllPermissions = (user, permissions = []) => {
   const result = permissions.every((permission) =>
     hasPermission(user, permission)
   );
-  console.log(
+  logger.log(
     `hasAllPermissions result for [${permissions.join(", ")}]:`,
     result
   );
@@ -103,7 +104,7 @@ export const hasAllPermissions = (user, permissions = []) => {
  */
 export const getUserPermissions = (user) => {
   if (!user || !user.role) {
-    console.log(`getUserPermissions: No user or role provided`, {
+    logger.log(`getUserPermissions: No user or role provided`, {
       hasUser: !!user,
       hasRole: user ? !!user.role : false,
     });
@@ -114,6 +115,6 @@ export const getUserPermissions = (user) => {
   const normalizedRole = user.role.toUpperCase();
   const permissions = ROLE_PERMISSIONS[normalizedRole] || [];
 
-  console.log(`getUserPermissions for role ${normalizedRole}:`, permissions);
+  logger.log(`getUserPermissions for role ${normalizedRole}:`, permissions);
   return permissions;
 };

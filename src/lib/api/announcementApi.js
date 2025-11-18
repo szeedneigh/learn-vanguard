@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import apiClient from "./client";
 
 /**
@@ -28,7 +29,7 @@ export const getAnnouncements = async (filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching announcements:", error);
+    logger.error("Error fetching announcements:", error);
     return {
       data: [],
       success: false,
@@ -53,7 +54,7 @@ export const getAnnouncementById = async (announcementId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching announcement by ID:", error);
+    logger.error("Error fetching announcement by ID:", error);
     return {
       data: null,
       success: false,
@@ -79,8 +80,8 @@ export const createAnnouncement = async (announcementData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error creating announcement:", error);
-    console.error("Full error response:", error.response?.data);
+    logger.error("Error creating announcement:", error);
+    logger.error("Full error response:", error.response?.data);
 
     // Handle validation errors (400 status)
     if (error.response?.status === 400 && error.response?.data?.errors) {
@@ -125,7 +126,7 @@ export const updateAnnouncement = async (announcementId, announcementData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating announcement:", error);
+    logger.error("Error updating announcement:", error);
     return {
       data: null,
       success: false,
@@ -151,7 +152,7 @@ export const deleteAnnouncement = async (announcementId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error deleting announcement:", error);
+    logger.error("Error deleting announcement:", error);
     return {
       success: false,
       error:
@@ -195,7 +196,7 @@ export const getCalendarAnnouncements = async (filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching calendar announcements:", error);
+    logger.error("Error fetching calendar announcements:", error);
     return {
       success: false,
       error:
@@ -222,7 +223,7 @@ export const markAnnouncementAsRead = async (announcementId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error marking announcement as read:", error);
+    logger.error("Error marking announcement as read:", error);
     return {
       success: false,
       error:

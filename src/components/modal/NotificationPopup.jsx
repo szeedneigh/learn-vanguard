@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import PropTypes from "prop-types";
 import { cn } from "@/lib/utils";
 import PopoverModal from "@/components/ui/PopoverModal";
@@ -13,7 +14,6 @@ const NotificationPopup = ({
   isLoading = false,
 }) => {
   const navigate = useNavigate();
-
   // Helper function to get icon based on notification type
   const getNotificationTypeStyle = (type) => {
     switch (type?.toLowerCase()) {
@@ -24,26 +24,20 @@ const NotificationPopup = ({
       case "announcement":
         return "border-l-amber-500";
       case "subject":
-        return "border-l-amber-500";
       case "activity":
         return "border-l-purple-500";
       case "system":
-        return "border-l-purple-500";
       default:
         return "border-l-gray-500";
     }
   };
-
   // Handle notification click to navigate to the source
   const handleNotificationClick = (notification) => {
     // Mark as read first
     if (!notification.read) {
       notification.onMarkAsRead();
-    }
-
     // Close the notification popup
     onClose();
-
     try {
       // Navigate based on notification type
       if (notification.type?.toLowerCase() === "task") {
@@ -65,7 +59,6 @@ const NotificationPopup = ({
             typeof notification.subjectId === "object"
               ? notification.subjectId._id
               : notification.subjectId;
-
           // Navigate directly to subject without timeouts
           navigate(`/dashboard/resources/${subjectId}`);
         } else {
@@ -77,12 +70,9 @@ const NotificationPopup = ({
         navigate("/dashboard/resources");
       }
     } catch (error) {
-      console.error("Navigation error:", error);
+      logger.error("Navigation error:", error);
       // Fallback to dashboard if navigation fails
       navigate("/dashboard");
-    }
-  };
-
   return (
     <PopoverModal
       isOpen={isOpen}
@@ -95,7 +85,6 @@ const NotificationPopup = ({
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Notifications
         </h3>
-
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
@@ -151,17 +140,14 @@ const NotificationPopup = ({
                         <p className="text-xs text-gray-600 mt-1">
                           {notification.subjectName}
                         </p>
-                      )}
                       <div className="flex justify-between items-center mt-2">
                         <p className="text-xs text-gray-400">
                           {notification.time}
-                        </p>
                         {notification.type && (
                           <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
                             {notification.type}
                           </span>
                         )}
-                      </div>
                     </div>
                   ))}
                 </div>
@@ -171,13 +157,11 @@ const NotificationPopup = ({
                 No notifications to display
               </p>
             )}
-          </div>
         )}
       </div>
     </PopoverModal>
   );
 };
-
 NotificationPopup.propTypes = {
   notifications: PropTypes.arrayOf(
     PropTypes.shape({
@@ -199,6 +183,4 @@ NotificationPopup.propTypes = {
   onClose: PropTypes.func.isRequired,
   triggerRef: PropTypes.shape({ current: PropTypes.instanceOf(Element) }),
   isLoading: PropTypes.bool,
-};
-
 export default NotificationPopup;

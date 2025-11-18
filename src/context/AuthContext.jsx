@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, queryKeys } from "@/lib/queryClient";
 import { jwtDecode } from "jwt-decode";
 import { useQuery } from "@tanstack/react-query";
+import logger from "@/utils/logger";
 
 const AuthContext = createContext({});
 
@@ -53,7 +54,7 @@ export const AuthProvider = ({ children }) => {
       avatarUrl: userData.avatarUrl, // Include avatar URL in cached data
     };
 
-    console.log("AuthContext: Caching user data:", {
+    logger.log("AuthContext: Caching user data:", {
       id: cacheableData.id,
       role: cacheableData.role,
       assignedClass: cacheableData.assignedClass,
@@ -65,11 +66,11 @@ export const AuthProvider = ({ children }) => {
   const restoreUserData = useCallback(() => {
     const cachedData = localStorage.getItem("userData");
     if (!cachedData) {
-      console.log("AuthContext: No cached user data found");
+      logger.log("AuthContext: No cached user data found");
       return null;
     }
     const userData = JSON.parse(cachedData);
-    console.log("AuthContext: Restored user data from cache:", {
+    logger.log("AuthContext: Restored user data from cache:", {
       id: userData.id,
       role: userData.role,
       assignedClass: userData.assignedClass,
@@ -84,7 +85,7 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem("authToken");
       if (!token) {
         const cachedData = restoreUserData();
-        console.log("AuthContext: No token, using cached data:", cachedData);
+        logger.log("AuthContext: No token, using cached data:", cachedData);
         return cachedData;
       }
 
@@ -100,7 +101,7 @@ export const AuthProvider = ({ children }) => {
         const verifyResult = await authService.verifyToken();
         // Defensive: handle null, undefined, or missing .user
         if (verifyResult && verifyResult.user) {
-          console.log(
+          logger.log(
             "AuthContext: Token verification successful, user data:",
             {
               id: verifyResult.user.id,
@@ -111,11 +112,11 @@ export const AuthProvider = ({ children }) => {
           cacheUserData(verifyResult.user);
           return verifyResult.user;
         } else {
-          console.warn("verifyToken did not return a valid user", verifyResult);
+          logger.warn("verifyToken did not return a valid user", verifyResult);
           return restoreUserData();
         }
       } catch (error) {
-        console.error("Error verifying token:", error);
+        logger.error("Error verifying token:", error);
         return restoreUserData();
       }
     },
@@ -129,12 +130,12 @@ export const AuthProvider = ({ children }) => {
   // Initialize auth state
   const initializeAuth = useCallback(async () => {
     if (initializationInProgress.current) {
-      console.log("AuthContext: Skipping initialization - already in progress");
+      logger.log("AuthContext: Skipping initialization - already in progress");
       return;
     }
 
     try {
-      console.log("AuthContext: Starting initialization");
+      logger.log("AuthContext: Starting initialization");
       initializationInProgress.current = true;
       setLoading(true);
 
@@ -143,7 +144,7 @@ export const AuthProvider = ({ children }) => {
       if (!token) {
         // No token means no user session, so clean up avatar data
         localStorage.removeItem("lastAvatarUrl");
-        console.log("AuthContext: Cleaned up orphaned avatar data");
+        logger.log("AuthContext: Cleaned up orphaned avatar data");
       }
 
       // First check for Google redirect results if Firebase is available
@@ -153,16 +154,16 @@ export const AuthProvider = ({ children }) => {
 
       // Then check for token-based authentication
       if (token) {
-        console.log(
+        logger.log(
           "AuthContext: Found token in localStorage, initializing auth"
         );
         await queryClient.invalidateQueries(["user"]);
       } else {
-        console.log("AuthContext: No auth token found in localStorage");
+        logger.log("AuthContext: No auth token found in localStorage");
         queryClient.setQueryData(["user"], null);
       }
     } catch (error) {
-      console.error("AuthContext: Error during initialization:", error);
+      logger.error("AuthContext: Error during initialization:", error);
       queryClient.setQueryData(["user"], null);
     } finally {
       setLoading(false);
@@ -205,7 +206,7 @@ export const AuthProvider = ({ children }) => {
         });
       }
     } catch (error) {
-      console.error("Failed to process Google redirect:", error);
+      logger.error("Failed to process Google redirect:", error);
     }
   }, [toast, firebaseAvailable]);
 
@@ -213,7 +214,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       if (authInitialized.current) {
-        console.log("AuthContext: Already initialized, skipping");
+        logger.log("AuthContext: Already initialized, skipping");
         return;
       }
 
@@ -225,7 +226,7 @@ export const AuthProvider = ({ children }) => {
     // Also make sure loading is set to false after a timeout to prevent UI being stuck
     const timeoutId = setTimeout(() => {
       if (loading) {
-        console.warn(
+        logger.warn(
           "AuthContext: Auth check timeout - forcing loading state to false"
         );
         setLoading(false);
@@ -239,9 +240,9 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log("AuthContext: Starting login process...");
+      logger.log("AuthContext: Starting login process...");
       const result = await authService.login({ email, password });
-      console.log("AuthContext: Login result:", {
+      logger.log("AuthContext: Login result:", {
         success: result.success,
         hasUser: !!result.user,
       });
@@ -250,10 +251,10 @@ export const AuthProvider = ({ children }) => {
         queryClient.setQueryData(["user"], result.user);
       }
 
-      console.log("AuthContext: Login process finished. User state updated.");
+      logger.log("AuthContext: Login process finished. User state updated.");
       return result;
     } catch (error) {
-      console.error("AuthContext: Login error:", error);
+      logger.error("AuthContext: Login error:", error);
       return {
         success: false,
         error: error.message || "An error occurred during login",
@@ -273,7 +274,7 @@ export const AuthProvider = ({ children }) => {
       // Redirect to login page after logout
       window.location.href = "/login";
     } catch (error) {
-      console.error("AuthContext: Logout error:", error);
+      logger.error("AuthContext: Logout error:", error);
     }
   };
 

@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import apiClient from "./client";
 
 /**
@@ -17,7 +18,7 @@ export const getPrograms = async () => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching programs:", error);
+    logger.error("Error fetching programs:", error);
     return {
       data: [],
       success: false,
@@ -52,7 +53,7 @@ export const getSubjects = async (filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching subjects:", error);
+    logger.error("Error fetching subjects:", error);
     return {
       data: [],
       success: false,
@@ -77,7 +78,7 @@ export const getSubjectById = async (subjectId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching subject by ID:", error);
+    logger.error("Error fetching subject by ID:", error);
     return {
       data: null,
       success: false,
@@ -103,7 +104,7 @@ export const createSubject = async (subjectData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error creating subject:", error);
+    logger.error("Error creating subject:", error);
     return {
       data: null,
       success: false,
@@ -131,7 +132,7 @@ export const updateSubject = async (subjectId, subjectData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating subject:", error);
+    logger.error("Error updating subject:", error);
     return {
       data: null,
       success: false,
@@ -157,7 +158,7 @@ export const deleteSubject = async (subjectId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error deleting subject:", error);
+    logger.error("Error deleting subject:", error);
     return {
       success: false,
       error:
@@ -189,7 +190,7 @@ export const getSubjectsByProgram = async (programId, year, semester) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching subjects by program:", error);
+    logger.error("Error fetching subjects by program:", error);
     return {
       data: [],
       success: false,
@@ -222,7 +223,7 @@ export const createSubjectAnnouncement = async (
       success: true,
     };
   } catch (error) {
-    console.error("Error creating subject announcement:", error);
+    logger.error("Error creating subject announcement:", error);
     return {
       data: null,
       success: false,

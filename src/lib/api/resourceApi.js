@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import apiClient from "./client";
 
 /**
@@ -28,7 +29,7 @@ export const getResources = async (filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching resources:", error);
+    logger.error("Error fetching resources:", error);
     return {
       data: [],
       pagination: null,
@@ -54,7 +55,7 @@ export const getResource = async (resourceId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching resource:", error);
+    logger.error("Error fetching resource:", error);
     return {
       data: null,
       success: false,
@@ -92,7 +93,7 @@ export const searchResources = async (query, filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error searching resources:", error);
+    logger.error("Error searching resources:", error);
     return {
       data: [],
       pagination: null,
@@ -138,7 +139,7 @@ export const uploadResource = async (formData, onProgress = null) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error uploading resource:", error);
+    logger.error("Error uploading resource:", error);
     return {
       data: null,
       success: false,
@@ -164,7 +165,7 @@ export const createResource = async (resourceData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error creating resource:", error);
+    logger.error("Error creating resource:", error);
     return {
       data: null,
       success: false,
@@ -190,7 +191,7 @@ export const updateResource = async (resourceId, updates) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating resource:", error);
+    logger.error("Error updating resource:", error);
     return {
       data: null,
       success: false,
@@ -215,7 +216,7 @@ export const deleteResource = async (resourceId) => {
       message: response.data.message || "Resource deleted successfully",
     };
   } catch (error) {
-    console.error("Error deleting resource:", error);
+    logger.error("Error deleting resource:", error);
     return {
       success: false,
       error:
@@ -243,7 +244,7 @@ export const shareResource = async (resourceId, shareData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error sharing resource:", error);
+    logger.error("Error sharing resource:", error);
     return {
       data: null,
       success: false,
@@ -268,7 +269,7 @@ export const getResourceDownloadUrl = async (resourceId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error getting download URL:", error);
+    logger.error("Error getting download URL:", error);
     return {
       url: null,
       success: false,
@@ -295,7 +296,7 @@ export const trackResourceDownload = async (resourceId) => {
       data: response.data,
     };
   } catch (error) {
-    console.error("Error tracking download:", error);
+    logger.error("Error tracking download:", error);
     return {
       success: false,
       error:

@@ -38,7 +38,7 @@ function isLocalStorageAvailable() {
     localStorage.removeItem(test);
     return true;
   } catch (e) {
-    console.warn('localStorage is not available:', e.message);
+    logger.warn('localStorage is not available:', e.message);
     return false;
   }
 }
@@ -62,14 +62,14 @@ export function getRecentlyViewed() {
 
     // Version check for future migrations
     if (data.version !== STORAGE_VERSION) {
-      console.warn('Recently viewed data version mismatch, clearing...');
+      logger.warn('Recently viewed data version mismatch, clearing...');
       clearRecentlyViewed();
       return [];
     }
 
     return data.items || [];
   } catch (error) {
-    console.error('Failed to get recently viewed items:', error);
+    logger.error('Failed to get recently viewed items:', error);
     return [];
   }
 }
@@ -111,7 +111,7 @@ export function addRecentlyViewed(item) {
       })
     );
   } catch (error) {
-    console.error('Failed to add recently viewed item:', error);
+    logger.error('Failed to add recently viewed item:', error);
     // If storage is full, try clearing old items
     if (error.name === 'QuotaExceededError') {
       try {
@@ -124,7 +124,7 @@ export function addRecentlyViewed(item) {
           })
         );
       } catch (retryError) {
-        console.error('Failed to recover from quota error:', retryError);
+        logger.error('Failed to recover from quota error:', retryError);
       }
     }
   }
@@ -154,7 +154,7 @@ export function removeRecentlyViewed(id, type) {
       })
     );
   } catch (error) {
-    console.error('Failed to remove recently viewed item:', error);
+    logger.error('Failed to remove recently viewed item:', error);
   }
 }
 
@@ -169,7 +169,7 @@ export function clearRecentlyViewed() {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear recently viewed:', error);
+    logger.error('Failed to clear recently viewed:', error);
   }
 }
 
@@ -228,12 +228,12 @@ export function importRecentlyViewed(jsonString) {
     const data = JSON.parse(jsonString);
 
     if (data.version !== STORAGE_VERSION) {
-      console.warn('Import data version mismatch');
+      logger.warn('Import data version mismatch');
       return false;
     }
 
     if (!Array.isArray(data.items)) {
-      console.warn('Import data has invalid format');
+      logger.warn('Import data has invalid format');
       return false;
     }
 
@@ -270,7 +270,7 @@ export function importRecentlyViewed(jsonString) {
 
     return true;
   } catch (error) {
-    console.error('Failed to import recently viewed:', error);
+    logger.error('Failed to import recently viewed:', error);
     return false;
   }
 }

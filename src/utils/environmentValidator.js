@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { environment } from '@/config/environment';
 
 /**
@@ -72,24 +73,24 @@ export const displayValidationResults = () => {
   const results = validateEnvironment();
   
   console.group('🔧 Environment Configuration');
-  console.log('Summary:', results.summary);
+  logger.log('Summary:', results.summary);
   
   if (results.errors.length > 0) {
     console.group('❌ Errors (Must Fix)');
-    results.errors.forEach(error => console.error(error));
+    results.errors.forEach(error => logger.error(error));
     console.groupEnd();
   }
   
   if (results.warnings.length > 0) {
     console.group('⚠️ Warnings');
-    results.warnings.forEach(warning => console.warn(warning));
+    results.warnings.forEach(warning => logger.warn(warning));
     console.groupEnd();
   }
   
   if (results.isValid) {
-    console.log('✅ Environment configuration is valid');
+    logger.log('✅ Environment configuration is valid');
   } else {
-    console.error('❌ Environment configuration has errors');
+    logger.error('❌ Environment configuration has errors');
   }
   
   console.groupEnd();
@@ -111,14 +112,14 @@ export const testApiConnectivity = async () => {
     
     if (response.ok) {
       const data = await response.json();
-      console.log('✅ API connectivity test passed', data);
+      logger.log('✅ API connectivity test passed', data);
       return { success: true, data };
     } else {
-      console.error('❌ API connectivity test failed', response.status);
+      logger.error('❌ API connectivity test failed', response.status);
       return { success: false, error: `HTTP ${response.status}` };
     }
   } catch (error) {
-    console.error('❌ API connectivity test failed', error.message);
+    logger.error('❌ API connectivity test failed', error.message);
     return { success: false, error: error.message };
   }
 };
@@ -127,7 +128,7 @@ export const testApiConnectivity = async () => {
  * Run all environment checks
  */
 export const runEnvironmentChecks = async () => {
-  console.log('🚀 Running environment checks...');
+  logger.log('🚀 Running environment checks...');
   
   // Validate configuration
   const configResults = displayValidationResults();

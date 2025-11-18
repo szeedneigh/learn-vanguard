@@ -8,11 +8,12 @@ import {
 } from "@/config/firebase";
 import { ROLES } from "@/lib/constants";
 import { queryClient } from "@/lib/queryClient";
+import logger from "@/utils/logger";
 
 // Utility to store token consistently
 const storeToken = (token) => {
   if (!token) {
-    console.warn("Attempted to store null/undefined token");
+    logger.warn("Attempted to store null/undefined token");
     return false;
   }
   try {
@@ -21,7 +22,7 @@ const storeToken = (token) => {
     localStorage.setItem("authToken", token);
     return true;
   } catch (error) {
-    console.error("Failed to store auth token:", error);
+    logger.error("Failed to store auth token:", error);
     return false;
   }
 };
@@ -32,7 +33,7 @@ const removeToken = () => {
     localStorage.removeItem("authToken");
     return true;
   } catch (error) {
-    console.error("Failed to remove auth token:", error);
+    logger.error("Failed to remove auth token:", error);
     return false;
   }
 };
@@ -40,7 +41,7 @@ const removeToken = () => {
 // Normalize user data to ensure role names match our constants
 const normalizeUserData = (user) => {
   if (!user) {
-    console.warn("Attempted to normalize null/undefined user");
+    logger.warn("Attempted to normalize null/undefined user");
     return null;
   }
 
@@ -59,14 +60,14 @@ const normalizeUserData = (user) => {
       assignedClass: user.assignedClass,
     };
 
-    console.log("Normalized user data:", {
+    logger.log("Normalized user data:", {
       original: user,
       normalized: normalizedUser,
     });
 
     return normalizedUser;
   } catch (error) {
-    console.error("Error normalizing user data:", error);
+    logger.error("Error normalizing user data:", error);
     return user; // Return original user data if normalization fails
   }
 };
@@ -76,16 +77,15 @@ const normalizeUserData = (user) => {
  */
 export const login = async (credentials) => {
   try {
-    console.log("Attempting login with credentials:", {
-      ...credentials,
-      password: "[REDACTED]",
+    logger.auth("Attempting login", {
+      email: credentials.email,
     });
 
     // Clear any existing token before login attempt
     removeToken();
 
     const response = await apiClient.post("/auth/login", credentials);
-    console.log("Login response:", {
+    logger.auth("Login response received", {
       status: response.status,
       hasToken: !!response.data?.token,
       hasUser: !!response.data?.user,
@@ -94,7 +94,7 @@ export const login = async (credentials) => {
     const { token, user } = response.data;
 
     if (!token || !user) {
-      console.error("Invalid login response:", {
+      logger.error("Invalid login response:", {
         hasToken: !!token,
         hasUser: !!user,
       });
@@ -106,7 +106,7 @@ export const login = async (credentials) => {
 
     const tokenStored = storeToken(token);
     if (!tokenStored) {
-      console.error("Failed to store authentication token");
+      logger.error("Failed to store authentication token");
       return {
         success: false,
         error: "Failed to establish session",
@@ -116,7 +116,7 @@ export const login = async (credentials) => {
     const normalizedUser = normalizeUserData(user);
     if (!normalizedUser) {
       removeToken();
-      console.error("Failed to normalize user data");
+      logger.error("Failed to normalize user data");
       return {
         success: false,
         error: "Invalid user data received",
@@ -132,7 +132,7 @@ export const login = async (credentials) => {
       user: normalizedUser,
     };
   } catch (error) {
-    console.error("Login failed:", error.response?.data || error);
+    logger.error("Login failed:", error.response?.data || error);
 
     // Clear token on login failure
     removeToken();
@@ -165,12 +165,12 @@ export const login = async (credentials) => {
  */
 export const loginWithGoogle = async (useRedirect = false) => {
   try {
-    console.log("Starting Google sign-in process", { useRedirect });
+    logger.auth("Starting Google sign-in process", { useRedirect });
     const result = await signInWithGoogle(useRedirect);
 
     // If redirect is in progress, return early
     if (result.inProgress) {
-      console.log("Google sign-in redirect in progress");
+      logger.auth("Google sign-in redirect in progress");
       return {
         success: false,
         inProgress: true,
@@ -178,18 +178,18 @@ export const loginWithGoogle = async (useRedirect = false) => {
       };
     }
 
-    console.log("Google sign-in successful, sending idToken to backend");
+    logger.auth("Google sign-in successful, sending idToken to backend");
     const { user: googleUser, idToken } = result;
 
     try {
-      console.log("Posting to /auth/firebase endpoint");
+      logger.log("Posting to /auth/firebase endpoint");
       const response = await apiClient.post("/auth/firebase", { idToken });
-      console.log("Backend response received", response.data);
+      logger.log("Backend response received", response.data);
 
       const { message, token, user, needsRegistration } = response.data;
 
       if (needsRegistration) {
-        console.log("User needs to complete registration", {
+        logger.auth("User needs to complete registration", {
           email: googleUser.email,
         });
         return {
@@ -202,10 +202,10 @@ export const loginWithGoogle = async (useRedirect = false) => {
       }
 
       if (token) {
-        console.log("Storing authentication token", token);
+        logger.auth("Storing authentication token");
         storeToken(token);
       } else {
-        console.error(
+        logger.error(
           "No token received from backend after Google sign-in",
           response.data
         );
@@ -214,7 +214,7 @@ export const loginWithGoogle = async (useRedirect = false) => {
       // Normalize user data to ensure consistent handling
       const normalizedUser = normalizeUserData(user);
       if (!normalizedUser) {
-        console.error("Failed to normalize Firebase user data");
+        logger.error("Failed to normalize Firebase user data");
         removeToken();
         return {
           success: false,
@@ -232,8 +232,8 @@ export const loginWithGoogle = async (useRedirect = false) => {
         message: message || "Google sign-in successful",
       };
     } catch (apiError) {
-      console.error("API error during Google sign-in:", apiError);
-      console.error("API error details:", {
+      logger.error("API error during Google sign-in:", apiError);
+      logger.error("API error details:", {
         status: apiError.response?.status,
         data: apiError.response?.data,
         message: apiError.message,
@@ -244,7 +244,7 @@ export const loginWithGoogle = async (useRedirect = false) => {
         apiError.response?.status === 401 &&
         apiError.response?.data?.tokenExpired
       ) {
-        console.log("Firebase token expired, requesting user to sign in again");
+        logger.auth("Firebase token expired, requesting user to sign in again");
         return {
           success: false,
           tokenExpired: true,
@@ -257,7 +257,7 @@ export const loginWithGoogle = async (useRedirect = false) => {
         apiError.response?.status === 400 &&
         apiError.response?.data?.needsRegistration
       ) {
-        console.log(
+        logger.auth(
           "User needs to complete registration (from error response)"
         );
         return {
@@ -273,14 +273,14 @@ export const loginWithGoogle = async (useRedirect = false) => {
       throw apiError;
     }
   } catch (error) {
-    console.error("Google sign-in failed:", error);
+    logger.error("Google sign-in failed:", error);
 
     // Handle popup blocked error by automatically retrying with redirect
     if (
       error.code === "auth/popup-blocked" ||
       error.code === "auth/popup-closed-by-user"
     ) {
-      console.log("Popup was blocked, retrying with redirect...");
+      logger.log("Popup was blocked, retrying with redirect...");
       return loginWithGoogle(true); // Retry with redirect
     }
 
@@ -309,7 +309,7 @@ export const checkGoogleRedirectResult = async () => {
     }
 
     if (result.error) {
-      console.error("Google redirect error:", result.error);
+      logger.error("Google redirect error:", result.error);
       return {
         success: false,
         error: result.error.message || "Google sign-in failed after redirect",
@@ -334,7 +334,7 @@ export const checkGoogleRedirectResult = async () => {
     // Normalize user data to ensure consistent handling
     const normalizedUser = normalizeUserData(user);
     if (!normalizedUser) {
-      console.error("Failed to normalize Firebase redirect user data");
+      logger.error("Failed to normalize Firebase redirect user data");
       removeToken();
       return {
         success: false,
@@ -352,7 +352,7 @@ export const checkGoogleRedirectResult = async () => {
       message: message || "Google sign-in successful after redirect",
     };
   } catch (error) {
-    console.error("Failed to process Google redirect result:", error);
+    logger.error("Failed to process Google redirect result:", error);
     return {
       success: false,
       error: error.message || "Failed to process Google sign-in",
@@ -405,9 +405,10 @@ export const completeGoogleRegistration = async (registrationData) => {
       yearLevel: mappedYearLevel,
     };
 
-    console.log("Completing Google registration with data:", {
-      ...formattedData,
-      idToken: "REDACTED",
+    logger.auth("Completing Google registration", {
+      studentNumber: formattedData.studentNumber,
+      course: formattedData.course,
+      yearLevel: formattedData.yearLevel,
     });
 
     try {
@@ -418,7 +419,7 @@ export const completeGoogleRegistration = async (registrationData) => {
       // Normalize user data to ensure consistent handling
       const normalizedUser = normalizeUserData(user);
       if (!normalizedUser) {
-        console.error("Failed to normalize Google registration user data");
+        logger.error("Failed to normalize Google registration user data");
         removeToken();
         return {
           success: false,
@@ -437,23 +438,19 @@ export const completeGoogleRegistration = async (registrationData) => {
         message: message || "Registration completed successfully",
       };
     } catch (error) {
-      console.error("Google registration failed:", error);
-      console.error("Error response data:", error.response?.data);
-      console.error("Error status:", error.response?.status);
-      console.error("Sent request data:", {
-        ...formattedData,
-        idToken: "[REDACTED]",
-      });
+      logger.error("Google registration failed:", error);
+      logger.error("Error response data:", error.response?.data);
+      logger.error("Error status:", error.response?.status);
 
       // Re-throw to be handled by outer catch
       throw error;
     }
   } catch (error) {
-    console.error("Google registration failed:", error);
+    logger.error("Google registration failed:", error);
 
     // Handle token expiration specifically
     if (error.response?.status === 401 && error.response?.data?.tokenExpired) {
-      console.log(
+      logger.auth(
         "Token expired during registration, requesting user to sign in again"
       );
       return {
@@ -486,7 +483,7 @@ export const initiateSignup = async (basicData) => {
       password: basicData.password,
     });
 
-    console.log("Signup initiation response:", response.data);
+    logger.auth("Signup initiation response", response.data);
 
     return {
       success: true,
@@ -495,7 +492,7 @@ export const initiateSignup = async (basicData) => {
       message: response.data.message || "Registration initiated successfully",
     };
   } catch (error) {
-    console.error("Registration initiation failed:", error);
+    logger.error("Registration initiation failed:", error);
 
     // Handle validation errors from backend
     if (error.response?.status === 400 && error.response.data?.errors) {
@@ -550,8 +547,7 @@ export const completeSignup = async (completeData) => {
         ? "Fourth Year"
         : completeData.yearLevel;
 
-    console.log("Completing signup with data:", {
-      tempToken: "REDACTED",
+    logger.auth("Completing signup", {
       studentNumber: completeData.studentNo,
       course: mappedCourse,
       yearLevel: mappedYearLevel,
@@ -577,7 +573,7 @@ export const completeSignup = async (completeData) => {
       message: response.data.message || "Registration completed successfully",
     };
   } catch (error) {
-    console.error("Registration completion failed:", error);
+    logger.error("Registration completion failed:", error);
 
     // Handle validation errors from backend
     if (error.response?.status === 400 && error.response.data?.errors) {
@@ -630,22 +626,22 @@ export const register = initiateSignup;
  */
 export const getCurrentUser = async () => {
   try {
-    console.log("Fetching current user data...");
+    logger.auth("Fetching current user data");
     const token = localStorage.getItem("authToken");
 
     if (!token) {
-      console.warn("No auth token found when fetching current user");
+      logger.warn("No auth token found when fetching current user");
       return { success: false, error: "No authentication token found" };
     } // Use verify endpoint which already returns user data
     const res = await apiClient.get("/auth/verify");
-    console.log("Current user response:", {
+    logger.auth("Current user response", {
       status: res.status,
       valid: res.data?.valid,
       hasUser: !!res.data?.user,
     });
 
     if (!res.data?.valid || !res.data?.user) {
-      console.error("Invalid response or missing user data");
+      logger.error("Invalid response or missing user data");
       removeToken();
       return { success: false, error: "Could not retrieve user data" };
     }
@@ -661,7 +657,7 @@ export const getCurrentUser = async () => {
       user: normalizedUser,
     };
   } catch (error) {
-    console.error("Get current user failed:", error);
+    logger.error("Get current user failed:", error);
 
     if (error.response?.status === 401) {
       removeToken();
@@ -677,14 +673,14 @@ export const getCurrentUser = async () => {
  */
 export const logout = async () => {
   try {
-    console.log("Logging out user...");
+    logger.auth("Logging out user");
     const token = localStorage.getItem("authToken");
 
     if (token) {
       try {
         await apiClient.post("/auth/logout");
       } catch (error) {
-        console.warn("Logout API call failed:", error);
+        logger.warn("Logout API call failed:", error);
         // Continue with local logout even if API call fails
       }
     }
@@ -693,7 +689,7 @@ export const logout = async () => {
     removeToken();
     return { success: true };
   } catch (error) {
-    console.error("Logout failed:", error);
+    logger.error("Logout failed:", error);
     // Still remove token even if API call fails
     removeToken();
     return { success: true };
@@ -712,7 +708,7 @@ export const requestPasswordReset = async (data) => {
       expiresAt: res.data.expiresAt,
     };
   } catch (error) {
-    console.error("Password reset request failed:", error);
+    logger.error("Password reset request failed:", error);
 
     // Check for specific error types
     if (error.response?.status === 429) {
@@ -753,7 +749,7 @@ export const verifyResetCode = async (data) => {
       message: res.data.message,
     };
   } catch (error) {
-    console.error("Verify reset code failed:", error);
+    logger.error("Verify reset code failed:", error);
 
     // Check for specific error types
     if (
@@ -788,7 +784,7 @@ export const resetPassword = async (data) => {
     const res = await apiClient.post("/password-reset/reset", data);
     return { success: true, message: res.data.message };
   } catch (error) {
-    console.error("Password reset failed:", error);
+    logger.error("Password reset failed:", error);
 
     // Check for specific error types
     if (
@@ -827,11 +823,11 @@ export const resetPassword = async (data) => {
  */
 export const verifyToken = async () => {
   try {
-    console.log("Verifying authentication token...");
+    logger.auth("Verifying authentication token");
     const token = localStorage.getItem("authToken");
 
     if (!token) {
-      console.warn("No token found during verification");
+      logger.warn("No token found during verification");
       return null;
     }
 
@@ -839,12 +835,12 @@ export const verifyToken = async () => {
     try {
       const decoded = jwtDecode(token);
       if (decoded.exp < Date.now() / 1000) {
-        console.warn("Token expired based on client-side validation");
+        logger.warn("Token expired based on client-side validation");
         removeToken();
         return null;
       }
     } catch (decodeError) {
-      console.error("Failed to decode token:", decodeError);
+      logger.error("Failed to decode token:", decodeError);
       // Continue to server validation as fallback
     }
 
@@ -853,7 +849,7 @@ export const verifyToken = async () => {
       const response = await apiClient.get("/auth/verify", {
         timeout: 5000, // Add timeout to prevent hanging
       });
-      console.log("Token verification response:", response.data);
+      logger.auth("Token verification response", response.data);
 
       if (response.data?.valid && response.data?.user) {
         const normalizedUser = normalizeUserData(response.data.user);
@@ -865,30 +861,30 @@ export const verifyToken = async () => {
         };
       }
 
-      console.warn(
+      logger.warn(
         "Token verification failed: invalid token or missing user data"
       );
       removeToken();
       return null;
     } catch (error) {
       if (error.response?.status === 401) {
-        console.warn("Token verification failed: unauthorized");
+        logger.warn("Token verification failed: unauthorized");
         removeToken();
         return null;
       }
 
       if (error.code === "ECONNABORTED") {
-        console.warn("Token verification request timed out");
+        logger.warn("Token verification request timed out");
         // Don't remove token on timeout, could be server issue
         return null;
       }
 
       // For other errors (like network issues), keep the token
-      console.error("Token verification request failed:", error.message);
+      logger.error("Token verification request failed:", error.message);
       return null;
     }
   } catch (error) {
-    console.error("Token verification failed:", error);
+    logger.error("Token verification failed:", error);
     removeToken();
     return null;
   }
@@ -903,13 +899,13 @@ export const isAuthenticated = () => {
     const isValid = decoded.exp > Date.now() / 1000;
 
     if (!isValid) {
-      console.warn("Token expired during authentication check");
+      logger.warn("Token expired during authentication check");
       removeToken();
     }
 
     return isValid;
   } catch (error) {
-    console.error("Authentication check failed:", error);
+    logger.error("Authentication check failed:", error);
     removeToken();
     return false;
   }
@@ -929,7 +925,7 @@ export const verifyEmail = async (userId, verificationCode) => {
       message: response.data.message || "Email verified successfully",
     };
   } catch (error) {
-    console.error("Email verification failed:", error);
+    logger.error("Email verification failed:", error);
     return {
       success: false,
       error: error.response?.data?.message || "Verification failed",
@@ -958,7 +954,7 @@ export const resendVerificationEmail = async () => {
       message: response.data.message || "Verification email sent",
     };
   } catch (error) {
-    console.error("Failed to resend verification email:", error);
+    logger.error("Failed to resend verification email:", error);
     return {
       success: false,
       error:

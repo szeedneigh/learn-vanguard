@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import PropTypes from "prop-types";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,31 +26,24 @@ const SubjectList = ({
 }) => {
   const { hasPermission } = usePermission();
   const [expandedDescriptions, setExpandedDescriptions] = useState(new Set());
-
   const canDeleteSubject = hasPermission(PERMISSIONS.DELETE_SUBJECT);
-
   // Determine if user can edit/delete subjects based on role and context
   const isStudent = userRole === ROLES.STUDENT;
   const isAdmin = userRole === ROLES.ADMIN;
-
   // Students cannot delete anything, PIO/Admin can delete based on context
   const showDeleteButton =
     !isStudent && canDeleteSubject && canEditInCurrentContext;
-
   // Debug: Log subjects data to see what we're receiving
-  console.log("SubjectList: Received subjects data:", subjects);
+  logger.log("SubjectList: Received subjects data:", subjects);
   if (subjects && subjects.length > 0) {
-    console.log("SubjectList: First subject sample:", subjects[0]);
-    console.log(
+    logger.log("SubjectList: First subject sample:", subjects[0]);
+    logger.log(
       "SubjectList: First subject description:",
       subjects[0]?.description
     );
-    console.log(
       "SubjectList: First subject instructor:",
       subjects[0]?.instructor
-    );
   }
-
   const toggleDescription = (subjectId) => {
     setExpandedDescriptions((prev) => {
       const newSet = new Set(prev);
@@ -61,18 +55,14 @@ const SubjectList = ({
       return newSet;
     });
   };
-
   const truncateText = (text, maxLength = 100) => {
     if (!text) return "";
     return text.length > maxLength
       ? text.substring(0, maxLength) + "..."
       : text;
-  };
-
   // Filter subjects based on search term
   const filteredSubjects = useMemo(() => {
     if (!searchTerm.trim()) return subjects;
-
     const searchLower = searchTerm.toLowerCase().trim();
     return subjects.filter((subject) => {
       const nameMatch = subject.name?.toLowerCase().includes(searchLower);
@@ -80,13 +70,8 @@ const SubjectList = ({
         ?.toLowerCase()
         .includes(searchLower);
       const instructorMatch = subject.instructor
-        ?.toLowerCase()
-        .includes(searchLower);
-
       return nameMatch || descriptionMatch || instructorMatch;
-    });
   }, [subjects, searchTerm]);
-
   // Show no results message when search returns empty
   if (searchTerm.trim() && filteredSubjects.length === 0) {
     return (
@@ -100,9 +85,6 @@ const SubjectList = ({
           search terms.
         </p>
       </div>
-    );
-  }
-
   return (
     <TooltipProvider>
       <div
@@ -160,7 +142,6 @@ const SubjectList = ({
                           </Tooltip>
                         )}
                       </div>
-                    </div>
                   </div>
                   <div className="flex items-center space-x-1">
                     {!canEditInCurrentContext && (
@@ -192,10 +173,7 @@ const SubjectList = ({
                         <XCircle className="w-4 h-4" />
                         <span className="sr-only">Delete Subject</span>
                       </Button>
-                    )}
-                  </div>
                 </div>
-
                 {/* Subject Description */}
                 {subject.description && (
                   <div className="pl-14">
@@ -217,20 +195,14 @@ const SubjectList = ({
                         </button>
                       )}
                     </p>
-                  </div>
                 )}
-
                 {/* Instructor Information */}
                 {subject.instructor && (
-                  <div className="pl-14">
                     <div className="flex items-center space-x-2">
                       <User className="w-4 h-4 text-gray-500" />
                       <span className="text-sm text-gray-700 font-medium">
                         {subject.instructor}
                       </span>
-                    </div>
-                  </div>
-                )}
                 <div className="flex items-center space-x-2 pt-2">
                   <Button
                     variant="outline"
@@ -249,16 +221,13 @@ const SubjectList = ({
                       ? "Manage Subject"
                       : "View Subject"}
                   </Button>
-                </div>
               </div>
             </CardHeader>
           </Card>
         ))}
-      </div>
     </TooltipProvider>
   );
 };
-
 SubjectList.propTypes = {
   subjects: PropTypes.arrayOf(
     PropTypes.shape({
@@ -276,6 +245,4 @@ SubjectList.propTypes = {
   isPIO: PropTypes.bool,
   assignedClassInfo: PropTypes.object,
   searchTerm: PropTypes.string,
-};
-
 export default SubjectList;

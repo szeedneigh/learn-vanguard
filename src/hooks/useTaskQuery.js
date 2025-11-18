@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import taskService from "@/services/taskService";
+import * as taskApi from "@/lib/api/taskApi";
 import { toast } from "@/hooks/use-toast";
 
 /**
@@ -27,7 +27,7 @@ export const useTasksQuery = (params = {}, options = {}) => {
 
   return useQuery({
     queryKey,
-    queryFn: () => taskService.getTasks(params),
+    queryFn: () => taskApi.getTasks(params),
     select: (result) => result.data,
     // Default options can be overridden
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -44,7 +44,7 @@ export const useTasksQuery = (params = {}, options = {}) => {
 export const useTaskQuery = (taskId, options = {}) => {
   return useQuery({
     queryKey: ["task", taskId],
-    queryFn: () => taskService.getTaskById(taskId),
+    queryFn: () => taskApi.getTask(taskId),
     enabled: !!taskId,
     select: (result) => result.data,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -60,7 +60,7 @@ export const useCreateTaskMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (taskData) => taskService.createTask(taskData),
+    mutationFn: (taskData) => taskApi.createTask(taskData),
     onSuccess: (result) => {
       if (result.success) {
         // Invalidate tasks query to refetch data
@@ -98,7 +98,7 @@ export const useUpdateTaskMutation = () => {
 
   return useMutation({
     mutationFn: ({ taskId, taskData }) =>
-      taskService.updateTask(taskId, taskData),
+      taskApi.updateTask(taskId, taskData),
     onSuccess: (result, variables) => {
       if (result.success) {
         // Update the task in the cache
@@ -138,7 +138,7 @@ export const useUpdateTaskStatusMutation = () => {
 
   return useMutation({
     mutationFn: ({ taskId, status }) =>
-      taskService.updateTaskStatus(taskId, status),
+      taskApi.updateTaskStatus(taskId, status),
     onSuccess: (result, variables) => {
       if (result.success) {
         // Optimistic update for the task in the cache
@@ -182,13 +182,16 @@ export const useUpdateTaskStatusMutation = () => {
 /**
  * Hook for updating a task's progress
  * @returns {Object} React Query mutation
+ * @deprecated This hook is not currently supported by the API
  */
 export const useUpdateTaskProgressMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ taskId, progress }) =>
-      taskService.updateTaskProgress(taskId, progress),
+      // Note: updateTaskProgress endpoint not available in taskApi
+      // Using updateTask as a workaround
+      taskApi.updateTask(taskId, { completionProgress: progress }),
     onSuccess: (result, variables) => {
       if (result.success) {
         // Optimistic update for the task in the cache
@@ -237,7 +240,7 @@ export const useDeleteTaskMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (taskId) => taskService.deleteTask(taskId),
+    mutationFn: (taskId) => taskApi.deleteTask(taskId),
     onSuccess: (result, taskId) => {
       if (result.success) {
         // Remove the task from the cache using exact query key
@@ -271,13 +274,17 @@ export const useDeleteTaskMutation = () => {
 /**
  * Hook for adding a comment to a task
  * @returns {Object} React Query mutation
+ * @deprecated This hook is not currently supported by the API - addTaskComment endpoint not available
  */
 export const useAddTaskCommentMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId, commentData }) =>
-      taskService.addTaskComment(taskId, commentData),
+    mutationFn: ({ taskId, commentData }) => {
+      // Note: addTaskComment endpoint not available in taskApi
+      // This mutation will need to be implemented when the API supports it
+      return Promise.reject(new Error("addTaskComment is not yet implemented in the API"));
+    },
     onSuccess: (result, variables) => {
       if (result.success) {
         // Update the task in the cache

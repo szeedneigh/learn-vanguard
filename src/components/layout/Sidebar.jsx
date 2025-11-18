@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useCallback, memo, useMemo, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
@@ -8,14 +9,12 @@ import { getNavigationByRole } from "@/lib/navigation";
 
 const NavigationItem = memo(({ item, isCollapsed, isActive }) => {
   const Icon = item.icon;
-
-  console.log("NavigationItem rendering:", {
+  logger.log("NavigationItem rendering:", {
     name: item.name,
     href: item.href,
     isActive,
     isCollapsed,
   });
-
   return (
     <Link
       to={item.href}
@@ -40,10 +39,8 @@ const NavigationItem = memo(({ item, isCollapsed, isActive }) => {
         )}
       />
       <div
-        className={cn(
           "transition-all duration-300 ease-in-out overflow-hidden",
           isCollapsed ? "w-0 opacity-0" : "w-32 opacity-100 ml-3"
-        )}
       >
         <span
           className={cn(
@@ -57,9 +54,7 @@ const NavigationItem = memo(({ item, isCollapsed, isActive }) => {
     </Link>
   );
 });
-
 NavigationItem.displayName = "NavigationItem";
-
 NavigationItem.propTypes = {
   item: PropTypes.shape({
     name: PropTypes.string.isRequired,
@@ -71,7 +66,6 @@ NavigationItem.propTypes = {
   isCollapsed: PropTypes.bool.isRequired,
   isActive: PropTypes.bool.isRequired,
 };
-
 const ToggleButton = memo(({ isCollapsed, onClick }) => (
   <button
     onClick={onClick}
@@ -87,17 +81,11 @@ const ToggleButton = memo(({ isCollapsed, onClick }) => (
       <ChevronRight className="h-4 w-4 text-gray-600 transition-transform duration-300" />
     ) : (
       <ChevronLeft className="h-4 w-4 text-gray-600 transition-transform duration-300" />
-    )}
   </button>
 ));
-
 ToggleButton.displayName = "ToggleButton";
-
 ToggleButton.propTypes = {
-  isCollapsed: PropTypes.bool.isRequired,
   onClick: PropTypes.func.isRequired,
-};
-
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -105,72 +93,52 @@ const Sidebar = ({ isOpen, onClose }) => {
   // Convert to state variable
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false
-  );
   // Track touch start position for swipe detection
   const [touchStartX, setTouchStartX] = useState(null);
-
-  console.log("Sidebar rendering:", {
+  logger.log("Sidebar rendering:", {
     isOpen,
     user: user ? { role: user.role, id: user.id } : "No user",
     isLoading,
     isMobile,
     pathname: location.pathname,
-  });
-
   // Effect to handle resize events
   useEffect(() => {
     const handleResize = () => {
       const newIsMobile = window.innerWidth < 768;
       setIsMobile(newIsMobile);
-
       if (!newIsMobile) {
         // Reset mobile sidebar state when returning to desktop
         onClose();
       }
     };
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [onClose]);
-
   const handleToggle = useCallback(() => {
     setIsCollapsed((prev) => !prev);
   }, []);
-
   // Handle touch start event for swipe detection
   const handleTouchStart = useCallback((e) => {
     setTouchStartX(e.touches[0].clientX);
-  }, []);
-
   // Handle touch move event for swipe detection
   const handleTouchMove = useCallback(
     (e) => {
       if (touchStartX === null) return;
-
       const touchEndX = e.touches[0].clientX;
       const diff = touchStartX - touchEndX;
-
       // If swiping left (diff > 0) and the swipe is significant enough (> 50px)
       if (diff > 50) {
-        onClose();
         setTouchStartX(null);
-      }
     },
     [touchStartX, onClose]
-  );
-
   // Reset touch tracking when touch ends without a swipe
   const handleTouchEnd = useCallback(() => {
     setTouchStartX(null);
-  }, []);
-
   const filteredNavigation = useMemo(() => {
     const navItems = getNavigationByRole(user);
-    console.log("Sidebar navigation items:", navItems);
+    logger.log("Sidebar navigation items:", navItems);
     return navItems;
   }, [user]);
-
-  return (
     <>
       {/* Mobile overlay - clicking anywhere on it will close the sidebar */}
       {isMobile && isOpen && (
@@ -179,12 +147,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           onClick={onClose}
           aria-hidden="true"
         />
-      )}
-
-      <div
-        className={cn(
           "flex flex-col min-h-screen bg-white shadow-xl relative z-50",
-          "transition-all duration-300 ease-in-out",
           // Mobile styles
           isMobile
             ? cn(
@@ -195,24 +158,17 @@ const Sidebar = ({ isOpen, onClose }) => {
             isCollapsed
             ? "w-20"
             : "w-64"
-        )}
         // Add touch event handlers for swipe to close
         onTouchStart={isMobile ? handleTouchStart : undefined}
         onTouchMove={isMobile ? handleTouchMove : undefined}
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
-      >
         {/* Removed the X button for mobile */}
-
         {/* Add a subtle swipe indicator for mobile */}
         {isMobile && (
           <div className="absolute right-0 top-1/2 h-24 w-1 bg-gray-300 rounded-l opacity-30" />
-        )}
-
         {/* Only show toggle button on desktop */}
         {!isMobile && (
           <ToggleButton isCollapsed={isCollapsed} onClick={handleToggle} />
-        )}
-
         {/* Header Section with Gradient Background */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600">
           <div
@@ -240,12 +196,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                   height: isCollapsed && !isMobile ? "63px" : "55px",
                 }}
                 onError={(e) => {
-                  console.error("Logo image failed to load:", e);
+                  logger.error("Logo image failed to load:", e);
                   // Fallback to text if image fails to load
                   e.target.style.display = "none";
                   e.target.parentNode.innerHTML =
                     '<div style="width: 55px; height: 55px;" class="bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold">LV</div>';
-                }}
               />
             </div>
             {(!isCollapsed || isMobile) && (
@@ -257,22 +212,16 @@ const Sidebar = ({ isOpen, onClose }) => {
                   Learn Vanguard
                 </span>
               </div>
-            )}
           </div>
         </div>
-
         {/* Navigation Section - remains unchanged */}
         <nav
-          className={cn(
             "flex-1",
             isCollapsed && !isMobile ? "px-2 py-4" : "p-4",
             "space-y-2"
-          )}
-        >
           {isLoading ? (
             <div className="flex justify-center items-center h-full text-gray-500">
               Loading Nav...
-            </div>
           ) : filteredNavigation.length > 0 ? (
             filteredNavigation.map((item) => (
               <NavigationItem
@@ -280,23 +229,14 @@ const Sidebar = ({ isOpen, onClose }) => {
                 item={item}
                 isCollapsed={isCollapsed && !isMobile}
                 isActive={location.pathname === item.href}
-              />
             ))
           ) : (
             <div className="flex flex-col items-center justify-center h-32 text-gray-500 text-center p-4">
               <p className="mb-2">No navigation items available</p>
               <p className="text-xs">Role: {user?.role || "Unknown"}</p>
-            </div>
-          )}
         </nav>
-      </div>
     </>
-  );
-};
-
 Sidebar.propTypes = {
   isOpen: PropTypes.bool,
   onClose: PropTypes.func,
-};
-
 export default memo(Sidebar);

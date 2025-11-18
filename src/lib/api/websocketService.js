@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { environment } from '@/config/environment';
 
 /**
@@ -24,19 +25,19 @@ class WebSocketService {
    */
   connect(token) {
     if (this.ws && this.isConnected) {
-      console.warn('WebSocket already connected');
+      logger.warn('WebSocket already connected');
       return;
     }
 
     try {
       // Use the production WebSocket URL
       const wsUrl = environment.WS_URL || 'wss://learn-vanguard-server.onrender.com/ws';
-      console.log('Connecting to WebSocket:', wsUrl);
+      logger.log('Connecting to WebSocket:', wsUrl);
       
       this.ws = new WebSocket(wsUrl);
       
       this.ws.onopen = () => {
-        console.log('WebSocket connected successfully');
+        logger.log('WebSocket connected successfully');
         this.isConnected = true;
         this.reconnectAttempts = 0;
         
@@ -58,12 +59,12 @@ class WebSocketService {
           const data = JSON.parse(event.data);
           this.handleMessage(data);
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          logger.error('Error parsing WebSocket message:', error);
         }
       };
 
       this.ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
+        logger.log('WebSocket disconnected:', event.code, event.reason);
         this.isConnected = false;
         this.stopHeartbeat();
         
@@ -77,12 +78,12 @@ class WebSocketService {
       };
 
       this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        logger.error('WebSocket error:', error);
         this.emit('error', error);
       };
 
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      logger.error('Failed to create WebSocket connection:', error);
       this.emit('error', error);
     }
   }
@@ -93,7 +94,7 @@ class WebSocketService {
    */
   authenticate(token) {
     if (!token) {
-      console.error('No authentication token provided');
+      logger.error('No authentication token provided');
       return;
     }
 
@@ -112,32 +113,32 @@ class WebSocketService {
 
     switch (data.type) {
       case 'auth_success':
-        console.log('WebSocket authentication successful');
+        logger.log('WebSocket authentication successful');
         this.emit('authenticated', data);
         break;
         
       case 'auth_error':
-        console.error('WebSocket authentication failed:', data.message);
+        logger.error('WebSocket authentication failed:', data.message);
         this.emit('auth_error', data);
         break;
         
       case 'notification':
-        console.log('Received notification:', data);
+        logger.log('Received notification:', data);
         this.handleNotification(data);
         break;
         
       case 'task_update':
-        console.log('Task updated:', data);
+        logger.log('Task updated:', data);
         this.emit('task_update', data);
         break;
         
       case 'event_update':
-        console.log('Event updated:', data);
+        logger.log('Event updated:', data);
         this.emit('event_update', data);
         break;
         
       case 'announcement':
-        console.log('New announcement:', data);
+        logger.log('New announcement:', data);
         this.emit('announcement', data);
         break;
         
@@ -154,7 +155,7 @@ class WebSocketService {
         break;
         
       default:
-        console.log('Unknown message type:', data.type, data);
+        logger.log('Unknown message type:', data.type, data);
         this.emit('message', data);
     }
   }
@@ -190,7 +191,7 @@ class WebSocketService {
         // Check if we received a pong recently
         const timeSinceLastPong = Date.now() - this.lastPong;
         if (timeSinceLastPong > 60000) { // 1 minute timeout
-          console.warn('WebSocket heartbeat timeout, closing connection');
+          logger.warn('WebSocket heartbeat timeout, closing connection');
           this.ws.close();
           return;
         }
@@ -219,7 +220,7 @@ class WebSocketService {
       try {
         this.ws.send(JSON.stringify(message));
       } catch (error) {
-        console.error('Failed to send WebSocket message:', error);
+        logger.error('Failed to send WebSocket message:', error);
       }
     } else {
       // Queue message for later
@@ -245,7 +246,7 @@ class WebSocketService {
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
     
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    logger.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
     
     setTimeout(() => {
       if (!this.isConnected) {
@@ -292,7 +293,7 @@ class WebSocketService {
         try {
           callback(data);
         } catch (error) {
-          console.error(`Error in WebSocket event listener for ${event}:`, error);
+          logger.error(`Error in WebSocket event listener for ${event}:`, error);
         }
       });
     }

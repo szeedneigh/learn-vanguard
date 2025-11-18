@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import * as announcementApi from "@/lib/api/announcementApi";
 
 const config = {
@@ -96,42 +97,42 @@ const mockDeleteAnnouncement = async ({ announcementId, subjectId }) => {
  */
 export const getAnnouncements = async ({ subjectId }) => {
   if (!subjectId) {
-    console.warn("getAnnouncements called without subjectId");
+    logger.warn("getAnnouncements called without subjectId");
     return [];
   }
 
-  console.log(
+  logger.log(
     `announcementService.js: getAnnouncements called with subjectId: ${subjectId}. USE_MOCK_DATA: ${config.useMockData}`
   );
 
   if (config.useMockData) {
-    console.log(
+    logger.log(
       "announcementService.js: getAnnouncements - returning MOCK_ANNOUNCEMENTS"
     );
     return mockGetAnnouncements({ subjectId });
   }
 
   try {
-    console.log(
+    logger.log(
       "announcementService.js: getAnnouncements - attempting to fetch from API"
     );
     const result = await announcementApi.getAnnouncements({ subjectId });
 
     if (result.success) {
-      console.log(
+      logger.log(
         "announcementService.js: getAnnouncements - API success:",
         result.data
       );
       return Array.isArray(result.data) ? result.data : [];
     } else {
-      console.warn(
+      logger.warn(
         "announcementService.js: getAnnouncements - API returned error, using fallback:",
         result.error
       );
       return mockGetAnnouncements({ subjectId });
     }
   } catch (error) {
-    console.error(
+    logger.error(
       `announcementService.js: getAnnouncements - API call failed for subject ${subjectId}, using fallback:`,
       error
     );
@@ -155,7 +156,7 @@ export const createAnnouncement = async ({
   activityData = null,
   creationSource = "manual",
 }) => {
-  console.log(
+  logger.log(
     "announcementService.js: createAnnouncement called with:",
     {
       content,
@@ -172,7 +173,7 @@ export const createAnnouncement = async ({
   );
 
   if (!content || !subjectId || !title) {
-    console.error(
+    logger.error(
       "announcementService.js: createAnnouncement - Missing required fields"
     );
     throw new Error(
@@ -181,7 +182,7 @@ export const createAnnouncement = async ({
   }
 
   if (config.useMockData) {
-    console.log(
+    logger.log(
       "announcementService.js: createAnnouncement - MOCK - creating announcement"
     );
     return mockCreateAnnouncement({
@@ -194,7 +195,7 @@ export const createAnnouncement = async ({
   }
 
   try {
-    console.log(
+    logger.log(
       "announcementService.js: createAnnouncement - attempting to create via API"
     );
     // Prepare the request payload, excluding activityData if it's null/undefined
@@ -211,12 +212,12 @@ export const createAnnouncement = async ({
     // Only include activityData if it's a valid object
     if (activityData && typeof activityData === "object") {
       payload.activityData = activityData;
-      console.log(
+      logger.log(
         "announcementService.js: Including activityData in payload:",
         activityData
       );
     } else {
-      console.log(
+      logger.log(
         "announcementService.js: Excluding activityData from payload. Value:",
         activityData,
         "Type:",
@@ -227,13 +228,13 @@ export const createAnnouncement = async ({
     const result = await announcementApi.createAnnouncement(payload);
 
     if (result.success) {
-      console.log(
+      logger.log(
         "announcementService.js: createAnnouncement - API success:",
         result.data
       );
       return result.data;
     } else {
-      console.error(
+      logger.error(
         "announcementService.js: createAnnouncement - API returned error:",
         result.error
       );
@@ -241,7 +242,7 @@ export const createAnnouncement = async ({
       throw new Error(result.error || "Failed to create announcement");
     }
   } catch (error) {
-    console.error(
+    logger.error(
       "announcementService.js: createAnnouncement - API call failed:",
       error
     );
@@ -265,7 +266,7 @@ export const updateAnnouncement = async ({
   dueDate,
   subjectId,
 }) => {
-  console.log(
+  logger.log(
     "announcementService.js: updateAnnouncement called with:",
     { announcementId, content, title, priority, type, dueDate, subjectId },
     "USE_MOCK_DATA:",
@@ -282,7 +283,7 @@ export const updateAnnouncement = async ({
   }
 
   if (config.useMockData) {
-    console.log(
+    logger.log(
       "announcementService.js: updateAnnouncement - MOCK - updating announcement"
     );
     return mockUpdateAnnouncement({
@@ -297,7 +298,7 @@ export const updateAnnouncement = async ({
   }
 
   try {
-    console.log(
+    logger.log(
       "announcementService.js: updateAnnouncement - attempting to update via API"
     );
     // Prepare update data, excluding undefined values
@@ -315,20 +316,20 @@ export const updateAnnouncement = async ({
     );
 
     if (result.success) {
-      console.log(
+      logger.log(
         "announcementService.js: updateAnnouncement - API success:",
         result.data
       );
       return result.data;
     } else {
-      console.error(
+      logger.error(
         "announcementService.js: updateAnnouncement - API returned error:",
         result.error
       );
       throw new Error(result.error);
     }
   } catch (error) {
-    console.error(
+    logger.error(
       "announcementService.js: updateAnnouncement - API call failed:",
       error
     );
@@ -343,7 +344,7 @@ export const updateAnnouncement = async ({
  * @returns {Promise<void>}
  */
 export const deleteAnnouncement = async ({ announcementId, subjectId }) => {
-  console.log(
+  logger.log(
     "announcementService.js: deleteAnnouncement called with:",
     { announcementId, subjectId },
     "USE_MOCK_DATA:",
@@ -352,7 +353,7 @@ export const deleteAnnouncement = async ({ announcementId, subjectId }) => {
 
   // Check if announcementId is valid
   if (!announcementId) {
-    console.error(
+    logger.error(
       "announcementService.js: deleteAnnouncement - Missing or invalid announcementId"
     );
     throw new Error("Missing or invalid announcement ID");
@@ -364,36 +365,36 @@ export const deleteAnnouncement = async ({ announcementId, subjectId }) => {
       ? announcementId._id
       : announcementId;
 
-  console.log(`announcementService.js: Using ID for deletion: ${idToDelete}`);
+  logger.log(`announcementService.js: Using ID for deletion: ${idToDelete}`);
 
   if (config.useMockData) {
-    console.log(
+    logger.log(
       "announcementService.js: deleteAnnouncement - MOCK - deleting announcement"
     );
     return mockDeleteAnnouncement({ announcementId: idToDelete, subjectId });
   }
 
   try {
-    console.log(
+    logger.log(
       "announcementService.js: deleteAnnouncement - attempting to delete via API"
     );
     const result = await announcementApi.deleteAnnouncement(idToDelete);
 
     if (result.success) {
-      console.log(
+      logger.log(
         "announcementService.js: deleteAnnouncement - API success:",
         result.message
       );
       return { message: result.message };
     } else {
-      console.error(
+      logger.error(
         "announcementService.js: deleteAnnouncement - API returned error:",
         result.error
       );
       throw new Error(result.error);
     }
   } catch (error) {
-    console.error(
+    logger.error(
       "announcementService.js: deleteAnnouncement - API call failed:",
       error
     );

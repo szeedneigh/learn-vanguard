@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import * as topicApi from "@/lib/api/topicApi";
 
 const config = {
@@ -43,7 +44,7 @@ const MOCK_TOPICS = [
  * @returns {Promise<Object>} Topics with pagination
  */
 export const getTopicsBySubject = async (subjectId, options = {}) => {
-  console.log("topicService.js: Getting topics for subject", subjectId);
+  logger.log("topicService.js: Getting topics for subject", subjectId);
 
   if (config.useMockData) {
     const mockTopics = MOCK_TOPICS.filter(
@@ -65,7 +66,7 @@ export const getTopicsBySubject = async (subjectId, options = {}) => {
     const result = await topicApi.getTopicsBySubject(subjectId, options);
     return result;
   } catch (error) {
-    console.error("Error getting topics:", error);
+    logger.error("Error getting topics:", error);
     return {
       data: [],
       pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
@@ -81,7 +82,7 @@ export const getTopicsBySubject = async (subjectId, options = {}) => {
  * @returns {Promise<Object>} Topic data with resources
  */
 export const getTopicById = async (topicId) => {
-  console.log("topicService.js: Getting topic", topicId);
+  logger.log("topicService.js: Getting topic", topicId);
 
   if (config.useMockData) {
     const topic = MOCK_TOPICS.find((t) => t.id === topicId);
@@ -98,7 +99,7 @@ export const getTopicById = async (topicId) => {
     const result = await topicApi.getTopicById(topicId);
     return result;
   } catch (error) {
-    console.error("Error getting topic:", error);
+    logger.error("Error getting topic:", error);
     return {
       data: null,
       success: false,
@@ -113,7 +114,7 @@ export const getTopicById = async (topicId) => {
  * @returns {Promise<Object>} Created topic
  */
 export const createTopic = async (topicData) => {
-  console.log("topicService.js: Creating topic", topicData);
+  logger.log("topicService.js: Creating topic", topicData);
 
   if (config.useMockData) {
     const newTopic = {
@@ -134,7 +135,7 @@ export const createTopic = async (topicData) => {
     const result = await topicApi.createTopic(topicData);
     return result;
   } catch (error) {
-    console.error("Error creating topic:", error);
+    logger.error("Error creating topic:", error);
     return {
       data: null,
       success: false,
@@ -150,8 +151,8 @@ export const createTopic = async (topicData) => {
  * @returns {Promise<Object>} Updated topic
  */
 export const updateTopic = async (topicId, topicData) => {
-  console.log("topicService.js: Updating topic", topicId, topicData);
-  console.log(
+  logger.log("topicService.js: Updating topic", topicId, topicData);
+  logger.log(
     "topicService.js: Topic ID type:",
     typeof topicId,
     "Value:",
@@ -182,7 +183,7 @@ export const updateTopic = async (topicId, topicData) => {
     const result = await topicApi.updateTopic(topicId, topicData);
     return result;
   } catch (error) {
-    console.error("Error updating topic:", error);
+    logger.error("Error updating topic:", error);
     return {
       data: null,
       success: false,
@@ -197,7 +198,7 @@ export const updateTopic = async (topicId, topicData) => {
  * @returns {Promise<Object>} Deletion result
  */
 export const deleteTopic = async (topicId) => {
-  console.log("topicService.js: Deleting topic", topicId);
+  logger.log("topicService.js: Deleting topic", topicId);
 
   if (config.useMockData) {
     const index = MOCK_TOPICS.findIndex((t) => t.id === topicId);
@@ -218,7 +219,7 @@ export const deleteTopic = async (topicId) => {
     const result = await topicApi.deleteTopic(topicId);
     return result;
   } catch (error) {
-    console.error("Error deleting topic:", error);
+    logger.error("Error deleting topic:", error);
     return {
       success: false,
       error: error.message || "Failed to delete topic",
@@ -233,7 +234,7 @@ export const deleteTopic = async (topicId) => {
  * @returns {Promise<Object>} Created activity
  */
 export const addActivity = async (topicId, activityData) => {
-  console.log(
+  logger.log(
     "topicService.js: Adding activity to topic",
     topicId,
     activityData
@@ -264,7 +265,7 @@ export const addActivity = async (topicId, activityData) => {
     const result = await topicApi.addActivity(topicId, activityData);
     return result;
   } catch (error) {
-    console.error("Error adding activity:", error);
+    logger.error("Error adding activity:", error);
     return {
       data: null,
       success: false,
@@ -281,7 +282,7 @@ export const addActivity = async (topicId, activityData) => {
  * @returns {Promise<Object>} Updated activity
  */
 export const updateActivity = async (topicId, activityId, activityData) => {
-  console.log(
+  logger.log(
     "topicService.js: Updating activity",
     topicId,
     activityId,
@@ -321,7 +322,7 @@ export const updateActivity = async (topicId, activityId, activityData) => {
     );
     return result;
   } catch (error) {
-    console.error("Error updating activity:", error);
+    logger.error("Error updating activity:", error);
     return {
       data: null,
       success: false,
@@ -337,7 +338,7 @@ export const updateActivity = async (topicId, activityId, activityData) => {
  * @returns {Promise<Object>} Deletion result
  */
 export const deleteActivity = async (topicId, activityId) => {
-  console.log("topicService.js: Deleting activity", topicId, activityId);
+  logger.log("topicService.js: Deleting activity", topicId, activityId);
 
   if (config.useMockData) {
     const topicIndex = MOCK_TOPICS.findIndex((t) => t.id === topicId);
@@ -363,7 +364,7 @@ export const deleteActivity = async (topicId, activityId) => {
     const result = await topicApi.deleteActivity(topicId, activityId);
     return result;
   } catch (error) {
-    console.error("Error deleting activity:", error);
+    logger.error("Error deleting activity:", error);
     return {
       success: false,
       error: error.message || "Failed to delete activity",

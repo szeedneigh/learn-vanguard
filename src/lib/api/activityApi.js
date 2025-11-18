@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import apiClient from './client';
 
 /**
@@ -19,7 +20,7 @@ export const markActivityComplete = async (topicId, activityId, notes = null) =>
       success: true,
     };
   } catch (error) {
-    console.error('Error marking activity as complete:', error);
+    logger.error('Error marking activity as complete:', error);
     return {
       data: null,
       success: false,
@@ -43,7 +44,7 @@ export const getActivityCompletions = async (subjectId = null) => {
       success: true,
     };
   } catch (error) {
-    console.error('Error fetching activity completions:', error);
+    logger.error('Error fetching activity completions:', error);
     return {
       data: [],
       success: false,
@@ -70,7 +71,7 @@ export const checkActivityCompletion = async (topicId, activityId) => {
       isCompleted: response.data.isCompleted,
     };
   } catch (error) {
-    console.error('Error checking activity completion:', error);
+    logger.error('Error checking activity completion:', error);
     return {
       data: null,
       success: false,
@@ -97,7 +98,7 @@ export const getActivityCompletionStats = async (topicId, activityId) => {
       success: true,
     };
   } catch (error) {
-    console.error('Error fetching activity completion stats:', error);
+    logger.error('Error fetching activity completion stats:', error);
     return {
       data: null,
       success: false,
@@ -131,7 +132,7 @@ export const batchCheckActivityCompletions = async (activities) => {
       success: true,
     };
   } catch (error) {
-    console.error('Error batch checking activity completions:', error);
+    logger.error('Error batch checking activity completions:', error);
     return {
       data: {},
       success: false,

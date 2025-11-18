@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import apiClient from "./client";
 
 /**
@@ -26,7 +27,7 @@ export const getTopicsBySubject = async (subjectId, options = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching topics:", error);
+    logger.error("Error fetching topics:", error);
     return {
       data: [],
       success: false,
@@ -52,7 +53,7 @@ export const getTopicById = async (topicId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching topic:", error);
+    logger.error("Error fetching topic:", error);
     return {
       data: null,
       success: false,
@@ -79,7 +80,7 @@ export const createTopic = async (topicData) => {
       message: response.data.message,
     };
   } catch (error) {
-    console.error("Error creating topic:", error);
+    logger.error("Error creating topic:", error);
     return {
       data: null,
       success: false,
@@ -99,8 +100,8 @@ export const createTopic = async (topicData) => {
  */
 export const updateTopic = async (topicId, topicData) => {
   try {
-    console.log("topicApi.js: Making PUT request to:", `/topics/${topicId}`);
-    console.log("topicApi.js: Request data:", topicData);
+    logger.log("topicApi.js: Making PUT request to:", `/topics/${topicId}`);
+    logger.log("topicApi.js: Request data:", topicData);
     const response = await apiClient.put(`/topics/${topicId}`, topicData);
 
     return {
@@ -109,8 +110,8 @@ export const updateTopic = async (topicId, topicData) => {
       message: response.data.message,
     };
   } catch (error) {
-    console.error("Error updating topic:", error);
-    console.error("topicApi.js: Error details:", {
+    logger.error("Error updating topic:", error);
+    logger.error("topicApi.js: Error details:", {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
@@ -142,7 +143,7 @@ export const deleteTopic = async (topicId) => {
       message: response.data.message,
     };
   } catch (error) {
-    console.error("Error deleting topic:", error);
+    logger.error("Error deleting topic:", error);
     return {
       success: false,
       error:
@@ -172,7 +173,7 @@ export const addActivity = async (topicId, activityData) => {
       message: response.data.message,
     };
   } catch (error) {
-    console.error("Error adding activity:", error);
+    logger.error("Error adding activity:", error);
     return {
       data: null,
       success: false,
@@ -204,7 +205,7 @@ export const updateActivity = async (topicId, activityId, activityData) => {
       message: response.data.message,
     };
   } catch (error) {
-    console.error("Error updating activity:", error);
+    logger.error("Error updating activity:", error);
     return {
       data: null,
       success: false,
@@ -233,7 +234,7 @@ export const deleteActivity = async (topicId, activityId) => {
       message: response.data.message,
     };
   } catch (error) {
-    console.error("Error deleting activity:", error);
+    logger.error("Error deleting activity:", error);
     return {
       success: false,
       error:

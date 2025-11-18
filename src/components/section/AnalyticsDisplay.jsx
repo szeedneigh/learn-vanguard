@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useQuery } from "@tanstack/react-query"
@@ -10,7 +11,7 @@ const getAnalyticsData = async () => {
     const response = await apiClient.get('/analytics/uploads');
     return response.data;
   } catch (error) {
-    console.error('Error fetching analytics:', error);
+    logger.error('Error fetching analytics:', error);
     // Return fallback data if API fails
     return [
       { name: "Aug", total: 50 },
@@ -22,22 +23,12 @@ const getAnalyticsData = async () => {
     ];
   }
 };
-
 const getAnalyticsStats = async () => {
-  try {
     const response = await apiClient.get('/analytics/stats');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching analytics stats:', error);
-    // Return fallback data if API fails
-    return [
+    logger.error('Error fetching analytics stats:', error);
       { name: "Total Uploads", value: "444" },
       { name: "Active Users", value: "280" },
       { name: "Avg. Daily Views", value: "143" },
-    ];
-  }
-};
-
 export default function AnalyticsDisplay() {
   // Fetch analytics data
   const { 
@@ -50,22 +41,14 @@ export default function AnalyticsDisplay() {
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
   });
-
   // Fetch analytics stats
-  const { 
     data: stats = [], 
     isLoading: statsLoading, 
     isError: statsError 
-  } = useQuery({
     queryKey: ['analytics', 'stats'],
     queryFn: getAnalyticsStats,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
-  });
-
   const isLoading = analyticsLoading || statsLoading;
   const hasError = analyticsError || statsError;
-
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -96,8 +79,6 @@ export default function AnalyticsDisplay() {
         </div>
       </div>
     );
-  }
-
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
       <Card className="col-span-4">
@@ -120,12 +101,7 @@ export default function AnalyticsDisplay() {
                 axisLine={false}
               />
               <YAxis
-                stroke="#888888"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
                 tickFormatter={(value) => `${value}`}
-              />
               <Bar dataKey="total" fill="#facc15" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -133,13 +109,10 @@ export default function AnalyticsDisplay() {
       </Card>
       <div className="col-span-3">
         <Card>
-          <CardHeader>
             <CardTitle>Overview</CardTitle>
             <CardDescription>
               Summary of resource usage statistics
               {hasError && <span className="text-orange-600"> (cached data)</span>}
-            </CardDescription>
-          </CardHeader>
           <CardContent>
             <div className="space-y-8">
               {stats.map((stat, index) => (
@@ -150,11 +123,6 @@ export default function AnalyticsDisplay() {
                   </div>
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
-

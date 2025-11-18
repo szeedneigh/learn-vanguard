@@ -1,7 +1,8 @@
 import axios from "axios";
 import { environment } from "@/config/environment";
+import logger from "@/utils/logger";
 
-console.log("Initializing API client with base URL:", environment.API_BASE_URL);
+logger.log("Initializing API client with base URL:", environment.API_BASE_URL);
 
 // Create custom axios instance
 const apiClient = axios.create({
@@ -35,7 +36,7 @@ const retryRequest = async (config, retryCount = 0) => {
       (error.code === "ECONNABORTED" || !error.response)
     ) {
       const nextRetryDelay = RETRY_DELAY * (retryCount + 1); // Exponential backoff
-      console.log(
+      logger.log(
         `API request failed, retrying in ${nextRetryDelay}ms (attempt ${
           retryCount + 1
         }/${MAX_RETRIES})`,
@@ -68,7 +69,7 @@ const processQueue = (error, token = null) => {
 apiClient.interceptors.request.use(
   (config) => {
     // Log the request details for debugging
-    console.log("Making request to:", config.url, {
+    logger.log("Making request to:", config.url, {
       method: config.method,
       headers: config.headers,
       data: config.data,
@@ -84,13 +85,13 @@ apiClient.interceptors.request.use(
       !config.url.includes("/auth/login") &&
       !config.url.includes("/auth/signup")
     ) {
-      console.warn("No auth token found for request:", config.url);
+      logger.warn("No auth token found for request:", config.url);
     }
 
     return config;
   },
   (error) => {
-    console.error("Request interceptor error:", error);
+    logger.error("Request interceptor error:", error);
     return Promise.reject(error);
   }
 );
@@ -99,7 +100,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => {
     // Log successful responses for debugging
-    console.log("Response received:", {
+    logger.log("Response received:", {
       status: response.status,
       url: response.config.url,
       data: response.data,
@@ -110,7 +111,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     // Log detailed error information
-    console.error("API Error:", {
+    logger.error("API Error:", {
       url: originalRequest?.url,
       method: originalRequest?.method,
       status: error.response?.status,
@@ -134,7 +135,7 @@ apiClient.interceptors.response.use(
         !originalRequest?.url?.includes("/auth/login") &&
         !originalRequest?.url?.includes("/auth/signup")
       ) {
-        console.warn("Unauthorized API request - clearing auth tokens");
+        logger.warn("Unauthorized API request - clearing auth tokens");
         localStorage.removeItem("authToken");
         window.dispatchEvent(new CustomEvent("auth:required"));
       }
@@ -143,7 +144,7 @@ apiClient.interceptors.response.use(
 
     // Server error - 500 range
     if (error.response?.status >= 500) {
-      console.error("Server error:", error.response?.data || error.message);
+      logger.error("Server error:", error.response?.data || error.message);
       window.dispatchEvent(
         new CustomEvent("api:server-error", {
           detail: {
@@ -156,12 +157,12 @@ apiClient.interceptors.response.use(
 
     // Not found - 404
     if (error.response?.status === 404) {
-      console.warn("Resource not found:", originalRequest.url);
+      logger.warn("Resource not found:", originalRequest.url);
     }
 
     // Request aborted/timeout - no status
     if (error.code === "ECONNABORTED") {
-      console.error("Request timeout", originalRequest.url);
+      logger.error("Request timeout:", originalRequest.url);
       window.dispatchEvent(
         new CustomEvent("api:timeout", {
           detail: { url: originalRequest.url },
@@ -171,7 +172,7 @@ apiClient.interceptors.response.use(
 
     // Network error - no response
     if (!error.response) {
-      console.error("Network error:", error.message);
+      logger.error("Network error:", error.message);
       window.dispatchEvent(
         new CustomEvent("api:network-error", {
           detail: { message: error.message },
@@ -197,10 +198,10 @@ export const createCancelableRequest = () => {
 // Test connection to API
 export const testApiConnection = async () => {
   try {
-    console.log("Testing API connection to:", environment.API_BASE_URL);
+    logger.log("Testing API connection to:", environment.API_BASE_URL);
     return { success: true };
   } catch (error) {
-    console.error("API connection test failed:", error.message);
+    logger.error("API connection test failed:", error.message);
     return { success: false, error: error.message };
   }
 };

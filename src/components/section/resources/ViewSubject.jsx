@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useMemo } from "react";
 import PropTypes from "prop-types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,13 +24,11 @@ import {
   Info,
   X,
 } from "lucide-react";
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -92,20 +91,16 @@ const ViewSubject = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingTopic, setIsDeletingTopic] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
   // Pagination state for topics
   const [currentTopicPage, setCurrentTopicPage] = useState(1);
   const topicsPerPage = 2;
-
   const { hasPermission } = usePermission();
   const canCreateAnnouncement = hasPermission(PERMISSIONS.ANNOUNCE_SUBJECT);
   const { toast } = useToast();
-
   // Enhanced filtering for resources
   const filteredResources = useMemo(() => {
     if (!resources) return [];
     if (!searchTerm.trim()) return resources;
-
     const searchLower = searchTerm.toLowerCase().trim();
     return resources.filter((resource) => {
       const nameMatch = resource.name?.toLowerCase().includes(searchLower);
@@ -113,43 +108,29 @@ const ViewSubject = ({
       const descriptionMatch = resource.description
         ?.toLowerCase()
         .includes(searchLower);
-
       return nameMatch || typeMatch || descriptionMatch;
     });
   }, [resources, searchTerm]);
-
   // Filter announcements
   const filteredAnnouncements = useMemo(() => {
     if (!announcements) return [];
     if (!searchTerm.trim()) return announcements;
-
-    const searchLower = searchTerm.toLowerCase().trim();
     return announcements.filter((announcement) => {
       const titleMatch = announcement.title
-        ?.toLowerCase()
-        .includes(searchLower);
       const descriptionMatch = announcement.description
-        ?.toLowerCase()
-        .includes(searchLower);
       const typeMatch = announcement.type?.toLowerCase().includes(searchLower);
-
       return titleMatch || descriptionMatch || typeMatch;
-    });
   }, [announcements, searchTerm]);
-
   // Filter topics and their activities
   const filteredTopics = useMemo(() => {
     if (!topics) return [];
     if (!searchTerm.trim()) return topics;
-
-    const searchLower = searchTerm.toLowerCase().trim();
     return topics
       .map((topic) => {
         const topicNameMatch = topic.name?.toLowerCase().includes(searchLower);
         const topicDescMatch = topic.description
           ?.toLowerCase()
           .includes(searchLower);
-
         // Filter activities within the topic
         const filteredActivities =
           topic.activities?.filter((activity) => {
@@ -157,15 +138,9 @@ const ViewSubject = ({
               ?.toLowerCase()
               .includes(searchLower);
             const activityTypeMatch = activity.type
-              ?.toLowerCase()
-              .includes(searchLower);
             const activityDescMatch = activity.description
-              ?.toLowerCase()
-              .includes(searchLower);
-
             return activityTitleMatch || activityTypeMatch || activityDescMatch;
           }) || [];
-
         // Include topic if it matches or has matching activities
         if (topicNameMatch || topicDescMatch || filteredActivities.length > 0) {
           return {
@@ -179,41 +154,33 @@ const ViewSubject = ({
               filteredActivities.length > 0,
           };
         }
-
         return null;
       })
       .filter(Boolean);
   }, [topics, searchTerm]);
-
   // Pagination logic for topics
   const paginatedTopics = useMemo(() => {
     const startIndex = (currentTopicPage - 1) * topicsPerPage;
     const endIndex = startIndex + topicsPerPage;
     return filteredTopics.slice(startIndex, endIndex);
   }, [filteredTopics, currentTopicPage, topicsPerPage]);
-
   const totalTopicPages = Math.ceil(filteredTopics.length / topicsPerPage);
-
   // Reset to first page when search term changes
   const handleTopicPageChange = (page) => {
     setCurrentTopicPage(page);
   };
-
   // Reset pagination when search changes
   useMemo(() => {
     setCurrentTopicPage(1);
   }, [searchTerm]);
-
   // Helper function to highlight search matches
   const highlightSearchTerm = (text, searchTerm) => {
     if (!searchTerm.trim() || !text) return text;
-
     const regex = new RegExp(
       `(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
       "gi"
     );
     const parts = text.split(regex);
-
     return parts.map((part, index) =>
       regex.test(part) ? (
         <mark key={index} className="bg-yellow-200 px-1 rounded">
@@ -222,9 +189,6 @@ const ViewSubject = ({
       ) : (
         part
       )
-    );
-  };
-
   const handleConfirmDelete = () => {
     if (resourceToDelete) {
       setIsDeleting(true);
@@ -235,44 +199,29 @@ const ViewSubject = ({
           setIsDeleting(false);
         })
         .catch((error) => {
-          console.error("Error deleting resource:", error);
-          setIsDeleting(false);
+          logger.error("Error deleting resource:", error);
         });
     }
-  };
-
   const handleAddTopic = () => {
     setIsAddTopicModalOpen(true);
-  };
-
   const handleTopicSuccess = (topic) => {
     onTopicAdded(topic);
-  };
-
   const handleAddActivity = (topicId) => {
     setSelectedTopic(topicId);
     setIsAddActivityModalOpen(true);
-  };
-
   const handleActivitySuccess = (activity) => {
     onActivityAdded(activity);
-  };
-
   const handleUploadForTopic = (topic) => {
     if (topic && topic.id) {
-      console.log(
+      logger.log(
         `ViewSubject: Setting modal open for topic upload: ${topic.name}`
       );
       setIsModalOpen && setIsModalOpen(topic);
-
       // Only increment refetchTrigger once after upload is complete
       // This will be handled by the onSuccess callback in the Resources component
       // No need to set a timeout here
     } else {
-      console.error("Invalid topic object:", topic);
-    }
-  };
-
+      logger.error("Invalid topic object:", topic);
   const handleRefreshResources = () => {
     setIsRefreshing(true);
     // Trigger refetch for all data
@@ -282,44 +231,31 @@ const ViewSubject = ({
       setRefetchTrigger((prev) => prev + 1);
       setIsRefreshing(false);
     }, 300);
-  };
-
   // Topic management functions
   const handleEditTopic = (topic) => {
-    console.log("Editing topic:", topic);
+    logger.log("Editing topic:", topic);
     setTopicToEdit(topic);
     setIsEditTopicModalOpen(true);
-  };
-
   const handleEditTopicSuccess = (updatedTopic) => {
     toast({
       title: "Success!",
       description: "Topic has been successfully updated.",
       variant: "default",
-    });
-    refetchAll();
     setIsEditTopicModalOpen(false);
     setTopicToEdit(null);
-  };
-
   const handleDeleteTopicClick = (topic) => {
     setTopicToDelete(topic);
     setIsDeleteTopicDialogOpen(true);
-  };
-
   const handleConfirmDeleteTopic = async () => {
     if (!topicToDelete) return;
-
     setIsDeletingTopic(true);
     try {
       const result = await deleteTopic(topicToDelete.id);
-
       if (result.success) {
         toast({
           title: "Success!",
           description: "Topic has been successfully deleted.",
           variant: "default",
-        });
         refetchAll();
         setTopicToDelete(null);
         setIsDeleteTopicDialogOpen(false);
@@ -327,7 +263,7 @@ const ViewSubject = ({
         throw new Error(result.error || "Failed to delete topic");
       }
     } catch (error) {
-      console.error("Error deleting topic:", error);
+      logger.error("Error deleting topic:", error);
       toast({
         title: "Error",
         description:
@@ -336,9 +272,6 @@ const ViewSubject = ({
       });
     } finally {
       setIsDeletingTopic(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <AlertDialog
@@ -372,14 +305,9 @@ const ViewSubject = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {/* Topic Deletion Confirmation Dialog */}
-      <AlertDialog
         open={isDeleteTopicDialogOpen}
         onOpenChange={setIsDeleteTopicDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
             <AlertDialogTitle>Confirm Topic Deletion</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
@@ -391,31 +319,13 @@ const ViewSubject = ({
                 <strong>Warning:</strong> This will permanently delete the topic
                 and all its associated resources and activities. This action
                 cannot be undone.
-              </p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeletingTopic}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
               onClick={handleConfirmDeleteTopic}
               disabled={isDeletingTopic}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
               {isDeletingTopic ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Deleting...
-                </>
-              ) : (
                 "Delete Topic"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <Card>
         <CardHeader>
           <CardTitle>{currentSubject?.name || "Subject Details"}</CardTitle>
@@ -440,7 +350,6 @@ const ViewSubject = ({
                 >
                   <X className="w-4 h-4" />
                 </Button>
-              )}
             </div>
             <div className="flex space-x-2">
               <Button
@@ -453,23 +362,16 @@ const ViewSubject = ({
                   className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
                 />
               </Button>
-              <Button
-                variant="outline"
                 onClick={() =>
                   setViewMode((prev) => (prev === "grid" ? "list" : "grid"))
                 }
-                className="px-4"
                 style={{ display: "none" }}
-              >
                 {viewMode === "grid" ? (
                   <List className="w-5 h-5" />
                 ) : (
                   <Filter className="w-5 h-5" />
                 )}
-              </Button>
-            </div>
           </div>
-
           {/* Search Results Summary */}
           {searchTerm.trim() && (
             <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -483,20 +385,12 @@ const ViewSubject = ({
                     {filteredTopics.length} topics
                   </strong>
                 </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchTerm("")}
                   className="ml-auto text-blue-600 hover:text-blue-800 h-6 px-2"
-                >
                   Clear
-                </Button>
               </div>
-            </div>
           )}
         </CardContent>
       </Card>
-
       {/* Topics Section */}
       <TooltipProvider>
         <Card>
@@ -506,7 +400,6 @@ const ViewSubject = ({
                 className={`w-6 h-6 ${
                   canEditInCurrentContext ? "text-blue-600" : "text-gray-500"
                 }`}
-              />
               <CardTitle className="text-xl font-semibold">Topics</CardTitle>
               {!canEditInCurrentContext && (
                 <Tooltip>
@@ -523,18 +416,12 @@ const ViewSubject = ({
                     </p>
                   </TooltipContent>
                 </Tooltip>
-              )}
-            </div>
             {canEditInCurrentContext && !isStudent && (
-              <Button
-                variant="outline"
                 size="sm"
                 onClick={handleAddTopic}
                 className="whitespace-nowrap"
-              >
                 <PlusCircle className="w-4 h-4 mr-2" />
                 Add Topic
-              </Button>
             )}
             {!canEditInCurrentContext && !isStudent && (
               <Tooltip>
@@ -557,15 +444,12 @@ const ViewSubject = ({
                   </p>
                 </TooltipContent>
               </Tooltip>
-            )}
           </CardHeader>
           <CardContent>
             {topicsLoading && (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                 <p className="ml-3 text-muted-foreground">Loading Topics...</p>
-              </div>
-            )}
             {topicsError && (
               <Alert variant="destructive" className="my-4">
                 <AlertTitle>Error Loading Topics</AlertTitle>
@@ -574,12 +458,10 @@ const ViewSubject = ({
                     "An unexpected error occurred while fetching topics."}
                 </AlertDescription>
               </Alert>
-            )}
             {!topicsLoading &&
               !topicsError &&
               filteredTopics &&
               filteredTopics.length > 0 && (
-                <>
                   <div className="space-y-4">
                     {paginatedTopics.map((topic) => (
                       <div
@@ -617,30 +499,17 @@ const ViewSubject = ({
                                 <Edit className="w-3 h-3 mr-1" />
                                 Edit
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
                                 onClick={() => handleDeleteTopicClick(topic)}
                                 className="text-sm text-red-600 hover:text-red-800"
-                              >
                                 <Trash2 className="w-3 h-3 mr-1" />
                                 Delete
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
                                 onClick={() => handleAddActivity(topic.id)}
                                 className="text-sm"
-                              >
                                 <PlusCircle className="w-3 h-3 mr-1" />
                                 Add Activity
-                              </Button>
                             </div>
                           )}
                           {!canEditInCurrentContext && !isStudent && (
-                            <div className="flex space-x-2">
-                              <Tooltip>
-                                <TooltipTrigger>
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -651,62 +520,20 @@ const ViewSubject = ({
                                     Edit
                                     <Lock className="w-3 h-3 ml-1" />
                                   </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-sm">
                                     You can only edit topics in your assigned
                                     class
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled
-                                    className="text-sm opacity-50"
-                                  >
                                     <Trash2 className="w-3 h-3 mr-1" />
                                     Delete
-                                    <Lock className="w-3 h-3 ml-1" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-sm">
                                     You can only delete topics in your assigned
-                                    class
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled
-                                    className="text-sm opacity-50"
-                                  >
                                     <PlusCircle className="w-3 h-3 mr-1" />
                                     Add Activity
-                                    <Lock className="w-3 h-3 ml-1" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-sm">
                                     Restricted to your assigned class
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                          )}
                         </div>
                         {topic.description && (
                           <p className="text-sm text-gray-600 mb-2">
                             {topic.description}
                           </p>
                         )}
-
                         {/* Topic Resources */}
                         <TopicResourceView
                           topic={topic}
@@ -719,18 +546,15 @@ const ViewSubject = ({
                           isPIO={isPIO}
                           assignedClassInfo={assignedClassInfo}
                         />
-
                         {/* Topic Activities */}
                         <TopicActivitiesView
-                          topic={topic}
-                          userRole={userRole}
                           onActivityDeleted={(
                             deletedActivity,
                             announcementDeleted
                           ) => {
                             // Refetch both topics and announcements when an activity is deleted
                             // This ensures the UI is updated to reflect both the activity and announcement deletion
-                            console.log(
+                            logger.log(
                               "Activity deleted:",
                               deletedActivity?.title,
                               "Announcement also deleted:",
@@ -738,16 +562,10 @@ const ViewSubject = ({
                             );
                             refetchAll();
                           }}
-                          canEditInCurrentContext={canEditInCurrentContext}
-                          isStudent={isStudent}
-                          isPIO={isPIO}
-                          assignedClassInfo={assignedClassInfo}
                           currentSubject={currentSubject}
-                        />
                       </div>
                     ))}
                   </div>
-
                   {/* Topic Pagination */}
                   {totalTopicPages > 1 && (
                     <Pagination
@@ -757,21 +575,15 @@ const ViewSubject = ({
                       className="mt-4"
                     />
                   )}
-                </>
-              )}
-            {!topicsLoading &&
-              !topicsError &&
               (!filteredTopics || filteredTopics.length === 0) && (
                 <p className="text-center text-muted-foreground py-8">
                   {searchTerm.trim()
                     ? `No topics or activities found matching "${searchTerm}".`
                     : "No topics for this subject yet."}
                 </p>
-              )}
           </CardContent>
         </Card>
       </TooltipProvider>
-
       {resourcesLoading && (
         <div className="flex items-center justify-center mt-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -786,7 +598,6 @@ const ViewSubject = ({
               "An unexpected error occurred while fetching resources."}
           </AlertDescription>
         </Alert>
-      )}
       {!resourcesLoading &&
         !resourcesError &&
         filteredResources &&
@@ -802,13 +613,11 @@ const ViewSubject = ({
               <Card
                 key={resource.id}
                 className="overflow-hidden hover:shadow-lg transition-shadow"
-              >
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 bg-green-50 rounded-lg">
                         <Book className="w-5 h-5 text-green-600" />
-                      </div>
                       <CardTitle className="text-lg">{resource.name}</CardTitle>
                     </div>
                     <div className="flex items-center">
@@ -831,21 +640,16 @@ const ViewSubject = ({
                             <Trash2 className="w-4 h-4 mr-1" />
                             <span className="hidden sm:inline">Delete</span>
                           </Button>
-                        )}
                       {!canEditInCurrentContext && !isStudent && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger>
-                              <Button
                                 variant="ghost"
-                                size="sm"
                                 disabled
                                 className="text-gray-400 opacity-50"
-                              >
                                 <Trash2 className="w-4 h-4 mr-1" />
                                 <span className="hidden sm:inline">Delete</span>
                                 <Lock className="w-3 h-3 ml-1" />
-                              </Button>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-sm">
@@ -856,117 +660,50 @@ const ViewSubject = ({
                           </Tooltip>
                         </TooltipProvider>
                       )}
-                    </div>
-                  </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-gray-500">
                     Type: {resource.type || "File"}
-                  </p>
-                  <p className="text-sm text-gray-500">
                     Size: {resource.size || "N/A"}
-                  </p>
                 </CardContent>
               </Card>
             ))}
-          </div>
         )}
-      {!resourcesLoading &&
-        !resourcesError &&
         (!filteredResources || filteredResources.length === 0) && (
           <p className="mt-4 text-center text-muted-foreground">
             {searchTerm
               ? `No resources found matching "${searchTerm}".`
               : "No resources found for this subject."}
           </p>
-        )}
-
       {/* Announcements Section */}
-      <TooltipProvider>
         <Card className="mt-6">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div className="flex items-center space-x-3">
               <MessageSquare
-                className={`w-6 h-6 ${
                   canEditInCurrentContext ? "text-purple-600" : "text-gray-500"
-                }`}
-              />
               <CardTitle className="text-xl font-semibold">
                 Announcements
               </CardTitle>
-              {!canEditInCurrentContext && (
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Lock className="w-4 h-4 text-gray-400 ml-2" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-sm">
-                      {isStudent
                         ? "Students have read-only access to announcements"
-                        : isPIO
                         ? "You can only create announcements in your assigned class"
-                        : "Read-only access"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
             {canEditInCurrentContext && !isStudent && canCreateAnnouncement && (
               <div className="flex items-center space-x-2">
-                <Button
                   variant="outline"
-                  size="sm"
                   onClick={() =>
                     onAnnouncementClick && onAnnouncementClick(currentSubject)
                   }
                   className="whitespace-nowrap"
-                >
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Announcement
-                </Button>
-              </div>
-            )}
-            {!canEditInCurrentContext && !isStudent && (
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    className="whitespace-nowrap opacity-50"
-                  >
                     <MessageSquare className="w-4 h-4 mr-2" />
                     Announcement
-                    <Lock className="w-3 h-3 ml-1" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-sm">
                     You can only create announcements in your assigned class:{" "}
-                    {assignedClassInfo?.course} - {assignedClassInfo?.yearLevel}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </CardHeader>
-          <CardContent>
             {announcementsLoading && (
-              <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
                 <p className="ml-3 text-muted-foreground">
                   Loading Announcements...
-                </p>
-              </div>
-            )}
             {announcementsError && (
-              <Alert variant="destructive" className="my-4">
                 <AlertTitle>Error Loading Announcements</AlertTitle>
-                <AlertDescription>
                   {announcementsError?.message ||
                     "An unexpected error occurred while fetching announcements."}
-                </AlertDescription>
-              </Alert>
-            )}
             {!announcementsLoading &&
               !announcementsError &&
               filteredAnnouncements &&
@@ -989,8 +726,6 @@ const ViewSubject = ({
                           <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full whitespace-nowrap">
                             Auto-generated
                           </span>
-                        )}
-                      </div>
                       <div className="flex justify-between items-center">
                         <p className="text-xs text-purple-700">
                           Posted:{" "}
@@ -998,38 +733,21 @@ const ViewSubject = ({
                             announcement.createdAt
                           ).toLocaleDateString()}{" "}
                           at{" "}
-                          {new Date(
-                            announcement.createdAt
                           ).toLocaleTimeString()}
-                        </p>
                         {canEditInCurrentContext && !isStudent && (
                           <div className="flex space-x-1">
                             {/* Only show edit button for manually created announcements */}
                             {announcement.creationSource !== "activity" && (
-                              <Button
-                                variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-purple-600 hover:bg-purple-100"
                                 onClick={() => onEditAnnouncement(announcement)}
                                 title="Edit announcement"
-                              >
                                 <Edit3 className="w-4 h-4" />
-                              </Button>
-                            )}
-
                             {/* Show info icon for activity-generated announcements */}
                             {announcement.creationSource === "activity" && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
                                 className="h-7 w-7 text-gray-400 cursor-not-allowed"
-                                disabled
                                 title="This announcement was auto-generated from an activity and cannot be edited"
-                              >
                                 <Edit3 className="w-4 h-4 opacity-50" />
-                              </Button>
-                            )}
-
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1041,7 +759,7 @@ const ViewSubject = ({
                                 if (announcementId) {
                                   onDeleteAnnouncement(announcementId);
                                 } else {
-                                  console.error(
+                                  logger.error(
                                     "Invalid announcement ID:",
                                     announcement
                                   );
@@ -1051,10 +769,7 @@ const ViewSubject = ({
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
-                          </div>
-                        )}
                         {!canEditInCurrentContext && !isStudent && (
-                          <div className="flex space-x-1">
                             <Tooltip>
                               <TooltipTrigger>
                                 <Button
@@ -1074,46 +789,14 @@ const ViewSubject = ({
                                 </p>
                               </TooltipContent>
                             </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  disabled
-                                  className="h-7 w-7 text-gray-400 opacity-50 relative"
-                                >
                                   <Trash2 className="w-4 h-4" />
-                                  <Lock className="w-2 h-2 absolute top-1 right-1" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-sm">
                                   You can only delete announcements in your
-                                  assigned class
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   ))}
                 </div>
-              )}
-            {!announcementsLoading &&
-              !announcementsError &&
               (!filteredAnnouncements ||
                 filteredAnnouncements.length === 0) && (
-                <p className="text-center text-muted-foreground py-8">
-                  {searchTerm.trim()
                     ? `No announcements found matching "${searchTerm}".`
                     : "No announcements for this subject yet."}
-                </p>
-              )}
-          </CardContent>
-        </Card>
-      </TooltipProvider>
-
       {/* Modals */}
       <AddTopicModal
         isOpen={isAddTopicModalOpen}
@@ -1121,7 +804,6 @@ const ViewSubject = ({
         onSuccess={handleTopicSuccess}
         subjectId={currentSubject?.id || ""}
       />
-
       <EditTopicModal
         isOpen={isEditTopicModalOpen}
         onClose={() => {
@@ -1130,18 +812,14 @@ const ViewSubject = ({
         }}
         onSuccess={handleEditTopicSuccess}
         topic={topicToEdit}
-      />
-
       <AddActivityModal
         isOpen={isAddActivityModalOpen}
         onClose={() => setIsAddActivityModalOpen(false)}
         onSuccess={handleActivitySuccess}
         topicId={selectedTopic || ""}
-      />
     </div>
   );
 };
-
 ViewSubject.propTypes = {
   currentSubject: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
@@ -1163,12 +841,8 @@ ViewSubject.propTypes = {
   resourcesError: PropTypes.object,
   handleDeleteResource: PropTypes.func,
   announcements: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       content: PropTypes.string.isRequired,
       createdAt: PropTypes.string.isRequired,
-    })
-  ),
   announcementsLoading: PropTypes.bool,
   announcementsError: PropTypes.object,
   onAddAnnouncement: PropTypes.func,
@@ -1177,13 +851,10 @@ ViewSubject.propTypes = {
   onAnnouncementClick: PropTypes.func,
   userRole: PropTypes.string,
   topics: PropTypes.arrayOf(
-    PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       name: PropTypes.string,
       description: PropTypes.string,
       activities: PropTypes.array,
-    })
-  ),
   topicsLoading: PropTypes.bool,
   topicsError: PropTypes.object,
   onTopicAdded: PropTypes.func,
@@ -1195,6 +866,4 @@ ViewSubject.propTypes = {
   assignedClassInfo: PropTypes.object,
   isStudent: PropTypes.bool,
   isAdmin: PropTypes.bool,
-};
-
 export default ViewSubject;

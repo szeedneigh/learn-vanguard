@@ -39,7 +39,7 @@ function isLocalStorageAvailable() {
     localStorage.removeItem(test);
     return true;
   } catch (e) {
-    console.warn('localStorage is not available:', e.message);
+    logger.warn('localStorage is not available:', e.message);
     return false;
   }
 }
@@ -63,14 +63,14 @@ export function getFavorites() {
 
     // Version check
     if (data.version !== STORAGE_VERSION) {
-      console.warn('Favorites data version mismatch, clearing...');
+      logger.warn('Favorites data version mismatch, clearing...');
       clearFavorites();
       return [];
     }
 
     return data.items || [];
   } catch (error) {
-    console.error('Failed to get favorites:', error);
+    logger.error('Failed to get favorites:', error);
     return [];
   }
 }
@@ -95,7 +95,7 @@ export function addFavorite(item) {
     );
 
     if (exists) {
-      console.log('Item already favorited');
+      logger.log('Item already favorited');
       return true; // Not an error, just already exists
     }
 
@@ -116,7 +116,7 @@ export function addFavorite(item) {
 
     return true;
   } catch (error) {
-    console.error('Failed to add favorite:', error);
+    logger.error('Failed to add favorite:', error);
 
     // Handle quota exceeded
     if (error.name === 'QuotaExceededError') {
@@ -133,7 +133,7 @@ export function addFavorite(item) {
         // Try adding again
         return addFavorite(item);
       } catch (retryError) {
-        console.error('Failed to recover from quota error:', retryError);
+        logger.error('Failed to recover from quota error:', retryError);
       }
     }
 
@@ -168,7 +168,7 @@ export function removeFavorite(id, type) {
 
     return true;
   } catch (error) {
-    console.error('Failed to remove favorite:', error);
+    logger.error('Failed to remove favorite:', error);
     return false;
   }
 }
@@ -212,7 +212,7 @@ export function clearFavorites() {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear favorites:', error);
+    logger.error('Failed to clear favorites:', error);
   }
 }
 
@@ -279,7 +279,7 @@ export function updateFavorite(id, type, updates) {
 
     return true;
   } catch (error) {
-    console.error('Failed to update favorite:', error);
+    logger.error('Failed to update favorite:', error);
     return false;
   }
 }
@@ -318,7 +318,7 @@ export function reorderFavorites(fromIndex, toIndex) {
 
     return true;
   } catch (error) {
-    console.error('Failed to reorder favorites:', error);
+    logger.error('Failed to reorder favorites:', error);
     return false;
   }
 }
@@ -349,12 +349,12 @@ export function importFavorites(jsonString, merge = true) {
     const data = JSON.parse(jsonString);
 
     if (data.version !== STORAGE_VERSION) {
-      console.warn('Import data version mismatch');
+      logger.warn('Import data version mismatch');
       return false;
     }
 
     if (!Array.isArray(data.items)) {
-      console.warn('Import data has invalid format');
+      logger.warn('Import data has invalid format');
       return false;
     }
 
@@ -391,7 +391,7 @@ export function importFavorites(jsonString, merge = true) {
 
     return true;
   } catch (error) {
-    console.error('Failed to import favorites:', error);
+    logger.error('Failed to import favorites:', error);
     return false;
   }
 }

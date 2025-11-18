@@ -4,6 +4,7 @@
  * Implements modern UX pattern for keyboard-first navigation
  */
 
+import logger from "@/utils/logger";
 import React, { useState, useEffect, useCallback } from 'react';
 import { Command } from 'cmdk';
 import { useNavigate } from 'react-router-dom';
@@ -131,7 +132,7 @@ const GlobalSearch = () => {
           label: 'View Favorites',
           action: () => {
             // TODO: Implement favorites view
-            console.log('Favorites feature coming soon');
+            logger.log('Favorites feature coming soon');
           },
         },
         {
@@ -139,7 +140,7 @@ const GlobalSearch = () => {
           label: 'Recently Viewed',
           action: () => {
             // TODO: Implement recent items
-            console.log('Recent items feature coming soon');
+            logger.log('Recent items feature coming soon');
           },
         },
       ],

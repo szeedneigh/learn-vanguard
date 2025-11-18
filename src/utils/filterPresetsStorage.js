@@ -120,7 +120,7 @@ export function getFilterPresets() {
     // Merge custom presets with defaults
     return [...DEFAULT_PRESETS, ...(data.customPresets || [])];
   } catch (error) {
-    console.error('Failed to load filter presets:', error);
+    logger.error('Failed to load filter presets:', error);
     return DEFAULT_PRESETS;
   }
 }
@@ -181,7 +181,7 @@ export function saveFilterPreset(name, filters) {
 
     return newPreset;
   } catch (error) {
-    console.error('Failed to save filter preset:', error);
+    logger.error('Failed to save filter preset:', error);
     return null;
   }
 }
@@ -210,7 +210,7 @@ export function deleteFilterPreset(id) {
 
     return true;
   } catch (error) {
-    console.error('Failed to delete filter preset:', error);
+    logger.error('Failed to delete filter preset:', error);
     return false;
   }
 }
@@ -242,7 +242,7 @@ export function updateFilterPreset(id, updates) {
 
     return true;
   } catch (error) {
-    console.error('Failed to update filter preset:', error);
+    logger.error('Failed to update filter preset:', error);
     return false;
   }
 }
@@ -258,6 +258,6 @@ export function clearCustomPresets() {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear presets:', error);
+    logger.error('Failed to clear presets:', error);
   }
 }

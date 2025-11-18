@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import apiClient from "./client";
 
 /**
@@ -28,7 +29,7 @@ export const getUsers = async (filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching users:", error);
+    logger.error("Error fetching users:", error);
     return {
       data: [],
       pagination: null,
@@ -54,7 +55,7 @@ export const getUser = async (userId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching user:", error);
+    logger.error("Error fetching user:", error);
     return {
       data: null,
       success: false,
@@ -78,7 +79,7 @@ export const getCurrentUserProfile = async () => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching user profile:", error);
+    logger.error("Error fetching user profile:", error);
     return {
       data: null,
       success: false,
@@ -103,7 +104,7 @@ export const updateCurrentUserProfile = async (profileData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating user profile:", error);
+    logger.error("Error updating user profile:", error);
     return {
       data: null,
       success: false,
@@ -129,7 +130,7 @@ export const updateUser = async (userId, updates) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating user:", error);
+    logger.error("Error updating user:", error);
     return {
       data: null,
       success: false,
@@ -154,7 +155,7 @@ export const deleteUser = async (userId) => {
       message: response.data.message || "User deleted successfully",
     };
   } catch (error) {
-    console.error("Error deleting user:", error);
+    logger.error("Error deleting user:", error);
     return {
       success: false,
       error:
@@ -189,7 +190,7 @@ export const searchUsers = async (query, filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error searching users:", error);
+    logger.error("Error searching users:", error);
     return {
       data: [],
       pagination: null,
@@ -216,7 +217,7 @@ export const updateUserRole = async (userId, role) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating user role:", error);
+    logger.error("Error updating user role:", error);
     return {
       data: null,
       success: false,
@@ -244,7 +245,7 @@ export const updateUserStatus = async (userId, status) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating user status:", error);
+    logger.error("Error updating user status:", error);
     return {
       data: null,
       success: false,
@@ -268,7 +269,7 @@ export const getUserStatistics = async () => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching user statistics:", error);
+    logger.error("Error fetching user statistics:", error);
     return {
       data: null,
       success: false,
@@ -311,7 +312,7 @@ export const uploadUserAvatar = async (file, onProgress = null) => {
       url: response.data.data?.avatarUrl || response.data.avatarUrl,
     };
   } catch (error) {
-    console.error("Error uploading avatar:", error);
+    logger.error("Error uploading avatar:", error);
     return {
       data: null,
       success: false,
@@ -341,7 +342,7 @@ export const assignPIORole = async (userId, data) => {
       throw new Error("Course and year level are required to assign PIO role");
     }
 
-    console.log(
+    logger.log(
       `API: Assigning PIO role to user ${userId} with course ${data.course} and year level ${data.yearLevel}`
     );
 
@@ -350,7 +351,7 @@ export const assignPIORole = async (userId, data) => {
       yearLevel: data.yearLevel,
     });
 
-    console.log("PIO role assignment response:", response.data);
+    logger.log("PIO role assignment response:", response.data);
 
     return {
       data: response.data.user || response.data,
@@ -358,8 +359,8 @@ export const assignPIORole = async (userId, data) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error assigning PIO role:", error);
-    console.error("Error details:", {
+    logger.error("Error assigning PIO role:", error);
+    logger.error("Error details:", {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
@@ -393,11 +394,11 @@ export const revertPIORole = async (userId) => {
       throw new Error("User ID is required to revert PIO role");
     }
 
-    console.log(`API: Reverting PIO role for user ${userId}`);
+    logger.log(`API: Reverting PIO role for user ${userId}`);
 
     const response = await apiClient.post(`/users/pio/${userId}/revert`);
 
-    console.log("Revert PIO role response:", response.data);
+    logger.log("Revert PIO role response:", response.data);
 
     return {
       data: response.data.user || response.data,
@@ -405,8 +406,8 @@ export const revertPIORole = async (userId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error reverting PIO role:", error);
-    console.error("Error details:", {
+    logger.error("Error reverting PIO role:", error);
+    logger.error("Error details:", {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
@@ -444,8 +445,8 @@ export const moveStudent = async (userId, moveData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error moving student:", error);
-    console.error("Error details:", {
+    logger.error("Error moving student:", error);
+    logger.error("Error details:", {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,

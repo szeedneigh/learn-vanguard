@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +23,6 @@ const FloatingLabelInput = React.memo(
     error,
   }) => {
     const [isFocused, setIsFocused] = useState(false);
-
     return (
       <div className="relative w-full group">
         <div className="relative flex items-center">
@@ -80,7 +80,6 @@ const FloatingLabelInput = React.memo(
     );
   }
 );
-
 FloatingLabelInput.displayName = "FloatingLabelInput";
 FloatingLabelInput.propTypes = {
   id: PropTypes.string.isRequired,
@@ -92,40 +91,11 @@ FloatingLabelInput.propTypes = {
   icon: PropTypes.elementType,
   error: PropTypes.string,
 };
-
 const SelectInput = React.memo(
   ({ id, value, onChange, options, label, icon: Icon, error }) => {
-    const [isFocused, setIsFocused] = useState(false);
-
-    return (
-      <div className="relative w-full group">
-        <div className="relative flex items-center">
-          {Icon && (
-            <motion.div
-              className="absolute left-3.5 text-gray-400 group-focus-within:text-blue-500"
-              animate={{ scale: isFocused ? 1.1 : 1 }}
-              transition={{ type: "spring", stiffness: 260, damping: 25 }}
-            >
-              <Icon className="h-4 w-4" />
-            </motion.div>
-          )}
           <select
-            id={id}
-            value={value}
-            onChange={onChange}
-            className={`w-full h-12 ${
-              Icon ? "pl-10" : "pl-3.5"
-            } pt-3 pb-1 rounded-lg
-              bg-white ring-1 ${
-                error ? "ring-red-500" : "ring-gray-200"
-              } focus:ring-2 focus:ring-blue-500
-              text-gray-900 text-sm transition-all duration-200 outline-none
               peer ${value ? "" : "text-gray-400"} appearance-none shadow-sm`}
-            onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            aria-invalid={!!error}
-            aria-describedby={error ? `${id}-error` : undefined}
-          >
             {options.map((option) => (
               <option
                 key={option.value}
@@ -136,19 +106,7 @@ const SelectInput = React.memo(
               </option>
             ))}
           </select>
-          <motion.label
-            htmlFor={id}
-            className={`absolute left-0 ${
-              Icon ? "ml-10" : "ml-3.5"
-            } transition-all duration-200
-              transform -translate-y-2 scale-75 top-2 z-10 origin-[0]
-              ${
-                error ? "text-red-500" : "text-gray-500"
-              } peer-focus:text-blue-500 text-sm font-medium`}
-          >
-            {label}
             <span className="text-red-500 ml-0.5">*</span>
-          </motion.label>
           <div className="absolute right-3.5 pointer-events-none">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -156,7 +114,6 @@ const SelectInput = React.memo(
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
-            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -165,22 +122,8 @@ const SelectInput = React.memo(
               />
             </svg>
           </div>
-        </div>
-        {error && (
-          <p id={`${id}-error`} className="text-red-500 text-sm mt-1 pl-3.5">
-            {error}
-          </p>
-        )}
-      </div>
-    );
-  }
-);
-
 SelectInput.displayName = "SelectInput";
 SelectInput.propTypes = {
-  id: PropTypes.string.isRequired,
-  value: PropTypes.string.isRequired,
-  onChange: PropTypes.func.isRequired,
   options: PropTypes.arrayOf(
     PropTypes.shape({
       value: PropTypes.string.isRequired,
@@ -188,11 +131,6 @@ SelectInput.propTypes = {
       disabled: PropTypes.bool,
     })
   ).isRequired,
-  label: PropTypes.string.isRequired,
-  icon: PropTypes.elementType,
-  error: PropTypes.string,
-};
-
 const GoogleAcademicDetailsStep = ({
   email,
   onSubmit,
@@ -216,14 +154,12 @@ const GoogleAcademicDetailsStep = ({
     { value: "3", label: "Third Year" },
     { value: "4", label: "Fourth Year" },
   ]);
-
   const courseOptions = [
     { value: "", label: "Select Course", disabled: true },
     { value: "BSIT", label: "BS in Information Technology" },
     { value: "BSCS", label: "BS in Computer Science" },
     { value: "ACT", label: "Associate in Computer Technology" },
   ];
-
   const validateField = useCallback((name, value) => {
     switch (name) {
       case "studentNo":
@@ -236,29 +172,22 @@ const GoogleAcademicDetailsStep = ({
         return "";
     }
   }, []);
-
   const validateForm = useCallback(() => {
     const currentErrors = {};
-
     Object.keys(formData).forEach((field) => {
       const error = validateField(field, formData[field]);
       if (error) currentErrors[field] = error;
     });
-
     if (!acceptedTerms) {
       currentErrors.terms = "You must accept the terms and conditions";
-    }
-
     return currentErrors;
   }, [formData, acceptedTerms, validateField]);
-
   const handleInputChange = useCallback(
     (e) => {
       const { id, value } = e.target;
       setFormData((prev) => ({ ...prev, [id]: value }));
       const error = validateField(id, value);
       setErrors((prev) => ({ ...prev, [id]: error, form: "" }));
-
       if (id === "course") {
         if (value === "ACT") {
           setYearLevelOptions([
@@ -270,34 +199,23 @@ const GoogleAcademicDetailsStep = ({
             setFormData((prev) => ({ ...prev, yearLevel: "" }));
           }
         } else {
-          setYearLevelOptions([
-            { value: "", label: "Select Year Level", disabled: true },
-            { value: "1", label: "First Year" },
-            { value: "2", label: "Second Year" },
             { value: "3", label: "Third Year" },
             { value: "4", label: "Fourth Year" },
-          ]);
         }
       }
     },
     [validateField, formData.yearLevel]
   );
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formErrors = validateForm();
-
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
       return;
-    }
-
     setIsLoading(true);
     setErrors({});
-
     try {
       const freshToken = await getCurrentUserToken();
-
       if (!freshToken) {
         toast({
           title: "Authentication Error",
@@ -307,16 +225,12 @@ const GoogleAcademicDetailsStep = ({
         });
         setErrors({
           form: "Authentication session expired. Please try again.",
-        });
         if (onCancel) onCancel();
         return;
-      }
-
       if (onSubmit) {
         await onSubmit({ ...formData, email });
-      }
     } catch (error) {
-      console.error("Registration error:", error);
+      logger.error("Registration error:", error);
       setErrors({
         form: "An error occurred during registration. Please try again.",
       });
@@ -324,12 +238,9 @@ const GoogleAcademicDetailsStep = ({
         title: "Registration Error",
         description: "An error occurred during registration. Please try again.",
         variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
-    }
   };
-
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="space-y-2 text-center">
@@ -339,15 +250,11 @@ const GoogleAcademicDetailsStep = ({
             ? "Complete your profile to continue"
             : "Please provide your academic information"}
         </p>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         {errors.form && (
           <Alert variant="destructive">
             <AlertDescription>{errors.form}</AlertDescription>
           </Alert>
-        )}
-
         <FloatingLabelInput
           id="studentNo"
           label="Student Number"
@@ -357,29 +264,20 @@ const GoogleAcademicDetailsStep = ({
           icon={GraduationCap}
           error={errors.studentNo}
         />
-
         <SelectInput
           id="course"
           label="Course"
           value={formData.course}
-          onChange={handleInputChange}
           options={courseOptions}
           icon={BookOpen}
           error={errors.course}
-        />
-
-        <SelectInput
           id="yearLevel"
           label="Year Level"
           value={formData.yearLevel}
-          onChange={handleInputChange}
           options={yearLevelOptions}
           icon={Calendar}
           error={errors.yearLevel}
-        />
-
         <div className="flex items-center gap-2">
-          <input
             type="checkbox"
             id="terms"
             checked={acceptedTerms}
@@ -390,13 +288,10 @@ const GoogleAcademicDetailsStep = ({
               }
             }}
             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
           <label htmlFor="terms" className="text-sm text-gray-600">
             I agree to the terms and conditions
           </label>
-        </div>
         {errors.terms && <p className="text-red-500 text-sm">{errors.terms}</p>}
-
         <div className="flex gap-4">
           <Button
             type="button"
@@ -404,23 +299,15 @@ const GoogleAcademicDetailsStep = ({
             className="w-full"
             onClick={onCancel}
             disabled={isLoading}
-          >
             Cancel
           </Button>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Processing..." : "Continue"}
-          </Button>
-        </div>
       </form>
     </div>
-  );
-};
-
 GoogleAcademicDetailsStep.propTypes = {
   email: PropTypes.string.isRequired,
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   flowType: PropTypes.oneOf(["login", "signup"]),
-};
-
 export default GoogleAcademicDetailsStep;

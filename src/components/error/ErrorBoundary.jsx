@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,21 +9,17 @@ class ErrorBoundary extends React.Component {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
-
   static getDerivedStateFromError(error) {
     // Update state so the next render will show the fallback UI
     return { hasError: true };
-  }
-
   componentDidCatch(error, errorInfo) {
     // Log error details for debugging
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    logger.error('ErrorBoundary caught an error:', error, errorInfo);
     
     this.setState({
       error: error,
       errorInfo: errorInfo
     });
-
     // You can also log the error to an error reporting service here
     if (window.gtag) {
       window.gtag('event', 'exception', {
@@ -30,20 +27,14 @@ class ErrorBoundary extends React.Component {
         fatal: false
       });
     }
-  }
-
   handleRefresh = () => {
     // Reset error state
     this.setState({ hasError: false, error: null, errorInfo: null });
     // Refresh the page
     window.location.reload();
   };
-
   handleReset = () => {
     // Just reset the error state without refreshing
-    this.setState({ hasError: false, error: null, errorInfo: null });
-  };
-
   render() {
     if (this.state.hasError) {
       // Custom error UI
@@ -76,7 +67,6 @@ class ErrorBoundary extends React.Component {
                   </pre>
                 </details>
               )}
-
               <div className="flex gap-2 justify-center">
                 <Button onClick={this.handleReset} variant="outline">
                   Try Again
@@ -84,16 +74,10 @@ class ErrorBoundary extends React.Component {
                 <Button onClick={this.handleRefresh} className="flex items-center gap-2">
                   <RefreshCw className="h-4 w-4" />
                   Refresh Page
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </div>
       );
-    }
-
     return this.props.children;
-  }
 }
-
 export default ErrorBoundary; 

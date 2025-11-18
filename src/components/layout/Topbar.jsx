@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useCallback, useMemo, memo, useRef, useEffect } from "react";
 import { Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 // Feature flag to temporarily hide notifications
 // Set to false to hide notifications, true to show them
 const SHOW_NOTIFICATIONS = false;
-
 const Topbar = memo(({ onMenuClick }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -30,8 +30,7 @@ const Topbar = memo(({ onMenuClick }) => {
   const notificationButtonRef = useRef(null);
   const profileButtonRef = useRef(null);
   const { toast } = useToast();
-
-  console.log("Topbar rendering:", {
+  logger.log("Topbar rendering:", {
     user: user
       ? {
           role: user.role,
@@ -44,43 +43,35 @@ const Topbar = memo(({ onMenuClick }) => {
     isMobile,
     onMenuClick: !!onMenuClick,
   });
-
   // Check if we're on mobile
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-
     checkIfMobile();
     window.addEventListener("resize", checkIfMobile);
-
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
-
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     try {
       const result = await getUserNotifications();
-      console.log("Topbar: notifications fetched", result);
+      logger.log("Topbar: notifications fetched", result);
       if (result.success && Array.isArray(result.data)) {
         // Transform the notifications to match our UI format
         const formattedNotifications = result.data.map((notification) => {
           // Format the notification title for activity-related announcements
           let title = notification.title;
           let subjectName = notification.subjectName || "";
-
           // Extract subject info if available
           if (notification.subjectId && notification.subjectId.name) {
             subjectName = notification.subjectId.name;
           }
-
           // For activity-created announcements, simplify the title
           if (notification.type === "announcement" && title.startsWith("New")) {
             // Keep the simplified title format (e.g., "New assignment: Assignment 2")
             title = title.split("\n")[0]; // Take only the first line
-          }
-
           return {
             id: notification._id,
             title: title,
@@ -100,29 +91,22 @@ const Topbar = memo(({ onMenuClick }) => {
         });
         setNotifications(formattedNotifications);
       } else {
-        console.error("Invalid notification data format:", result);
+        logger.error("Invalid notification data format:", result);
         setNotifications([]);
       }
     } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+      logger.error("Failed to fetch notifications:", error);
       setNotifications([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
   // Fetch notifications on component mount (only if notifications are enabled)
-  useEffect(() => {
     if (SHOW_NOTIFICATIONS) {
       fetchNotifications();
-
       // Refresh notifications every 2 minutes
       const intervalId = setInterval(fetchNotifications, 2 * 60 * 1000);
-
       return () => clearInterval(intervalId);
-    }
   }, [fetchNotifications]);
-
   const handleMarkAsRead = useCallback(
     async (notificationId) => {
       try {
@@ -139,49 +123,24 @@ const Topbar = memo(({ onMenuClick }) => {
             title: "Success",
             description: "Notification marked as read",
           });
-        }
       } catch (error) {
-        console.error("Failed to mark notification as read:", error);
+        logger.error("Failed to mark notification as read:", error);
         toast({
           title: "Error",
           description: "Failed to mark notification as read",
           variant: "destructive",
-        });
-      }
     },
     [toast]
   );
-
   const handleDeleteNotification = useCallback(
-    async (notificationId) => {
-      try {
         const result = await deleteNotification(notificationId);
-        if (result.success) {
-          setNotifications((prev) =>
             prev.filter((notification) => notification.id !== notificationId)
-          );
-          toast({
-            title: "Success",
             description: "Notification deleted",
-          });
-        }
-      } catch (error) {
-        console.error("Failed to delete notification:", error);
-        toast({
-          title: "Error",
+        logger.error("Failed to delete notification:", error);
           description: "Failed to delete notification",
-          variant: "destructive",
-        });
-      }
-    },
-    [toast]
-  );
-
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
     [notifications]
-  );
-
   const enhancedNotifications = useMemo(
     () =>
       notifications.map((notification) => ({
@@ -190,21 +149,15 @@ const Topbar = memo(({ onMenuClick }) => {
         onDelete: () => handleDeleteNotification(notification.id),
       })),
     [notifications, handleMarkAsRead, handleDeleteNotification]
-  );
-
   const toggleProfile = useCallback(() => setShowProfile((prev) => !prev), []);
   const toggleNotifications = useCallback(() => {
-    if (SHOW_NOTIFICATIONS) {
       setShowNotifications((prev) => !prev);
       // Fetch fresh notifications when opening the popup
       if (!showNotifications) {
         fetchNotifications();
-      }
-    }
   }, [fetchNotifications, showNotifications]);
   const closeProfile = useCallback(() => setShowProfile(false), []);
   const closeNotifications = useCallback(() => setShowNotifications(false), []);
-
   return (
     <div className="bg-white shadow-sm px-4 sm:px-6 py-4 sticky top-0 z-40">
       <div className="flex justify-between items-center gap-4">
@@ -220,17 +173,13 @@ const Topbar = memo(({ onMenuClick }) => {
             </button>
           )}
         </div>
-
         {/* Center - Global Search (desktop only) */}
         <div className="flex-1 max-w-md hidden md:block">
           <GlobalSearch />
-        </div>
-
         {/* Right side - Recently viewed, Notifications, profile */}
         <div className="flex items-center space-x-3 sm:space-x-6">
           {/* Recently Viewed */}
           <RecentlyViewed limit={10} />
-
           {/* Conditionally render notifications based on feature flag */}
           {SHOW_NOTIFICATIONS && (
             <div className="relative">
@@ -250,7 +199,6 @@ const Topbar = memo(({ onMenuClick }) => {
                       {unreadCount}
                     </span>
                   </span>
-                )}
               </button>
               <NotificationPopup
                 notifications={enhancedNotifications}
@@ -260,17 +208,13 @@ const Topbar = memo(({ onMenuClick }) => {
                 isLoading={isLoading}
               />
             </div>
-          )}
-
           <div className="relative">
-            <button
               ref={profileButtonRef}
               onClick={toggleProfile}
               className={cn(
                 "flex items-center space-x-2 p-1.5 rounded-xl transition-all duration-200",
                 "hover:bg-gray-100 active:bg-gray-200"
               )}
-            >
               {user?.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
@@ -311,10 +255,7 @@ const Topbar = memo(({ onMenuClick }) => {
                           user.name
                         )
                       : ""}
-                  </span>
                 </div>
-              )}
-            </button>
             <ProfileModal
               isOpen={showProfile}
               onClose={closeProfile}
@@ -322,16 +263,11 @@ const Topbar = memo(({ onMenuClick }) => {
               triggerRef={profileButtonRef}
             />
           </div>
-        </div>
       </div>
     </div>
-  );
 });
-
 Topbar.displayName = "Topbar";
-
 Topbar.propTypes = {
   onMenuClick: PropTypes.func,
 };
-
 export default Topbar;

@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import {
@@ -10,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
   CheckCircle,
   AlertCircle,
   Upload,
@@ -39,7 +39,6 @@ export const UploadModal = ({
   const fileInputRef = useRef(null);
   const uploadStartTime = useRef(null);
   const uploadedBytes = useRef(0);
-
   // Utility functions for upload progress
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
@@ -48,17 +47,13 @@ export const UploadModal = ({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
-
   const formatUploadSpeed = (bytesPerSecond) => {
     if (bytesPerSecond === 0) return "0 KB/s";
-    const k = 1024;
     const sizes = ["B/s", "KB/s", "MB/s", "GB/s"];
     const i = Math.floor(Math.log(bytesPerSecond) / Math.log(k));
     return (
       parseFloat((bytesPerSecond / Math.pow(k, i)).toFixed(1)) + " " + sizes[i]
     );
-  };
-
   const resetUploadState = () => {
     setUploadProgress(0);
     setUploadStatus("");
@@ -67,12 +62,10 @@ export const UploadModal = ({
     setUploadComplete(false);
     uploadStartTime.current = null;
     uploadedBytes.current = 0;
-  };
-
   // Use the selectedTopic prop if provided
   useEffect(() => {
     if (selectedTopic) {
-      console.log(
+      logger.log(
         "UploadModal: Setting selected topic from prop:",
         selectedTopic
       );
@@ -84,9 +77,7 @@ export const UploadModal = ({
       }
     }
   }, [selectedTopic, subject]);
-
   // Fetch topics when subject changes
-  useEffect(() => {
     // Only fetch topics if subject is available
     if (subject?.id) {
       setTopicsLoading(true);
@@ -97,18 +88,17 @@ export const UploadModal = ({
             .getTopicsBySubject(subject.id, { limit: 1000 }) // Set high limit to get all topics
             .then((result) => {
               if (result.success && result.data) {
-                console.log(
+                logger.log(
                   `UploadModal: Fetched ${result.data.length} topics for subject ${subject.id}`
                 );
                 setTopics(result.data);
-
                 // If selectedTopicState exists and is from this subject, ensure it's selected
                 if (selectedTopicState && selectedTopicState.id) {
                   const matchingTopic = result.data.find(
                     (t) => t.id === selectedTopicState.id
                   );
                   if (matchingTopic) {
-                    console.log(
+                    logger.log(
                       "Setting selected topic from fetched data:",
                       matchingTopic
                     );
@@ -122,68 +112,44 @@ export const UploadModal = ({
                   }
                 }
               } else {
-                console.log("UploadModal: No topics found or fetch failed");
+                logger.log("UploadModal: No topics found or fetch failed");
                 setTopics([]);
               }
             })
             .catch((err) => {
-              console.error("Error fetching topics:", err);
+              logger.error("Error fetching topics:", err);
               setTopics([]);
-            })
             .finally(() => {
               setTopicsLoading(false);
             });
         })
         .catch((err) => {
-          console.error("Error importing topic service:", err);
+          logger.error("Error importing topic service:", err);
           setTopicsLoading(false);
         });
-    } else {
       setTopics([]);
-    }
   }, [subject]);
-
   // Body scroll is handled by Dialog component automatically
-
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(true);
-  };
-
   const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
     setDragActive(false);
-  };
-
   const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setFile(e.dataTransfer.files[0]);
-    }
-  };
-
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
-    }
-  };
-
   const handleButtonClick = () => {
     fileInputRef.current.click();
-  };
-
   const handleUpload = () => {
     if (file) {
       setIsUploading(true);
       resetUploadState();
       setUploadStatus("Preparing upload...");
       uploadStartTime.current = Date.now();
-
       // Create progress callback
       const onProgress = (progressEvent) => {
         if (progressEvent.lengthComputable) {
@@ -192,35 +158,30 @@ export const UploadModal = ({
           );
           setUploadProgress(percentCompleted);
           uploadedBytes.current = progressEvent.loaded;
-
           // Calculate upload speed
           const elapsedTime = (Date.now() - uploadStartTime.current) / 1000;
           if (elapsedTime > 0) {
             const speed = progressEvent.loaded / elapsedTime;
             setUploadSpeed(speed);
           }
-
           // Update status based on progress
           if (percentCompleted < 100) {
             setUploadStatus("Uploading...");
           } else {
             setUploadStatus("Processing...");
-          }
         }
       };
-
       onUpload(
         file,
         subject,
         selectedTopicState,
         // Success callback
         () => {
-          console.log("Upload completed successfully, closing modal");
+          logger.log("Upload completed successfully, closing modal");
           setUploadProgress(100);
           setUploadStatus("Upload Complete!");
           setUploadComplete(true);
           setIsUploading(false);
-
           // Close modal after a brief delay to show completion
           setTimeout(() => {
             handleClose();
@@ -228,35 +189,23 @@ export const UploadModal = ({
         },
         // Error callback
         (error) => {
-          console.log("Upload failed:", error);
+          logger.log("Upload failed:", error);
           setUploadError(error?.message || "Upload failed. Please try again.");
           setUploadStatus("Upload Failed");
-          setIsUploading(false);
-        },
         // Progress callback
         onProgress
-      );
-    }
-  };
-
   const handleClose = () => {
     // Don't allow closing during active upload
     if (isUploading) return;
-
     setFile(null);
     setSelectedTopicState(null);
     setIsUploading(false);
     resetUploadState();
     onClose();
-  };
-
   const handleModalClose = (open) => {
     // Only call onClose when the dialog is closing and not uploading
     if (!open && !isUploading) {
       handleClose();
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleModalClose}>
       <DialogContent className="sm:max-w-md">
@@ -267,7 +216,6 @@ export const UploadModal = ({
           <p className="text-sm text-gray-500">
             {subject ? `Uploading to: ${subject.name}` : "No subject selected"}
           </p>
-
           {subject && topics.length > 0 && (
             <div>
               <label
@@ -286,7 +234,6 @@ export const UploadModal = ({
                   setSelectedTopicState(topic || null);
                 }}
                 disabled={topicsLoading || isUploading}
-              >
                 <option value="">No specific topic</option>
                 {topics.map((topic) => (
                   <option key={topic.id} value={topic.id}>
@@ -299,7 +246,6 @@ export const UploadModal = ({
               )}
             </div>
           )}
-
           <div
             className={`border-2 border-dashed ${
               dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"
@@ -325,20 +271,16 @@ export const UploadModal = ({
                     </p>
                     <p className="text-xs text-gray-500">
                       {formatFileSize(file.size)}
-                    </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div>
                 <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">
                   Drag and drop your file here, or click to select
                 </p>
                 <p className="text-sm text-gray-400 mt-2">
                   Supported file types: PDF, Word, PowerPoint, Images, etc.
-                </p>
-              </div>
             )}
             <input
               type="file"
@@ -348,7 +290,6 @@ export const UploadModal = ({
               disabled={isUploading}
             />
           </div>
-
           {/* Upload Progress Section */}
           {isUploading && (
             <div className="mt-6 p-4 bg-gray-50 rounded-lg overflow-hidden">
@@ -358,59 +299,39 @@ export const UploadModal = ({
                   <span className="text-sm font-medium text-gray-700 truncate">
                     {uploadStatus}
                   </span>
-                </div>
                 <span className="text-sm text-gray-500 flex-shrink-0">
                   {uploadProgress}%
                 </span>
-              </div>
-
               <Progress
                 value={uploadProgress}
                 className="mb-3"
                 variant={uploadComplete ? "success" : "default"}
               />
-
               <div className="flex items-center justify-between text-xs text-gray-500 min-w-0 gap-2">
                 <div className="flex-1 min-w-0">
                   {file && (
                     <span
                       className="block truncate"
                       style={{ maxWidth: "100%" }}
-                    >
                       {file.name} ({formatFileSize(file.size)})
                     </span>
                   )}
-                </div>
                 {uploadSpeed > 0 && (
                   <div className="flex-shrink-0">
                     <span>{formatUploadSpeed(uploadSpeed)}</span>
-                  </div>
                 )}
-              </div>
-            </div>
-          )}
-
           {/* Upload Error Section */}
           {uploadError && (
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <div className="flex items-center">
                 <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
                 <span className="text-sm text-red-700">{uploadError}</span>
-              </div>
-            </div>
-          )}
-
           {/* Upload Complete Section */}
           {uploadComplete && (
             <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center">
                 <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
                 <span className="text-sm text-green-700">
                   File uploaded successfully!
-                </span>
-              </div>
-            </div>
-          )}
         </div>
         <DialogFooter>
           <DialogClose asChild>
@@ -422,44 +343,29 @@ export const UploadModal = ({
             </Button>
           </DialogClose>
           {!uploadComplete && (
-            <Button
               onClick={handleUpload}
               disabled={!file || !subject || isUploading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
               loading={isUploading}
-            >
               {isUploading ? (
                 <span className="flex items-center">
                   {uploadProgress > 0
                     ? `Uploading ${uploadProgress}%`
                     : "Uploading..."}
-                </span>
               ) : (
-                <span className="flex items-center">
                   <Upload className="w-4 h-4 mr-2" />
                   Upload
-                </span>
-              )}
-            </Button>
-          )}
-          {uploadError && (
-            <Button
               onClick={() => {
                 setUploadError(null);
                 resetUploadState();
               }}
-              variant="outline"
               className="text-blue-600 border-blue-600 hover:bg-blue-50"
-            >
               Try Again
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
-
 UploadModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
@@ -469,6 +375,3 @@ UploadModal.propTypes = {
     name: PropTypes.string,
   }),
   selectedTopic: PropTypes.shape({
-    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  }),
-};

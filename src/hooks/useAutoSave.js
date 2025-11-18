@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
@@ -43,7 +44,7 @@ export function useAutoSave(key, initialData = {}, options = {}) {
           return parsed.data || initialData;
         }
       } catch (error) {
-        console.error('Failed to restore auto-save data:', error);
+        logger.error('Failed to restore auto-save data:', error);
       }
     }
     return initialData;
@@ -103,7 +104,7 @@ export function useAutoSave(key, initialData = {}, options = {}) {
 
         return true;
       } catch (error) {
-        console.error('Auto-save error:', error);
+        logger.error('Auto-save error:', error);
         setSaveStatus('error');
 
         if (onError) {
@@ -181,7 +182,7 @@ export function useAutoSave(key, initialData = {}, options = {}) {
       setSaveStatus('idle');
       setLastSaved(null);
     } catch (error) {
-      console.error('Failed to clear auto-save data:', error);
+      logger.error('Failed to clear auto-save data:', error);
     }
   }, [key, storage]);
 

@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, MoreHorizontal, Plus, ChevronRight } from "lucide-react"; // Added ChevronDown
 // Assuming shadcn/ui components are correctly set up in '@/components/ui/'
@@ -9,7 +10,6 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -35,13 +34,11 @@ import { useToast } from "@/hooks/use-toast";
 
 // --- Mock Data and API Functions ---
 // Replace these with actual API calls and data fetching logic
-
 // Available programs
 const programsData = [
   { id: "bsis", name: "Bachelor of Science in Information Systems", years: 4 },
   { id: "act", name: "Associate in Computer Technology", years: 2 },
 ];
-
 // Example student data (represents students already in the selected class/year)
 const initialStudentsData = [
   {
@@ -54,98 +51,55 @@ const initialStudentsData = [
     programId: "bsis",
     year: 1,
   },
-  {
     id: "21-00002DB",
     _id: "60d0fe4f5311236168a109cb", // Added MongoDB-style _id
     name: "Barbie Dela Cruz",
     email: "barbiedelacruz@student.lxverdad",
     gender: "female",
     role: "pio",
-    programId: "bsis",
-    year: 1,
-  },
-  {
     id: "21-00003FL",
     _id: "60d0fe4f5311236168a109cc", // Added MongoDB-style _id
     name: "Luca Ferrari",
     email: "lucaferrari@student.lxverdad",
-    gender: "male",
-    role: null,
-    programId: "bsis",
-    year: 1,
-  },
-  {
     id: "21-00004KA",
     _id: "60d0fe4f5311236168a109cd", // Added MongoDB-style _id
     name: "Aisha Khan",
     email: "aishakhan@student.lxverdad",
-    gender: "female",
-    role: null,
-    programId: "bsis",
-    year: 1,
-  },
-  {
     id: "21-00005MS",
     _id: "60d0fe4f5311236168a109ce", // Added MongoDB-style _id
     name: "Sofia Martinez",
     email: "sofiamartinez@student.lxverdad",
-    gender: "female",
-    role: null,
-    programId: "bsis",
-    year: 1,
-  },
-  {
     id: "21-00006ML",
     _id: "60d0fe4f5311236168a109cf", // Added MongoDB-style _id
     name: "Liam Muller",
     email: "liammuller@student.lxverdad",
-    gender: "male",
-    role: null,
-    programId: "bsis",
-    year: 1,
-  },
   // Add more students for different programs/years if needed for testing
-  {
     id: "22-10001AB",
     _id: "60d0fe4f5311236168a109d0", // Added MongoDB-style _id
     name: "Anna Bell",
     email: "annabell@student.lxverdad",
-    gender: "female",
-    role: null,
     programId: "act",
-    year: 1,
-  },
-  {
     id: "22-10002CD",
     _id: "60d0fe4f5311236168a109d1", // Added MongoDB-style _id
     name: "Carl Davis",
     email: "carldavis@student.lxverdad",
-    gender: "male",
-    role: null,
-    programId: "act",
-    year: 1,
-  },
-];
-
 // Mock function to fetch students for a specific program and year
 const fetchStudentsAPI = async (programId, year) => {
-  console.log(
+  logger.log(
     `API CALL: Fetching students for program ${programId}, year ${year}`
   );
   await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
   // In a real app, filter data based on programId and year from the API
   const filteredStudents = initialStudentsData.filter(
     (s) => s.programId === programId && s.year === parseInt(year)
-  );
   // Simulate API success
   return filteredStudents;
   // Simulate API error:
   // throw new Error("Failed to fetch students");
 };
-
 // Mock function to search for students NOT YET in the current class/year (for adding)
 const searchAvailableStudentsAPI = async (query) => {
-  console.log(`API CALL: Searching available students with query: ${query}`);
+  logger.log(`API CALL: Searching available students with query: ${query}`);
   if (!query.trim()) {
     return [];
   }
@@ -158,24 +112,16 @@ const searchAvailableStudentsAPI = async (query) => {
       email: "ryanthompson@student.lxverdad",
       gender: "male",
     },
-    {
       id: "22-00008EJ",
       name: "Emma Johnson",
       email: "emmajohnson@student.lxverdad",
       gender: "female",
-    },
-    {
       id: "22-00009AK",
       name: "Alex Kim",
       email: "alexkim@student.lxverdad",
-      gender: "male",
-    },
-    {
       id: "23-00010BC",
       name: "Ben Carter",
       email: "bencarter@student.lxverdad",
-      gender: "male",
-    },
     // Ensure mock results don't include students already in the initial list for clarity
   ].filter(
     (s) =>
@@ -185,90 +131,47 @@ const searchAvailableStudentsAPI = async (query) => {
       !initialStudentsData.some((is) => is.id === s.id) &&
       // Filter out student IDs that start with "00-"
       !s.id.startsWith("00-")
-  );
-  // Simulate API success
   return mockResults;
-  // Simulate API error:
   // throw new Error("Search failed");
-};
-
 // Mock function to add a student to a class/year
 const addStudentAPI = async (studentId, programId, year) => {
-  console.log(
     `API CALL: Adding student ${studentId} to program ${programId}, year ${year}`
-  );
-  await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
   // In a real app, the backend would handle this.
   // For the frontend simulation, we'll add the student to our local state upon success.
-  // Simulate API success
   return { success: true };
-  // Simulate API error:
   // throw new Error("Failed to add student");
-};
-
 // Mock function to assign PIO role - Replace with actual API call
 const assignRoleAPI = async (studentId, role, classInfo) => {
   try {
-    console.log(
+    logger.log(
       `API CALL: Assigning role ${role} to student ${studentId}`,
       classInfo
     );
-
     // Use the actual API function with proper ID handling
     const userId = studentId._id || studentId;
-
     const result = await assignPIORole(userId, {
       course: classInfo.course,
       yearLevel: classInfo.yearLevel,
     });
-
     if (!result.success) {
       throw new Error(result.error || "Failed to assign role");
     }
-
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("Error in assignRoleAPI:", error);
+    logger.error("Error in assignRoleAPI:", error);
     throw error;
-  }
-};
-
 // Mock function to revert PIO to student role - Replace with actual API call
 const revertToStudentAPI = async (studentId) => {
-  try {
-    console.log(`API CALL: Reverting student ${studentId} to student role`);
-
-    // Use the actual API function with proper ID handling
+    logger.log(`API CALL: Reverting student ${studentId} to student role`);
     // The backend expects MongoDB ObjectId, but our mock data might have custom IDs
-    const userId = studentId._id || studentId;
-
     const result = await revertPIORole(userId);
-
-    if (!result.success) {
       throw new Error(result.error || "Failed to revert role");
-    }
-
-    return { success: true, data: result.data };
-  } catch (error) {
-    console.error("Error in revertToStudentAPI:", error);
-    throw error;
-  }
-};
-
+    logger.error("Error in revertToStudentAPI:", error);
 // Mock function to remove a student from a class/year
 const removeStudentAPI = async (studentId, programId, year) => {
-  console.log(
     `API CALL: Removing student ${studentId} from program ${programId}, year ${year}`
-  );
-  await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
-  // Simulate API success
-  return { success: true };
-  // Simulate API error:
   // throw new Error("Failed to remove student");
-};
-
 // --- Component ---
-
 const Users = () => {
   // --- State ---
   const [searchQuery, setSearchQuery] = useState(""); // For filtering the main student list
@@ -276,63 +179,48 @@ const Users = () => {
   const [programs] = useState(programsData); // Could be fetched from API
   const [selectedProgramId, setSelectedProgramId] = useState("bsis"); // Default to first program
   const [selectedYear, setSelectedYear] = useState("1"); // Default to year 1
-
   const [students, setStudents] = useState([]); // Students currently displayed for the selected program/year
   const [isLoading, setIsLoading] = useState(false); // For loading indicators (main page data)
   const [isActionLoading, setIsActionLoading] = useState(false); // Separate loading state for modal actions (add, assign, remove)
   const [error, setError] = useState(null); // For displaying errors
-
   // Get current user role from auth context
   const { user, hasRole } = useAuth();
-
   // Direct check for admin role
   const userRole = user?.role?.toLowerCase();
-
   // Simplified isAdmin check - directly use hasRole function and check role string
   const isAdmin = useMemo(() => {
     return userRole === "admin" || hasRole("admin");
   }, [userRole, hasRole]);
-
   // Debug log to verify admin status
   useEffect(() => {
-    console.log("Is admin:", isAdmin, "User:", user);
+    logger.log("Is admin:", isAdmin, "User:", user);
   }, [isAdmin, user]);
-
   // Debug log for user and students data
-  useEffect(() => {
-    console.log("Current user data:", user);
-    console.log("Is admin:", isAdmin);
-    console.log("Students data:", students);
-    console.log("Filtered students:", sortedAndFilteredStudents);
+    logger.log("Current user data:", user);
+    logger.log("Is admin:", isAdmin);
+    logger.log("Students data:", students);
+    logger.log("Filtered students:", sortedAndFilteredStudents);
   }, [user, isAdmin, students, sortedAndFilteredStudents]);
-
   // Add Student Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [addStudentSearchQuery, setAddStudentSearchQuery] = useState(""); // Search query inside the modal
   const [addStudentSearchResults, setAddStudentSearchResults] = useState([]); // Results for the modal search
   const [studentToAdd, setStudentToAdd] = useState(null); // Student selected from search results
   const [isSearchingStudents, setIsSearchingStudents] = useState(false); // Loading state for modal search
-
   // Assign Role Modal State
   const [showAssignRoleModal, setShowAssignRoleModal] = useState(false);
   const [studentToAssignRole, setStudentToAssignRole] = useState(null);
-
   // Remove Student Modal State
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [studentToRemove, setStudentToRemove] = useState(null);
-
   // Add toast
   const { toast } = useToast();
   const assignPIOMutation = useAssignPIORole();
-
   // --- Derived State ---
   const currentProgram =
     programs.find((p) => p.id === selectedProgramId) || programs[0];
-
   // --- Effects ---
-
   // Fetch students when program or year changes
-  useEffect(() => {
     const fetchStudents = async () => {
       setIsLoading(true); // Use main loading state for fetching list data
       setError(null); // Clear previous errors
@@ -340,7 +228,7 @@ const Users = () => {
         const data = await fetchStudentsAPI(selectedProgramId, selectedYear);
         setStudents(data);
       } catch (err) {
-        console.error("Error fetching students:", err);
+        logger.error("Error fetching students:", err);
         setError("Failed to load students. Please try again.");
         // toast({ title: "Error", description: "Failed to load students.", variant: "destructive" }); // Example toast
         setStudents([]); // Clear students on error
@@ -348,56 +236,40 @@ const Users = () => {
         setIsLoading(false);
       }
     };
-
     fetchStudents();
   }, [selectedProgramId, selectedYear]); // Dependencies: selectedProgramId, selectedYear
-
   // Debounced search for the "Add Student" modal
-  useEffect(() => {
     // Don't search if the query is empty or a student is already selected
     if (!addStudentSearchQuery.trim() || studentToAdd) {
       setAddStudentSearchResults([]);
       setIsSearchingStudents(false); // Ensure loading state is off
       return;
-    }
-
     setIsSearchingStudents(true);
     const debounceTimeout = setTimeout(async () => {
-      try {
         const results = await searchAvailableStudentsAPI(addStudentSearchQuery);
         // Ensure we only update results if the query hasn't changed while fetching
         setAddStudentSearchResults(results);
-      } catch (err) {
-        console.error("Error searching students:", err);
+        logger.error("Error searching students:", err);
         // Handle search error in UI if needed (e.g., show a message)
         setAddStudentSearchResults([]); // Clear results on error
-      } finally {
         // Check if the query is still the same before setting loading to false
         // This prevents flickering if the user types quickly
         setIsSearchingStudents(false);
-      }
     }, 300); // 300ms debounce
-
     // Cleanup function to clear timeout if query changes quickly or component unmounts
     return () => clearTimeout(debounceTimeout);
   }, [addStudentSearchQuery, studentToAdd]); // Dependencies: addStudentSearchQuery, studentToAdd
-
   // --- Event Handlers ---
-
   // Handles selecting a program (from breadcrumb dropdown)
   const handleProgramChange = (programId) => {
     setSelectedProgramId(programId);
     // Reset year if switching from BSIS (4 years) to ACT (2 years)
     if (programId === "act" && selectedYear > 2) {
       setSelectedYear("1");
-    }
   };
-
   // Handles selecting a year tab
   const handleYearChange = (year) => {
     setSelectedYear(year);
-  };
-
   // Filter and sort students for display
   const getFilteredAndSortedStudents = useCallback(() => {
     // Filter by search query (main list) and exclude admin users
@@ -408,10 +280,8 @@ const Users = () => {
         studentRole === "admin" ||
         (student.normalizedRole &&
           student.normalizedRole.toLowerCase() === "admin");
-
       // Check if student ID starts with "00-"
       const hasReservedId = student.id && student.id.startsWith("00-");
-
       // Exclude admins, reserved IDs, and apply search filter
       return (
         !isStudentAdmin &&
@@ -420,8 +290,6 @@ const Users = () => {
           student.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           student.email.toLowerCase().includes(searchQuery.toLowerCase()))
       );
-    });
-
     // Filter by role
     let roleFiltered;
     if (filterOption === "pio") {
@@ -434,93 +302,57 @@ const Users = () => {
         );
       });
     } else if (filterOption === "student") {
-      roleFiltered = queryFiltered.filter((student) => {
-        const studentRole = (student.role || "").toLowerCase();
-        return (
           !student.role ||
           studentRole === "student" ||
-          (student.normalizedRole &&
             student.normalizedRole.toLowerCase() === "student")
-        );
-      });
     } else {
       roleFiltered = queryFiltered;
-    }
-
     // Sort alphabetically by name
     return [...roleFiltered].sort((a, b) => a.name.localeCompare(b.name));
   }, [students, searchQuery, filterOption]); // Dependencies for memoization
-
   const sortedAndFilteredStudents = getFilteredAndSortedStudents();
-
   // Open Modals
   const openAssignRoleModal = (student) => {
     setStudentToAssignRole(student);
     setShowAssignRoleModal(true);
-  };
-
   const openRemoveModal = (student) => {
     setStudentToRemove(student);
     setShowRemoveModal(true);
-  };
-
   const openAddStudentModal = () => {
     setShowAddModal(true);
     // Reset modal state when opening
     setAddStudentSearchQuery("");
     setAddStudentSearchResults([]);
     setStudentToAdd(null);
-  };
-
   // Close Modals and Reset State
   const closeAddModal = () => {
     setShowAddModal(false);
     // Reset state on close
-    setAddStudentSearchQuery("");
-    setAddStudentSearchResults([]);
-    setStudentToAdd(null);
-  };
-
   const closeAssignRoleModal = () => {
     setShowAssignRoleModal(false);
     setStudentToAssignRole(null); // Clear selected student on close
-  };
-
   const closeRemoveModal = () => {
     setShowRemoveModal(false);
     setStudentToRemove(null); // Clear selected student on close
-  };
-
   // --- Modal Actions ---
-
   // Handle selecting a student from the search results in the Add modal
   const handleSelectSearchResult = (student) => {
     setStudentToAdd(student);
     setAddStudentSearchQuery(student.name); // Put name in input
     setAddStudentSearchResults([]); // Hide results list
-  };
-
   // Handle adding the selected student
   const handleAddStudent = async () => {
     if (!studentToAdd) {
       alert("Please select a student to add."); // Replace with better UI feedback (e.g., toast)
-      return;
-    }
-
     // Validate student ID format
     if (studentToAdd.id.startsWith("00-")) {
       setError(
         "Cannot add student with ID starting with '00-'. These IDs are reserved."
-      );
-      return;
-    }
-
     setIsActionLoading(true); // Use dedicated loading state for actions
     setError(null);
     try {
       // API call to add student to the *currently viewed* program/year
       await addStudentAPI(studentToAdd.id, selectedProgramId, selectedYear);
-
       // On successful API call, update the local state
       // Create a new student object reflecting the current program/year context
       const newStudentEntry = {
@@ -532,52 +364,36 @@ const Users = () => {
       // Add to the list and re-sort
       setStudents((prev) =>
         [...prev, newStudentEntry].sort((a, b) => a.name.localeCompare(b.name))
-      );
-
-      console.log(
+      logger.log(
         `Added ${studentToAdd.name} to ${currentProgram.name} Year ${selectedYear}.`
-      );
       // toast({ title: "Student Added", description: `${studentToAdd.name} added.` }); // Example toast
       closeAddModal(); // Close modal on success
     } catch (err) {
-      console.error("Error adding student:", err);
+      logger.error("Error adding student:", err);
       setError("Failed to add student. Please try again.");
       // toast({ title: "Error", description: "Failed to add student.", variant: "destructive" }); // Example toast
     } finally {
       setIsActionLoading(false);
-    }
-  };
-
   // Handle assigning PIO role
   const handleAssignRole = async () => {
     if (!studentToAssignRole) return;
-
     setIsActionLoading(true);
-    setError(null);
-    try {
       // Use the MongoDB-style _id if available, otherwise fall back to the display id
       const userId = studentToAssignRole._id || studentToAssignRole.id;
-
-      console.log("Assigning PIO role with:", {
+      logger.log("Assigning PIO role with:", {
         student: studentToAssignRole,
         userId,
         program: selectedProgramId,
         yearLevel: selectedYear
-      });
-
       // Pass the parameters in the new format
       const result = await assignPIOMutation.mutateAsync({
         studentId: userId,
-        program: selectedProgramId,
         yearLevel: selectedYear.toString()
-      });
-
       if (result.success) {
         toast({
           title: "Success",
           description: `${studentToAssignRole.name} has been assigned as PIO.`
         });
-
         // Update the local state with the response data
         setStudents((prev) =>
           prev.map((student) =>
@@ -585,116 +401,60 @@ const Users = () => {
               ? { ...student, ...result.data }
               : student
           )
-        );
       } else {
         throw new Error(result.error || "Failed to assign PIO role");
-      }
     } catch (error) {
-      console.error("Error assigning PIO role:", error);
+      logger.error("Error assigning PIO role:", error);
       setError(error.message);
       toast({
         title: "Error",
         description: error.message || "Failed to assign PIO role",
         variant: "destructive"
-      });
-    } finally {
-      setIsActionLoading(false);
       onCloseDialog();
-    }
-  };
-
   // Handle reverting a PIO to student role
   const handleRevertToStudent = async () => {
-    if (!studentToAssignRole) return;
-
-    setIsActionLoading(true);
-    setError(null);
-    try {
-      // Use the MongoDB-style _id if available, otherwise fall back to the display id
-      const userId = studentToAssignRole._id || studentToAssignRole.id;
-
-      console.log("Reverting PIO role with:", {
-        student: studentToAssignRole,
-        userId,
-      });
-
+      logger.log("Reverting PIO role with:", {
       // Pass the MongoDB _id to the API
       await revertToStudentAPI(userId);
-
       // Update the role in the local state
-      setStudents((prev) =>
         prev.map((student) =>
           student.id === studentToAssignRole.id
             ? { ...student, role: null }
             : student
         )
-      );
-
-      console.log(
         `${studentToAssignRole.name} has been reverted to student role.`
-      );
-      toast({
         title: "Role Reverted",
         description: `${studentToAssignRole.name} is now a student.`,
-      });
       closeAssignRoleModal();
-    } catch (err) {
-      console.error("Error reverting role:", err);
+      logger.error("Error reverting role:", err);
       setError(err.message || "Failed to revert role. Please try again.");
-      toast({
-        title: "Error",
         description: err.message || "Failed to revert role.",
         variant: "destructive",
-      });
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
   // Handle removing a student
   const handleRemoveStudent = async () => {
     if (!studentToRemove) return;
-
-    setIsActionLoading(true);
-    setError(null);
-    try {
       // Pass relevant info if backend needs it (e.g., program/year context)
       await removeStudentAPI(
         studentToRemove.id,
         selectedProgramId,
         selectedYear
-      );
-
       // Remove the student from the local state
-      setStudents((prev) =>
         prev.filter((student) => student.id !== studentToRemove.id)
-      );
-
-      console.log(`${studentToRemove.name} has been removed from the class.`);
+      logger.log(`${studentToRemove.name} has been removed from the class.`);
       // toast({ title: "Student Removed", description: `${studentToRemove.name} removed.` }); // Example toast
       closeRemoveModal();
-    } catch (err) {
-      console.error("Error removing student:", err);
+      logger.error("Error removing student:", err);
       setError("Failed to remove student. Please try again.");
       // toast({ title: "Error", description: "Failed to remove student.", variant: "destructive" }); // Example toast
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
   // Handle breadcrumb navigation (placeholder for actual routing)
   const handleNavigate = (section) => {
     // In a real app, use react-router's navigate function or Link component
-    console.log(`Simulating navigation to: ${section}`);
+    logger.log(`Simulating navigation to: ${section}`);
     if (section === "students_summary") {
       alert(
         "Navigate to Students Summary/Analytics Page (Implementation Needed)"
-      );
       // Example: navigate('/students/summary');
-    }
     // Navigation to program/year is handled by handleProgramChange/handleYearChange
-  };
-
   // --- Render ---
   return (
     // Using padding utility for overall spacing
@@ -711,12 +471,10 @@ const Users = () => {
         >
           Students
         </button>
-
         <ChevronRight
           className="mx-1 h-4 w-4 flex-shrink-0"
           aria-hidden="true"
         />
-
         {/* Program Selector Dropdown within Breadcrumb */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild disabled={isLoading}>
@@ -742,12 +500,6 @@ const Users = () => {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <ChevronRight
-          className="mx-1 h-4 w-4 flex-shrink-0"
-          aria-hidden="true"
-        />
-
         {/* Current Year Display */}
         <span className="text-gray-500 px-1 py-0.5" aria-current="page">
           Year {selectedYear}
@@ -766,7 +518,6 @@ const Users = () => {
           value={selectedYear}
           onValueChange={handleYearChange} // Use the specific handler
           className="w-max" // Ensure tabs don't force wrap unnecessarily
-        >
           <TabsList
             className="grid border border-gray-200 rounded-md p-0 h-auto"
             // Inline style is sometimes necessary for dynamic grids based on props
@@ -789,7 +540,6 @@ const Users = () => {
             })}
           </TabsList>
         </Tabs>
-      </div>
       {/* Action Bar: Search, Filter, Add Button */}
       {/* Using flex for responsive layout, wrapping items on smaller screens */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
@@ -806,9 +556,7 @@ const Users = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             disabled={isLoading} // Disable while loading main data
-          />
         </div>
-
         {/* Filter and Add Button Group */}
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           {/* Filter Dropdown */}
@@ -816,7 +564,6 @@ const Users = () => {
             value={filterOption}
             onValueChange={setFilterOption}
             disabled={isLoading}
-          >
             <SelectTrigger className="w-full sm:w-36 border-gray-300 shadow-sm">
               <SelectValue placeholder="Filter By" />
             </SelectTrigger>
@@ -826,38 +573,29 @@ const Users = () => {
               <SelectItem value="student">Students Only</SelectItem>
             </SelectContent>
           </Select>
-
           {/* Add Student Button - Only visible to admins */}
           {isAdmin ? (
-            <Button
               onClick={openAddStudentModal} // Use specific handler
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1 shadow-sm"
               disabled={isLoading || isActionLoading} // Disable if loading data OR performing an action
-            >
               <Plus className="h-4 w-4" aria-hidden="true" />
               Add Student
-            </Button>
           ) : null}
-        </div>
-      </div>
       {/* Display Error Message */}
       {error && (
         <div
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
           role="alert"
-        >
           <strong className="font-bold">Error:</strong>
           <span className="block sm:inline ml-2">{error}</span>
           <button
             onClick={() => setError(null)}
             className="absolute top-0 bottom-0 right-0 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
-          >
             <span className="text-xl" aria-hidden="true">
               ×
             </span>
             <span className="sr-only">Close error message</span>
           </button>
-        </div>
       )}
       {/* Students Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
@@ -870,27 +608,11 @@ const Users = () => {
                 <th
                   scope="col"
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
                   Student Number
                 </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
                   Name
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
                   Email
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
                   Role
-                </th>
                 {/* Only show Actions column for admin users */}
                 {isAdmin && user?.role?.toLowerCase() === "admin" && (
                   <th
@@ -908,39 +630,27 @@ const Users = () => {
                   <td
                     colSpan="5"
                     className="px-6 py-10 text-center text-sm text-gray-500"
-                  >
                     {/* Optional: Add a spinner icon here */}
                     Loading students...
                   </td>
                 </tr>
               ) : sortedAndFilteredStudents.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-10 text-center text-sm text-gray-500"
-                  >
                     {searchQuery || filterOption !== "all"
                       ? "No students match your current search/filter criteria."
                       : "No students found in this class/year."}
-                  </td>
-                </tr>
               ) : (
                 sortedAndFilteredStudents.map((student) => (
                   <tr
                     key={student.id}
                     className="hover:bg-gray-50 transition-colors duration-150 ease-in-out"
-                  >
                     {/* Adjusted padding for table cells */}
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {student.id}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {student.name}
-                    </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                       {student.email}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                       {student.role?.toLowerCase() === "pio" ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                           Public Information Officer
@@ -948,7 +658,6 @@ const Users = () => {
                       ) : (
                         <span className="text-gray-600">Student</span> // Use a dash for no role
                       )}
-                    </td>
                     {/* Only show Actions cell for admin users */}
                     {isAdmin && user?.role?.toLowerCase() === "admin" && (
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
@@ -985,7 +694,6 @@ const Users = () => {
                                   Assign Public Information Officer Role
                                 </DropdownMenuItem>
                               )}
-
                             {/* Show "Revert to Student" option only for PIO users */}
                             {(student.role === "pio" ||
                               student.role === "PIO") && (
@@ -1000,12 +708,10 @@ const Users = () => {
                                 Revert to Student
                               </DropdownMenuItem>
                             )}
-
                             <DropdownMenuItem
                               onClick={() => openRemoveModal(student)} // Use specific handler
                               className="cursor-pointer hover:bg-red-50 text-red-600 text-sm"
                               disabled={isActionLoading} // Disable during any action loading state
-                            >
                               Remove Student
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -1033,7 +739,6 @@ const Users = () => {
               e.preventDefault();
             }
           }}
-        >
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
               Add Student to Class
@@ -1049,7 +754,6 @@ const Users = () => {
               <label
                 htmlFor="addStudentSearch"
                 className="text-sm font-medium text-gray-700 block"
-              >
                 Student Name or ID Search
               </label>
               <div className="relative">
@@ -1070,14 +774,12 @@ const Users = () => {
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
                     Searching...
                   </span>
-                )}
                 {/* Search Results Dropdown */}
                 {!studentToAdd && addStudentSearchResults.length > 0 && (
                   // Added data attribute for the onPointerDownOutside check
                   <div
                     data-results-dropdown
                     className="absolute z-20 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm border border-gray-200"
-                  >
                     {addStudentSearchResults.map((student) => (
                       <div
                         key={student.id}
@@ -1091,11 +793,9 @@ const Users = () => {
                         </p>
                         <p className="text-gray-500 block text-sm">
                           {student.id}
-                        </p>
                       </div>
                     ))}
                   </div>
-                )}
                 {/* No results message */}
                 {!studentToAdd &&
                   addStudentSearchQuery &&
@@ -1107,7 +807,6 @@ const Users = () => {
                   )}
               </div>
             </div>
-
             {/* Display Selected Student */}
             {studentToAdd && (
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md flex justify-between items-center">
@@ -1123,15 +822,11 @@ const Users = () => {
                   onClick={() => {
                     setStudentToAdd(null);
                     setAddStudentSearchQuery("");
-                  }}
                   className="text-blue-600 hover:bg-blue-100 disabled:opacity-50"
                   disabled={isActionLoading} // Disable change button during action
-                >
                   Change
                 </Button>
-              </div>
             )}
-
             {/* Note: Program/Year is determined by the main view context */}
             <p className="text-sm text-gray-600">
               This student will be added to:{" "}
@@ -1142,51 +837,37 @@ const Users = () => {
             </p>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
-            <Button
               variant="outline"
               onClick={closeAddModal}
               className="w-full sm:w-auto border-gray-300"
               disabled={isActionLoading} // Disable cancel during action
-            >
               Cancel
-            </Button>
-            <Button
               onClick={handleAddStudent}
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
               disabled={isActionLoading || !studentToAdd} // Disable if action loading or no student selected
-            >
               {isActionLoading ? "Adding..." : "Add Student"}
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       {/* Assign Role Modal - Modified to handle both assigning PIO and reverting to student */}
       <Dialog open={showAssignRoleModal} onOpenChange={setShowAssignRoleModal}>
         <DialogContent className="max-w-xl">
-          <DialogHeader>
             <DialogTitle>
               {studentToAssignRole?.role === "pio"
                 ? "Revert to Student"
                 : "Assign PIO Role"}
-            </DialogTitle>
             <DialogDescription>
-              {studentToAssignRole?.role === "pio"
                 ? "Are you sure you want to revert this PIO back to a student?"
                 : "Select the class to assign this student as PIO."}
-            </DialogDescription>
-          </DialogHeader>
-
           {studentToAssignRole?.role !== "pio" && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
                   <label htmlFor="program" className="text-sm font-medium">
                     Program
                   </label>
                   <Select
                     value={selectedProgramId}
                     onValueChange={handleProgramChange}
-                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select program" />
                     </SelectTrigger>
@@ -1195,20 +876,12 @@ const Users = () => {
                       <SelectItem value="act">Associate in Computer Technology</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
                 
-                <div>
                   <label htmlFor="yearLevel" className="text-sm font-medium">
                     Year Level
-                  </label>
-                  <Select
                     value={selectedYear.toString()}
                     onValueChange={handleYearChange}
-                  >
-                    <SelectTrigger>
                       <SelectValue placeholder="Select year level" />
-                    </SelectTrigger>
-                    <SelectContent>
                       <SelectItem value="1">First Year</SelectItem>
                       <SelectItem value="2">Second Year</SelectItem>
                       {selectedProgramId === "bsis" && (
@@ -1216,83 +889,34 @@ const Users = () => {
                           <SelectItem value="3">Third Year</SelectItem>
                           <SelectItem value="4">Fourth Year</SelectItem>
                         </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               {error && (
                 <div className="text-red-500 text-sm">{error}</div>
-              )}
-            </div>
           )}
-
           <DialogFooter>
-            <Button
-              variant="outline"
               onClick={onCloseDialog}
               disabled={isActionLoading}
-            >
-              Cancel
-            </Button>
-            <Button
               onClick={studentToAssignRole?.role === "pio" ? handleRevertRole : handleAssignRole}
-              disabled={isActionLoading}
-            >
               {isActionLoading ? (
                 <span className="flex items-center">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {studentToAssignRole?.role === "pio" ? "Reverting..." : "Assigning..."}
                 </span>
-              ) : (
                 studentToAssignRole?.role === "pio" ? "Revert to Student" : "Assign as PIO"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       {/* Remove Student Modal */}
       <Dialog open={showRemoveModal} onOpenChange={setShowRemoveModal}>
-        <DialogContent
-          className="sm:max-w-md"
           aria-describedby="remove-student-description"
-        >
-          <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-red-700">
               Remove Student
-            </DialogTitle>
             <DialogDescription
               id="remove-student-description"
               className="py-4 text-gray-600"
-            >
               Are you sure you want to remove{" "}
               <span className="font-medium">{studentToRemove?.name}</span> (
               {studentToRemove?.id}) from {currentProgram.name} - Year{" "}
               {selectedYear}? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
-            <Button
-              variant="outline"
               onClick={closeRemoveModal}
-              className="w-full sm:w-auto border-gray-300"
-              disabled={isActionLoading}
-            >
-              Cancel
-            </Button>
-            <Button
               onClick={handleRemoveStudent}
               className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
-              disabled={isActionLoading}
-            >
               {isActionLoading ? "Removing..." : "Remove Student"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div> // End main container
-  );
-};
-
 export default Users;

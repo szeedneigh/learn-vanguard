@@ -32,6 +32,6 @@ export const initAxe = async () => {
       ],
     });
 
-    console.log('✅ Axe accessibility testing enabled');
+    logger.log('✅ Axe accessibility testing enabled');
   }
 };

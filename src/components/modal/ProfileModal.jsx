@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useRef, useEffect } from "react";
 import { Camera, LogOut, Users, Edit, Save, X } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
@@ -21,7 +22,6 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
   const { logout, refreshUserData } = useAuth();
   const { hasPermission } = usePermission();
   const fileInputRef = useRef(null);
-
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -29,21 +29,18 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || null);
   // Add state for user profile data
   const [profileData, setProfileData] = useState(null);
-
   // Form state
   const [formData, setFormData] = useState({
     firstName: user?.firstName || "",
     lastName: user?.lastName || "",
     email: user?.email || "",
   });
-
   // Fetch current user profile when modal is opened
   useEffect(() => {
     if (isOpen) {
       const fetchUserProfile = async () => {
         try {
           const result = await getCurrentUserProfile();
-
           if (result.success && result.data) {
             setProfileData(result.data);
             setFormData({
@@ -55,10 +52,9 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
             setAvatarUrl(result.data.avatarUrl || user?.avatarUrl || null);
           }
         } catch (error) {
-          console.error("Error fetching user profile:", error);
+          logger.error("Error fetching user profile:", error);
         }
       };
-
       fetchUserProfile();
     } else {
       // Reset state when modal is closed
@@ -67,101 +63,66 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
       setUploadProgress(0);
     }
   }, [isOpen, user?.avatarUrl]);
-
   // Update form data and avatar when user changes
-  useEffect(() => {
     if (user) {
       setFormData({
         firstName: user.firstName || profileData?.firstName || "",
         lastName: user.lastName || profileData?.lastName || "",
         email: user.email || profileData?.email || "",
       });
-
       // Always use the current user's avatar URL only
       const newAvatarUrl = user.avatarUrl || null;
-      console.log("ProfileModal: Setting avatar URL for user:", {
+      logger.log("ProfileModal: Setting avatar URL for user:", {
         userId: user.id,
         userEmail: user.email,
         avatarUrl: newAvatarUrl,
-      });
       setAvatarUrl(newAvatarUrl);
-    } else {
       // Clear avatar when no user is present
-      console.log("ProfileModal: Clearing avatar URL - no user");
+      logger.log("ProfileModal: Clearing avatar URL - no user");
       setAvatarUrl(null);
-    }
   }, [user, profileData]);
-
   const handleLogout = async () => {
     try {
       await logout();
       navigate("/login");
       onClose();
     } catch (error) {
-      console.error("Logout failed:", error);
+      logger.error("Logout failed:", error);
       toast({
         title: "Logout Failed",
         description: error.message || "Failed to log out. Please try again.",
         variant: "destructive",
-      });
-    }
   };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
-  };
-
   const handleFileSelect = () => {
     fileInputRef.current?.click();
-  };
-
   const validateImageFile = (file) => {
     // Check if file is an image
     if (!file.type.startsWith("image/")) {
-      toast({
         title: "Invalid File Type",
         description: "Please select an image file (JPEG, PNG, etc.)",
-        variant: "destructive",
-      });
       return false;
-    }
-
     // Check file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB in bytes
     if (file.size > maxSize) {
-      toast({
         title: "File Too Large",
         description: "Image is too large. Maximum size is 5MB",
-        variant: "destructive",
-      });
-      return false;
-    }
-
     return true;
-  };
-
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     // Validate the file is an image and not too large
     if (!validateImageFile(file)) {
       e.target.value = ""; // Reset the file input
       return;
-    }
-
-    try {
       setIsUploading(true);
-      setUploadProgress(0);
-
       const result = await uploadUserAvatar(file, (progress) => {
         setUploadProgress(progress);
-      });
-
       if (result.success) {
         toast({
           title: "Success",
@@ -173,84 +134,43 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
         // Update profile data with the new user data
         if (result.data && result.data.user) {
           setProfileData(result.data.user);
-        }
         // Refresh user data in context without page reload
         refreshUserData();
       } else {
-        toast({
           title: "Upload Failed",
           description: result.error || "Failed to upload profile picture",
           variant: "destructive",
-        });
       }
-    } catch (error) {
-      console.error("Error uploading profile picture:", error);
-      toast({
+      logger.error("Error uploading profile picture:", error);
         title: "Upload Error",
         description: "Failed to upload profile picture",
-        variant: "destructive",
-      });
     } finally {
-      setIsUploading(false);
       // Reset the file input
       e.target.value = "";
-    }
-  };
-
   const handleSaveProfile = async () => {
-    try {
       const result = await updateCurrentUserProfile(formData);
-
-      if (result.success) {
-        toast({
-          title: "Success",
           description: "Profile updated successfully",
-          variant: "default",
-        });
         setIsEditing(false);
-        // Update profile data with the new user data
         if (result.data) {
           setProfileData(result.data);
-        }
-        // Refresh user data in context without page reload
-        refreshUserData();
-      } else {
-        toast({
           title: "Update Failed",
           description: result.error || "Failed to update profile",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast({
+      logger.error("Error updating profile:", error);
         title: "Update Error",
         description: "Failed to update profile",
-        variant: "destructive",
-      });
-    }
-  };
-
   const getDisplayName = () => {
     if (profileData?.firstName && profileData?.lastName) {
       return `${profileData.firstName} ${profileData.lastName}`;
-    }
     if (user?.firstName && user?.lastName) {
       return `${user.firstName} ${user.lastName}`;
-    }
     return user?.name || profileData?.name || "Current User";
-  };
-
   // Get the email to display
   const getEmail = () => {
     return profileData?.email || user?.email || "";
-  };
-
   return (
     <PopoverModal
       isOpen={isOpen}
       onClose={() => {
-        setIsEditing(false);
         onClose();
       }}
       triggerRef={triggerRef}
@@ -268,7 +188,7 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
                 className="w-20 h-20 rounded-full object-cover shadow-md border-2 border-white"
                 key={avatarUrl}
                 onError={(e) => {
-                  console.error("Error loading avatar:", e);
+                  logger.error("Error loading avatar:", e);
                   // Prevent infinite error loop
                   e.target.onerror = null;
                   // Hide the image
@@ -311,7 +231,6 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
               onChange={handleFileChange}
             />
           </div>
-
           {isUploading && (
             <div className="w-full mt-2">
               <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
@@ -319,13 +238,11 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
                   className="h-full bg-blue-500 transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 />
-              </div>
               <p className="text-xs text-gray-500 text-center mt-1">
                 Uploading... {uploadProgress}%
               </p>
             </div>
           )}
-
           {!isEditing ? (
             <>
               <h3 className="mt-3 font-semibold text-gray-900">
@@ -333,9 +250,7 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
               </h3>
               <p className="text-sm text-gray-500">
                 {user ? formatUserRole(user.role) : "Role"}
-              </p>
               <p className="text-xs text-gray-500 mt-1">{getEmail()}</p>
-
               {/* Show Course and Year Level for Students and PIOs only */}
               {(user?.role === "student" ||
                 user?.role === "pio" ||
@@ -351,10 +266,8 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
                     {profileData?.yearLevel ||
                       user?.yearLevel ||
                       "Year not specified"}
-                  </p>
                 </div>
               )}
-
               <button
                 onClick={() => setIsEditing(true)}
                 className="mt-3 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
@@ -374,17 +287,9 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
                     onChange={handleInputChange}
                     className="h-8 text-sm"
                   />
-                </div>
-                <div>
                   <label className="text-xs text-gray-500">Last Name</label>
-                  <Input
                     name="lastName"
                     value={formData.lastName}
-                    onChange={handleInputChange}
-                    className="h-8 text-sm"
-                  />
-                </div>
-              </div>
               <div>
                 <label className="text-xs text-gray-500">Email</label>
                 <Input
@@ -393,8 +298,6 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
                   onChange={handleInputChange}
                   className="h-8 text-sm"
                   disabled
-                />
-              </div>
               <div className="flex justify-end space-x-2 pt-1">
                 <Button
                   variant="ghost"
@@ -405,21 +308,13 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
                   <X className="w-4 h-4 mr-1" />
                   Cancel
                 </Button>
-                <Button
                   variant="default"
-                  size="sm"
                   onClick={handleSaveProfile}
                   className="h-8 px-2 bg-blue-600 hover:bg-blue-700"
-                >
                   <Save className="w-4 h-4 mr-1" />
                   Save
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-
       {/* Menu Items */}
       <div className="px-2 py-2">
         {hasPermission(PERMISSIONS.VIEW_ADMIN_DASHBOARD) && (
@@ -439,16 +334,12 @@ const ProfileModal = ({ isOpen, onClose, user = null, triggerRef }) => {
           <LogOut className="w-4 h-4" />
           Logout
         </button>
-      </div>
     </PopoverModal>
   );
 };
-
 ProfileModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   user: PropTypes.object,
   triggerRef: PropTypes.object,
-};
-
 export default ProfileModal;

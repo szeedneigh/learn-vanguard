@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import * as activityApi from '@/lib/api/activityApi';
 
 /**
@@ -26,7 +27,7 @@ export const markActivityComplete = async (topicId, activityId, notes = null) =>
       message: 'Activity marked as completed successfully',
     };
   } catch (error) {
-    console.error('Service: Error marking activity as complete:', error);
+    logger.error('Service: Error marking activity as complete:', error);
     return {
       success: false,
       error: error.message || 'Failed to mark activity as complete',
@@ -52,7 +53,7 @@ export const getActivityCompletions = async (subjectId = null) => {
       data: result.data,
     };
   } catch (error) {
-    console.error('Service: Error fetching activity completions:', error);
+    logger.error('Service: Error fetching activity completions:', error);
     return {
       success: false,
       data: [],
@@ -81,7 +82,7 @@ export const checkActivityCompletion = async (topicId, activityId) => {
       data: result.data,
     };
   } catch (error) {
-    console.error('Service: Error checking activity completion:', error);
+    logger.error('Service: Error checking activity completion:', error);
     return {
       success: false,
       isCompleted: false,
@@ -108,7 +109,7 @@ export const batchCheckActivityCompletions = async (activities) => {
       data: result.data,
     };
   } catch (error) {
-    console.error('Service: Error batch checking activity completions:', error);
+    logger.error('Service: Error batch checking activity completions:', error);
     return {
       success: false,
       data: {},

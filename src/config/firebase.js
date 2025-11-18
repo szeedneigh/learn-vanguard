@@ -7,6 +7,7 @@ import {
   getRedirectResult,
   signOut,
 } from "firebase/auth";
+import logger from "@/utils/logger";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -36,7 +37,7 @@ const isFirebaseConfigured = () => {
   );
 
   if (missingVars.length > 0) {
-    console.warn(
+    logger.warn(
       `Firebase not fully configured. Missing: ${missingVars.join(", ")}`
     );
     return false;
@@ -44,7 +45,7 @@ const isFirebaseConfigured = () => {
 
   // Check if API key is valid (not empty)
   if (!firebaseConfig.apiKey || firebaseConfig.apiKey.trim() === "") {
-    console.warn("Firebase API key is empty or invalid");
+    logger.warn("Firebase API key is empty or invalid");
     return false;
   }
 
@@ -70,7 +71,7 @@ try {
       getRedirectResult(auth)
         .then((result) => {
           if (result) {
-            console.log("Redirect sign-in successful");
+            logger.log("Redirect sign-in successful");
             // Dispatch an event that can be caught by the auth context
             window.dispatchEvent(
               new CustomEvent("auth:redirect-result", {
@@ -80,22 +81,22 @@ try {
           }
         })
         .catch((error) => {
-          console.error("Redirect sign-in error:", error);
+          logger.error("Redirect sign-in error:", error);
           if (error.code === "auth/account-exists-with-different-credential") {
-            console.error("Email already in use with different provider");
+            logger.error("Email already in use with different provider");
           }
         });
     }
 
     firebaseInitialized = true;
-    console.log("Firebase initialized successfully");
+    logger.log("Firebase initialized successfully");
   } else {
-    console.warn(
+    logger.warn(
       "Firebase initialization skipped due to missing configuration"
     );
   }
 } catch (error) {
-  console.error("Firebase initialization error:", error);
+  logger.error("Firebase initialization error:", error);
 }
 
 /**
@@ -105,7 +106,7 @@ try {
  */
 export const signInWithGoogle = async (useRedirect = false) => {
   if (!firebaseInitialized || !auth || !googleProvider) {
-    console.error("Firebase authentication not initialized");
+    logger.error("Firebase authentication not initialized");
     return {
       success: false,
       error:
@@ -131,7 +132,7 @@ export const signInWithGoogle = async (useRedirect = false) => {
           error.code === "auth/popup-blocked" ||
           error.code === "auth/popup-closed-by-user"
         ) {
-          console.log("Popup was blocked, falling back to redirect method");
+          logger.log("Popup was blocked, falling back to redirect method");
           await signInWithRedirect(auth, googleProvider);
           return { inProgress: true };
         }
@@ -150,7 +151,7 @@ export const signInWithGoogle = async (useRedirect = false) => {
     const idToken = await result.user.getIdToken();
     return { user: result.user, idToken };
   } catch (error) {
-    console.error("Google sign-in error:", error);
+    logger.error("Google sign-in error:", error);
     throw error;
   }
 };
@@ -161,7 +162,7 @@ export const signInWithGoogle = async (useRedirect = false) => {
  */
 export const checkRedirectResult = async () => {
   if (!firebaseInitialized || !auth) {
-    console.warn("Firebase not initialized, cannot check redirect result");
+    logger.warn("Firebase not initialized, cannot check redirect result");
     return null;
   }
 
@@ -182,7 +183,7 @@ export const checkRedirectResult = async () => {
     const idToken = await result.user.getIdToken();
     return { user: result.user, idToken };
   } catch (error) {
-    console.error("Redirect result error:", error);
+    logger.error("Redirect result error:", error);
     return { error };
   }
 };
@@ -193,14 +194,14 @@ export const checkRedirectResult = async () => {
  */
 export const firebaseSignOut = async () => {
   if (!firebaseInitialized || !auth) {
-    console.warn("Firebase auth not initialized, skipping sign out");
+    logger.warn("Firebase auth not initialized, skipping sign out");
     return;
   }
   try {
     await signOut(auth);
-    console.log("Firebase sign out successful");
+    logger.log("Firebase sign out successful");
   } catch (error) {
-    console.error("Firebase sign out error:", error);
+    logger.error("Firebase sign out error:", error);
     throw error;
   }
 };
@@ -217,7 +218,7 @@ export const getCurrentUserToken = async () => {
   try {
     return await auth.currentUser.getIdToken();
   } catch (error) {
-    console.error("Error getting user token:", error);
+    logger.error("Error getting user token:", error);
     return null;
   }
 };
@@ -229,7 +230,7 @@ export const getCurrentUserToken = async () => {
  */
 export const onAuthStateChanged = (callback) => {
   if (!firebaseInitialized || !auth) {
-    console.warn("Firebase auth not initialized, skipping auth state listener");
+    logger.warn("Firebase auth not initialized, skipping auth state listener");
     return () => {};
   }
   return auth.onAuthStateChanged(callback);

@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import apiClient from "./client";
 
 /**
@@ -17,7 +18,7 @@ export const getTaskSummary = async () => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching task summary:", error);
+    logger.error("Error fetching task summary:", error);
     return {
       data: null,
       success: false,
@@ -49,10 +50,10 @@ export const getTasks = async (filters = {}) => {
     const queryString = params.toString();
     const url = `/tasks${queryString ? `?${queryString}` : ""}`;
 
-    console.log("getTasks API call:", { url, filters });
+    logger.log("getTasks API call:", { url, filters });
 
     const response = await apiClient.get(url);
-    console.log("getTasks API response:", {
+    logger.log("getTasks API response:", {
       status: response.status,
       dataLength: Array.isArray(response.data)
         ? response.data.length
@@ -65,7 +66,7 @@ export const getTasks = async (filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching tasks:", error);
+    logger.error("Error fetching tasks:", error);
     return {
       data: [],
       success: false,
@@ -90,7 +91,7 @@ export const getTask = async (taskId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching task:", error);
+    logger.error("Error fetching task:", error);
     return {
       data: null,
       success: false,
@@ -126,7 +127,7 @@ export const getUserTasks = async (userId, filters = {}) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching user tasks:", error);
+    logger.error("Error fetching user tasks:", error);
     return {
       data: [],
       success: false,
@@ -152,7 +153,7 @@ export const createTask = async (taskData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error creating task:", error);
+    logger.error("Error creating task:", error);
     throw new Error(
       error.response?.data?.error?.message ||
         error.response?.data?.message ||
@@ -176,7 +177,7 @@ export const updateTask = async (taskId, taskData) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating task:", error);
+    logger.error("Error updating task:", error);
     throw new Error(
       error.response?.data?.error?.message ||
         error.response?.data?.message ||
@@ -202,7 +203,7 @@ export const deleteTask = async (taskId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error deleting task:", error);
+    logger.error("Error deleting task:", error);
     throw new Error(
       error.response?.data?.error?.message ||
         error.response?.data?.message ||
@@ -227,7 +228,7 @@ export const updateTaskStatus = async (taskId, status) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error updating task status:", error);
+    logger.error("Error updating task status:", error);
     return {
       data: null,
       success: false,
@@ -255,7 +256,7 @@ export const assignTask = async (taskId, assigneeId) => {
       success: true,
     };
   } catch (error) {
-    console.error("Error assigning task:", error);
+    logger.error("Error assigning task:", error);
     return {
       data: null,
       success: false,
@@ -279,7 +280,7 @@ export const getTaskCounts = async () => {
       success: true,
     };
   } catch (error) {
-    console.error("Error fetching task counts:", error);
+    logger.error("Error fetching task counts:", error);
     return {
       data: {
         total: 0,

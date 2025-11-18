@@ -370,7 +370,7 @@ export const custom = (validatorFn, message = 'Invalid value') => (value, allVal
     const isValid = validatorFn(value, allValues);
     return isValid ? null : message;
   } catch (error) {
-    console.error('Validation error:', error);
+    logger.error('Validation error:', error);
     return message;
   }
 };
@@ -386,7 +386,7 @@ export const async = (asyncFn, message = 'Validation failed') => async (value) =
     const isValid = await asyncFn(value);
     return isValid ? null : message;
   } catch (error) {
-    console.error('Async validation error:', error);
+    logger.error('Async validation error:', error);
     return message;
   }
 };

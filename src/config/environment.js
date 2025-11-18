@@ -3,8 +3,10 @@
  * Centralized configuration for all environment variables
  */
 
+import logger from "@/utils/logger";
+
 // Log when environment configuration is loaded
-console.log("Loading environment configuration");
+logger.log("Loading environment configuration");
 
 // Helper function to ensure URLs have proper format
 const ensureValidUrl = (url) => {
@@ -34,7 +36,7 @@ const backendUrl =
     : "http://localhost:5000");
 
 // Log the environment configuration
-console.log("Environment loaded with API URLs:", {
+logger.log("Environment loaded with API URLs:", {
   mode: isProduction ? "production" : "development",
   API_BASE_URL: apiBaseUrl,
   BACKEND_URL: backendUrl,
@@ -95,7 +97,7 @@ export const validateEnvironment = () => {
   const missing = required.filter((key) => !environment[key]);
 
   if (missing.length > 0) {
-    console.warn("Missing required environment variables:", missing);
+    logger.warn("Missing required environment variables:", missing);
   }
 
   return missing.length === 0;

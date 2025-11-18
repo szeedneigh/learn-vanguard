@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -38,7 +38,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-
   // Reset form when modal is opened
   useEffect(() => {
     if (isOpen) {
@@ -55,78 +54,39 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
       setIsSubmitting(false);
     }
   }, [isOpen]);
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
-
     // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
         [name]: null,
       }));
-    }
   };
-
   const handleSelectChange = (name, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: null,
-      }));
-    }
-  };
-
   const addFileUrl = () => {
     if (newFileUrl.trim()) {
       setFormData((prev) => ({
-        ...prev,
         fileUrls: [...prev.fileUrls, newFileUrl.trim()],
-      }));
-      setNewFileUrl("");
-    }
-  };
-
   const removeFileUrl = (index) => {
-    setFormData((prev) => ({
-      ...prev,
       fileUrls: prev.fileUrls.filter((_, i) => i !== index),
-    }));
-  };
-
   const validate = () => {
     const newErrors = {};
-
     if (!formData.title.trim()) {
       newErrors.title = "Activity title is required";
-    }
-
     if (!formData.type) {
       newErrors.type = "Activity type is required";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validate()) {
       return;
-    }
-
     setIsSubmitting(true);
-
     try {
       // Prepare the data for submission, ensuring proper format
       const submissionData = {
@@ -140,66 +100,46 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
         points: formData.points || 0, // Points for assignments and quizzes
         fileUrls: formData.fileUrls || [],
       };
-
-      console.log("AddActivityModal: Submitting data:", submissionData);
-
+      logger.log("AddActivityModal: Submitting data:", submissionData);
       const result = await addActivity(topicId, submissionData);
-
       if (result.success) {
         toast({
           title: "Success!",
           description: "Activity has been successfully created.",
           variant: "default",
         });
-
         if (onSuccess) {
           onSuccess(result.data);
         }
-
         onClose();
       } else {
         throw new Error(result.error || "Failed to create activity");
       }
     } catch (error) {
-      console.error("Failed to create activity:", error);
-
+      logger.error("Failed to create activity:", error);
       toast({
         title: "Error",
         description:
           error.message || "Failed to create activity. Please try again.",
         variant: "destructive",
-      });
-
-      setErrors((prev) => ({
-        ...prev,
         form: error.message || "Failed to create activity",
-      }));
     } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleModalClose = (open) => {
     // Only call onClose when the dialog is closing
     if (!open) {
       onClose();
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleModalClose}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Activity</DialogTitle>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           {errors.form && (
             <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm">
               {errors.form}
             </div>
           )}
-
           <div className="space-y-2">
             <Label htmlFor="type">
               Activity Type <span className="text-red-600">*</span>
@@ -223,11 +163,8 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
               <p className="text-red-500 text-xs mt-1">{errors.type}</p>
             )}
           </div>
-
-          <div className="space-y-2">
             <Label htmlFor="title">
               Title <span className="text-red-600">*</span>
-            </Label>
             <Input
               id="title"
               name="title"
@@ -238,22 +175,13 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
             />
             {errors.title && (
               <p className="text-red-500 text-xs mt-1">{errors.title}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
               value={formData.description}
-              onChange={handleInputChange}
               placeholder="Brief description of the activity"
               rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="dueDate">Due Date</Label>
             <div className="flex items-center">
               <Calendar className="mr-2 h-4 w-4 opacity-50" />
@@ -264,32 +192,23 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
                 value={formData.dueDate}
                 onChange={handleInputChange}
               />
-            </div>
             <p className="text-xs text-gray-500">
               When this activity is due (optional)
             </p>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="fileUrls">File URLs (Optional)</Label>
             <div className="flex">
-              <Input
                 id="fileUrlInput"
                 value={newFileUrl}
                 onChange={(e) => setNewFileUrl(e.target.value)}
                 placeholder="Enter a URL to a file or resource"
                 className="flex-1 mr-2"
-              />
               <Button
                 type="button"
                 onClick={addFileUrl}
                 variant="outline"
                 size="icon"
-              >
                 <Plus className="h-4 w-4" />
               </Button>
-            </div>
-
             <div className="space-y-2 mt-2">
               {formData.fileUrls.length > 0 ? (
                 formData.fileUrls.map((url, index) => (
@@ -311,7 +230,6 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -321,28 +239,21 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
                   No files added yet
                 </p>
               )}
-            </div>
-          </div>
-
           <DialogFooter className="pt-4">
             <DialogClose asChild>
               <Button variant="outline" type="button" disabled={isSubmitting}>
                 Cancel
-              </Button>
             </DialogClose>
             <Button
               type="submit"
               disabled={isSubmitting}
               className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
               {isSubmitting ? (
                 <span className="flex items-center">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
                 </span>
-              ) : (
                 "Create Activity"
-              )}
             </Button>
           </DialogFooter>
         </form>
@@ -350,12 +261,9 @@ const AddActivityModal = ({ isOpen, onClose, onSuccess, topicId }) => {
     </Dialog>
   );
 };
-
 AddActivityModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onSuccess: PropTypes.func,
   topicId: PropTypes.string.isRequired,
-};
-
 export { AddActivityModal };

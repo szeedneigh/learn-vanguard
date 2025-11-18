@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Card,
@@ -8,7 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
   Table,
   TableHeader,
   TableBody,
@@ -16,7 +16,6 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -35,7 +34,6 @@ const formatDate = (dateString) => {
   const options = { year: "numeric", month: "short", day: "numeric" };
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
-
 const Archive = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -48,80 +46,63 @@ const Archive = () => {
     refetch,
   } = useTasks(toast);
   const queryClient = useQueryClient();
-
   const [sortBy, setSortBy] = useState("completionDateDesc");
   const [viewMode, setViewMode] = useState("list");
-
   // Set showArchived to true when component mounts
   useEffect(() => {
-    console.log("Archive: Setting showArchived to true");
+    logger.log("Archive: Setting showArchived to true");
     setShowArchived(true);
-
     // Force refetch tasks with archived=true
     const fetchArchivedTasks = async () => {
       try {
-        console.log("Archive: Explicitly fetching archived tasks");
+        logger.log("Archive: Explicitly fetching archived tasks");
         // First invalidate any existing cached data
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
-
         // Then perform a refetch
         await refetch();
-
         // Add a small delay and refetch again to ensure we get the latest data
         // This helps when a task was just archived and redirected here
         setTimeout(async () => {
-          console.log("Archive: Refetching archived tasks after delay");
+          logger.log("Archive: Refetching archived tasks after delay");
           queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
           await refetch();
         }, 1000);
       } catch (error) {
-        console.error("Error fetching archived tasks:", error);
+        logger.error("Error fetching archived tasks:", error);
       }
     };
-
     fetchArchivedTasks();
-
     // Set up an interval to refetch data every few seconds while the page is open
     const refreshInterval = setInterval(() => {
-      console.log("Archive: Periodic refresh of archived tasks");
+      logger.log("Archive: Periodic refresh of archived tasks");
       refetch().catch((err) =>
-        console.error("Error in refresh interval:", err)
+        logger.error("Error in refresh interval:", err)
       );
     }, 10000); // Refresh every 10 seconds
-
     return () => {
-      console.log("Archive: Setting showArchived to false (cleanup)");
+      logger.log("Archive: Setting showArchived to false (cleanup)");
       setShowArchived(false); // Reset when unmounting
       clearInterval(refreshInterval); // Clear the refresh interval
-    };
   }, [setShowArchived, refetch, queryClient]);
-
   // Log when tasks change
-  useEffect(() => {
-    console.log(
+    logger.log(
       "Archive: Tasks updated, count:",
       Array.isArray(tasks) ? tasks.length : "not an array",
       tasks
     );
   }, [tasks]);
-
   // Memoize the expensive calculation function
   const calculateRemainingDays = useCallback((archivedAt) => {
     if (!archivedAt) return 30; // Default if no archive date
-
     const archiveDate = new Date(archivedAt);
     const deleteDate = new Date(archiveDate);
     deleteDate.setDate(deleteDate.getDate() + 30);
-
     const now = new Date();
     const diffTime = deleteDate - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
     return Math.max(0, diffDays); // Don't show negative days
   }, []);
-
   // Show welcome toast if coming from task archival
-  useEffect(() => {
     const justArchived = searchParams.get("archived");
     if (justArchived === "true") {
       toast({
@@ -131,31 +112,23 @@ const Archive = () => {
       });
     }
   }, [searchParams, toast]);
-
   // Add performance monitoring in development
-  useEffect(() => {
     if (typeof window !== "undefined" && window.console) {
       console.time("Archive render");
       return () => console.timeEnd("Archive render");
-    }
   });
-
   // Optimize archived items calculation with better memoization
   const archivedItems = useMemo(() => {
     if (!Array.isArray(tasks)) {
-      console.log("Archive: tasks is not an array:", tasks);
+      logger.log("Archive: tasks is not an array:", tasks);
       return [];
-    }
-
-    console.log("Archive: Processing tasks data:", tasks);
-
+    logger.log("Archive: Processing tasks data:", tasks);
     // Ensure we're only showing archived tasks
     const filtered = tasks.filter((task) => {
       // Check if task is archived using both possible field names
       const isArchived = task.isArchived === true || task.archived === true;
-
       // Log each task for debugging
-      console.log(
+      logger.log(
         `Task ${task._id || task.id}: isArchived=${isArchived}, name=${
           task.taskName || task.name
         }, fields:`,
@@ -165,27 +138,17 @@ const Archive = () => {
           isArchived: task.isArchived,
           archived: task.archived,
         }
-      );
-
       return isArchived;
     });
-
-    console.log(
       `Archive: Found ${filtered.length} archived tasks out of ${tasks.length} total tasks`
-    );
-
     // If we don't have any archived tasks but we should be showing archived tasks,
     // this might indicate a caching issue - force a refetch
     if (filtered.length === 0 && tasks.length > 0) {
-      console.log(
         "Archive: No archived tasks found but tasks exist - might need to refetch"
-      );
       // Use setTimeout to avoid React state updates during render
       setTimeout(() => {
-        refetch().catch((err) => console.error("Error refetching:", err));
+        refetch().catch((err) => logger.error("Error refetching:", err));
       }, 500);
-    }
-
     return filtered.map((task) => {
       const archivedAt = task.archivedAt || task.updatedAt;
       return {
@@ -196,13 +159,10 @@ const Archive = () => {
         archivedAt,
         remainingDays: calculateRemainingDays(archivedAt),
       };
-    });
   }, [tasks, calculateRemainingDays, refetch]);
-
   // Optimize sorting with stable sort and better dependencies
   const sortedItems = useMemo(() => {
     if (!archivedItems.length) return [];
-
     const items = [...archivedItems];
     switch (sortBy) {
       case "completionDateAsc":
@@ -210,33 +170,21 @@ const Archive = () => {
           (a, b) => new Date(a.completionDate) - new Date(b.completionDate)
         );
       case "completionDateDesc":
-        return items.sort(
           (a, b) => new Date(b.completionDate) - new Date(a.completionDate)
-        );
       case "nameAsc":
         return items.sort((a, b) => a.name.localeCompare(b.name));
       case "nameDesc":
         return items.sort((a, b) => b.name.localeCompare(a.name));
       default:
         return items;
-    }
   }, [archivedItems, sortBy]);
-
   const getSortLabel = () => {
-    switch (sortBy) {
-      case "completionDateAsc":
         return "Oldest First";
-      case "completionDateDesc":
         return "Newest First";
-      case "nameAsc":
         return "Name (A-Z)";
-      case "nameDesc":
         return "Name (Z-A)";
-      default:
         return "Sort by date";
-    }
   };
-
   // Restore task handler with improved refetching
   const handleRestoreClick = (taskId) => {
     toast({
@@ -257,94 +205,41 @@ const Archive = () => {
                     description: "Task has been restored successfully.",
                     variant: "default",
                   });
-
                   // Force refetch after a short delay to update the UI
                   setTimeout(() => {
                     refetch().catch((err) =>
-                      console.error("Error refetching after restore:", err)
+                      logger.error("Error refetching after restore:", err)
                     );
                   }, 500);
                 })
                 .catch((error) => {
-                  console.error("Error restoring task:", error);
-                  toast({
+                  logger.error("Error restoring task:", error);
                     title: "Error",
                     description: "Failed to restore task. Please try again.",
                     variant: "destructive",
-                  });
                 });
             }}
           >
             Restore
           </Button>
-          <Button
             variant="outline"
-            size="sm"
-            onClick={() => {
               // Do nothing, toast will dismiss
-            }}
-          >
             Cancel
-          </Button>
         </div>
       ),
-    });
-  };
-
   // Delete task handler with improved refetching
   const handleDeleteClick = (taskId) => {
-    toast({
       title: "Delete Task Permanently?",
       description: "This action cannot be undone.",
-      action: (
-        <div className="flex gap-2">
-          <Button
             variant="destructive"
-            size="sm"
-            onClick={() => {
               // Call the delete task function
               handleDeleteTask(taskId)
-                .then(() => {
-                  // Show success message
-                  toast({
                     title: "Task Deleted",
                     description: "Task has been permanently deleted.",
-                    variant: "destructive",
-                  });
-
-                  // Force refetch after a short delay to update the UI
-                  setTimeout(() => {
-                    refetch().catch((err) =>
-                      console.error("Error refetching after delete:", err)
-                    );
-                  }, 500);
-                })
-                .catch((error) => {
-                  console.error("Error deleting task:", error);
-                  toast({
-                    title: "Error",
+                      logger.error("Error refetching after delete:", err)
+                  logger.error("Error deleting task:", error);
                     description: "Failed to delete task. Please try again.",
-                    variant: "destructive",
-                  });
-                });
-            }}
-          >
             Delete
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Do nothing, toast will dismiss
-            }}
-          >
-            Cancel
-          </Button>
-        </div>
-      ),
-    });
-  };
-
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -362,13 +257,10 @@ const Archive = () => {
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setSortBy("completionDateAsc")}>
                 Oldest First
-              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setSortBy("nameAsc")}>
                 Name (A-Z)
-              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setSortBy("nameDesc")}>
                 Name (Z-A)
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <div className="flex items-center border rounded-md">
@@ -380,32 +272,23 @@ const Archive = () => {
             >
               <List className="h-4 w-4" />
             </Button>
-            <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="icon"
               onClick={() => setViewMode("grid")}
               className="rounded-l-none border-l"
-            >
               <LayoutGrid className="h-4 w-4" />
-            </Button>
           </div>
-        </div>
       </div>
-
       <Alert className="bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300">
         <AlertCircle className="h-4 w-4 !text-blue-800 dark:!text-blue-300" />
         <AlertDescription>
           Items in the archive will be deleted forever after 30 days.
         </AlertDescription>
       </Alert>
-
       {isLoading && (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           <span className="ml-2 text-gray-500">Loading archived items...</span>
-        </div>
       )}
-
       {!isLoading && viewMode === "list" && (
         <Card>
           <Table>
@@ -428,7 +311,6 @@ const Archive = () => {
                     <TableCell className="text-right">
                       {item.remainingDays} days
                     </TableCell>
-                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -443,18 +325,13 @@ const Archive = () => {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             onSelect={() => handleRestoreClick(item.id)}
-                          >
                             Restore
                           </DropdownMenuItem>
-                          <DropdownMenuItem
                             onSelect={() => handleDeleteClick(item.id)}
                             className="text-red-600 focus:text-red-600 focus:bg-red-100/50"
-                          >
                             Delete Permanently
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -467,8 +344,6 @@ const Archive = () => {
             </TableBody>
           </Table>
         </Card>
-      )}
-
       {/* Grid View Implementation */}
       {!isLoading && viewMode === "grid" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -492,12 +367,9 @@ const Archive = () => {
                       >
                         Restore
                       </DropdownMenuItem>
-                      <DropdownMenuItem
                         onSelect={() => handleDeleteClick(item.id)}
                         className="text-red-600 focus:text-red-600 focus:bg-red-100/50"
-                      >
                         Delete Permanently
-                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </CardHeader>
@@ -507,7 +379,6 @@ const Archive = () => {
                   </CardDescription>
                   <CardDescription className="mt-2">
                     Deletion in: {item.remainingDays} days
-                  </CardDescription>
                 </CardContent>
               </Card>
             ))
@@ -516,10 +387,6 @@ const Archive = () => {
               No archived items found.
             </div>
           )}
-        </div>
-      )}
     </div>
   );
-};
-
 export default Archive;

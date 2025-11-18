@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Loader2 } from "lucide-react";
@@ -12,14 +13,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
   statusClasses,
   capitalize,
   toLocaleDateStringISO,
@@ -35,7 +34,6 @@ function TaskFormDialog({
 }) {
   const [formData, setFormData] = useState(task || {});
   const [errors, setErrors] = useState({});
-
   useEffect(() => {
     if (open) {
       setFormData(
@@ -52,7 +50,6 @@ function TaskFormDialog({
       setErrors({});
     }
   }, [task, open]);
-
   const validate = () => {
     const newErrors = {};
     if (!formData.title?.trim()) newErrors.title = "Title is required.";
@@ -61,7 +58,6 @@ function TaskFormDialog({
       newErrors.date = "Invalid date format.";
     if (!formData.time) newErrors.time = "Time is required.";
     if (!formData.course?.trim()) newErrors.course = "Course is required.";
-
     // Validate that the combined date and time is not in the past
     if (formData.date && formData.time) {
       try {
@@ -69,7 +65,6 @@ function TaskFormDialog({
         const selectedDateTime = new Date(
           `${formData.date}T${formData.time}:00`
         );
-
         if (selectedDateTime <= now) {
           // If it's today, check if the time has passed
           const today = new Date().toISOString().split("T")[0];
@@ -81,46 +76,31 @@ function TaskFormDialog({
           ) {
             newErrors.date = "Due date cannot be in the past";
           }
-        }
       } catch (error) {
-        console.error("Error validating datetime:", error);
+        logger.error("Error validating datetime:", error);
         newErrors.date = "Invalid date or time format";
       }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
   const handleSelectChange = (name, value) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
-
     // Combine date and time into a proper datetime for the backend
     const taskDeadline = new Date(
       `${formData.date}T${formData.time}:00`
     ).toISOString();
-
     onSave({
       ...formData,
       taskDeadline, // Send combined datetime to backend
     });
-  };
-
   const handleCancel = () => {
     onCancel();
     onOpenChange(false);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -152,7 +132,6 @@ function TaskFormDialog({
               <p className="text-xs text-red-500 mt-1">{errors.title}</p>
             )}
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label
@@ -174,60 +153,29 @@ function TaskFormDialog({
                 <p className="text-xs text-red-500 mt-1">{errors.date}</p>
               )}
             </div>
-            <div>
-              <label
                 htmlFor="time"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
                 Time
-              </label>
-              <Input
                 id="time"
                 type="time"
                 name="time"
                 value={formData.time || "23:59"}
-                onChange={handleInputChange}
                 error={errors.time}
-                required
-              />
               {errors.time && (
                 <p className="text-xs text-red-500 mt-1">{errors.time}</p>
-              )}
-            </div>
-            <div>
-              <label
                 htmlFor="course"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
                 Course/Subject
-              </label>
-              <Input
                 id="course"
                 name="course"
                 value={formData.course || ""}
-                onChange={handleInputChange}
                 error={errors.course}
-                required
-              />
               {errors.course && (
                 <p className="text-xs text-red-500 mt-1">{errors.course}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label
                 htmlFor="status"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
                 Status
-              </label>
               <Select
                 name="status"
                 value={formData.status || "not-started"}
                 onValueChange={(value) => handleSelectChange("status", value)}
-              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -239,54 +187,27 @@ function TaskFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <label
                 htmlFor="priority"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
                 Priority
-              </label>
-              <Select
                 name="priority"
                 value={formData.priority || "medium"}
                 onValueChange={(value) => handleSelectChange("priority", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <label
               htmlFor="description"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
               Description
-            </label>
             <Textarea
               id="description"
               name="description"
               value={formData.description || ""}
-              onChange={handleInputChange}
               rows={3}
-            />
-          </div>
-
           <DialogFooter className="mt-6">
             <Button
               type="button"
               variant="outline"
               onClick={handleCancel}
               disabled={isLoading}
-            >
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
@@ -294,14 +215,12 @@ function TaskFormDialog({
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               {task ? "Save Changes" : "Add Task"}
-            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
-
 TaskFormDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onOpenChange: PropTypes.func.isRequired,
@@ -310,5 +229,4 @@ TaskFormDialog.propTypes = {
   onCancel: PropTypes.func.isRequired,
   isLoading: PropTypes.bool,
 };
-
 export default TaskFormDialog;

@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import { useState, useCallback, useMemo } from 'react';
 
 /**
@@ -196,7 +197,7 @@ export function useFormValidation(
         try {
           await onSubmit(values);
         } catch (error) {
-          console.error('Submit error:', error);
+          logger.error('Submit error:', error);
         } finally {
           setIsSubmitting(false);
         }

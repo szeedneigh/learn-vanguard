@@ -1,3 +1,4 @@
+import logger from "@/utils/logger";
 import apiClient from "./client";
 
 /**
@@ -33,7 +34,7 @@ export const getUserNotifications = async (params = {}) => {
       };
     }
   } catch (error) {
-    console.error("Error fetching notifications:", error);
+    logger.error("Error fetching notifications:", error);
     return {
       data: [],
       success: false,
@@ -58,7 +59,7 @@ export const markNotificationAsRead = async (notificationId) => {
       data: response.data.data,
     };
   } catch (error) {
-    console.error("Error marking notification as read:", error);
+    logger.error("Error marking notification as read:", error);
     return {
       success: false,
       error:
@@ -79,7 +80,7 @@ export const markAllNotificationsAsRead = async () => {
       message: response.data.message || "All notifications marked as read",
     };
   } catch (error) {
-    console.error("Error marking all notifications as read:", error);
+    logger.error("Error marking all notifications as read:", error);
     return {
       success: false,
       error:
@@ -102,7 +103,7 @@ export const deleteNotification = async (notificationId) => {
       message: response.data.message || "Notification deleted successfully",
     };
   } catch (error) {
-    console.error("Error deleting notification:", error);
+    logger.error("Error deleting notification:", error);
     return {
       success: false,
       error: error.response?.data?.error || "Failed to delete notification",
